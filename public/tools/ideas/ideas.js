@@ -81,10 +81,38 @@
         '<div class="avatar" style="background:' + c.soft + ";color:" + c.dark + '">' + esc((p.author || "?").charAt(0).toUpperCase()) + "</div>" +
         "<div><p class=\"who-name\">" + esc(p.author) + '</p><p class="who-time">' + timeAgo(p.created_at) + "</p></div></div>" +
         '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span>" +
-        (p.author === me ? '<button class="del-btn" title="Delete post">✕</button>' : "") +
+        (p.author === me ? '<button class="edit-btn" title="Edit post">✎</button><button class="del-btn" title="Delete post">✕</button>' : "") +
       "</div>" +
-      '<p class="card-text">' + linkify(p.text) + "</p>" + preview +
+      '<p class="card-text">' + linkify(p.text) + "</p>" +
+      (p.author === me ? '<div class="edit-box"><textarea class="edit-ta"></textarea><div class="edit-actions"><button class="edit-save">Save</button><button class="edit-cancel">Cancel</button></div></div>' : "") +
+      preview +
       '<div class="comments"></div>';
+
+    var editBtn = el.querySelector(".edit-btn");
+    var editBox = el.querySelector(".edit-box");
+    var cardText = el.querySelector(".card-text");
+    if (editBtn) {
+      editBtn.onclick = function () {
+        var ta = editBox.querySelector(".edit-ta");
+        ta.value = p.text;
+        editBox.classList.add("open");
+        cardText.style.display = "none";
+        ta.focus();
+      };
+      editBox.querySelector(".edit-cancel").onclick = function () {
+        editBox.classList.remove("open");
+        cardText.style.display = "";
+      };
+      editBox.querySelector(".edit-save").onclick = function () {
+        var ta = editBox.querySelector(".edit-ta");
+        var txt = ta.value.trim();
+        if (!txt) return;
+        ta.disabled = true;
+        LuanaAuth.api("post", { method: "PATCH", body: JSON.stringify({ id: p.id, author: me, text: txt }) })
+          .then(function () { return loadPosts(); })
+          .catch(function () { ta.disabled = false; });
+      };
+    }
 
     var delBtn = el.querySelector(".del-btn");
     if (delBtn) {

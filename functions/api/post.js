@@ -33,6 +33,26 @@ export async function onRequestPost({ request, env }) {
   return json({ ok: true, id });
 }
 
+export async function onRequestPatch({ request, env }) {
+  if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+
+  const { id, author, text } = body;
+  if (!id) return json({ error: "missing id" }, 400);
+  const newText = clean(text, 4000);
+  if (!newText) return json({ error: "empty" }, 400);
+
+  const post = await env.DB.prepare("SELECT author FROM posts WHERE id = ?").bind(id).first();
+  if (!post) return json({ error: "not found" }, 404);
+  if (post.author !== author) return json({ error: "forbidden" }, 403);
+
+  await env.DB.prepare("UPDATE posts SET text = ? WHERE id = ?").bind(newText, id).run();
+
+  return json({ ok: true });
+}
+
 export async function onRequestDelete({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
