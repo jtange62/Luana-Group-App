@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<title>Lesson library · Luana Group App</title>
+<meta property="og:title" content="Luana Lesson Library" />
+<meta property="og:description" content="Curriculum and lesson plans for the Luana English School team." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./library.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">📚</span>
+        <span class="brand-name">Lesson library</span>
+      </div>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <a class="back-link" href="/">← all tools</a>
+  </header>
+
+  <div class="lib-toolbar">
+    <input id="search" class="search" type="search" placeholder="Search lessons, tags, files…" />
+    <button id="addBtn" class="btn-primary btn-sm">＋ Add</button>
+  </div>
+
+  <section id="form" class="lesson-form" hidden>
+    <p id="formTitle" class="form-heading">New lesson</p>
+    <input id="fTitle" type="text" placeholder="Lesson title" maxlength="200" />
+    <textarea id="fNotes" rows="3" placeholder="Notes / description (optional)"></textarea>
+    <input id="fLink" type="text" placeholder="Link — Google Doc, YouTube, etc. (optional)" />
+    <input id="fTags" type="text" placeholder="Tags, comma separated — e.g. kinder, phonics" />
+    <div id="fileRow" class="file-row">
+      <label class="file-label">📎 Attach files
+        <input id="fFiles" type="file" multiple hidden />
+      </label>
+      <span id="fileList" class="file-chosen"></span>
+    </div>
+    <p id="editFilesHint" class="files-hint" hidden>Files can't be changed while editing — delete &amp; re-add the lesson to change attachments.</p>
+    <div class="form-actions">
+      <span id="formMsg" class="form-msg"></span>
+      <button id="cancelBtn" class="btn-ghost">Cancel</button>
+      <button id="saveBtn" class="btn-primary btn-sm">Save</button>
+    </div>
+  </section>
+
+  <main id="list" class="lesson-list" aria-live="polite"></main>
+  <div id="empty" class="empty" hidden>
+    <span class="empty-icon">📚</span>
+    <p>No lessons yet — tap “＋ Add” to upload the first one.</p>
+  </div>
+  <div id="noMatch" class="empty" hidden>
+    <span class="empty-icon">🔍</span>
+    <p>Nothing matches that search.</p>
+  </div>
+  <div id="loading" class="loading">Loading…</div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./library.js"></script>
+</body>
+</html>

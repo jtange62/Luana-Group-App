@@ -22,5 +22,28 @@ CREATE TABLE IF NOT EXISTS comments (
   created_at  INTEGER NOT NULL
 );
 
+-- Lesson library — entries can hold notes, links, and uploaded files (R2).
+CREATE TABLE IF NOT EXISTS lessons (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  author      TEXT NOT NULL,
+  notes       TEXT,
+  link_url    TEXT,
+  tags        TEXT,
+  created_at  INTEGER NOT NULL
+);
+
+-- One row per uploaded file. The R2 object key is the file id.
+CREATE TABLE IF NOT EXISTS lesson_files (
+  id          TEXT PRIMARY KEY,
+  lesson_id   TEXT NOT NULL,
+  filename    TEXT NOT NULL,
+  size        INTEGER,
+  type        TEXT,
+  created_at  INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
+CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);

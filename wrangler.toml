@@ -8,3 +8,8 @@ pages_build_output_dir = "public"
 binding = "DB"
 database_name = "luana-board"
 database_id = "a2008abc-ebf0-400c-929c-cf1af2cc515c"
+
+# R2 bucket for lesson-library file uploads.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "luana-lessons"
