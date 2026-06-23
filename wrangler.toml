@@ -7,4 +7,4 @@ pages_build_output_dir = "public"
 [[d1_databases]]
 binding = "DB"
 database_name = "luana-board"
-database_id = "PASTE_YOUR_DATABASE_ID_HERE"
+database_id = "a2008abc-ebf0-400c-929c-cf1af2cc515c"
