@@ -33,6 +33,25 @@ export async function onRequestPost({ request, env }) {
   return json({ ok: true, id });
 }
 
+export async function onRequestDelete({ request, env }) {
+  if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
+
+  let body;
+  try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+
+  const { id, author } = body;
+  if (!id) return json({ error: "missing id" }, 400);
+
+  const post = await env.DB.prepare("SELECT author FROM posts WHERE id = ?").bind(id).first();
+  if (!post) return json({ error: "not found" }, 404);
+  if (post.author !== author) return json({ error: "forbidden" }, 403);
+
+  await env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id).run();
+  await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id).run();
+
+  return json({ ok: true });
+}
+
 async function unfurl(rawUrl) {
   let url;
   try { url = new URL(rawUrl); } catch { return blank(); }

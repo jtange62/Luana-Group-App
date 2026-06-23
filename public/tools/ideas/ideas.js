@@ -80,9 +80,20 @@
       '<div class="card-head"><div class="who">' +
         '<div class="avatar" style="background:' + c.soft + ";color:" + c.dark + '">' + esc((p.author || "?").charAt(0).toUpperCase()) + "</div>" +
         "<div><p class=\"who-name\">" + esc(p.author) + '</p><p class="who-time">' + timeAgo(p.created_at) + "</p></div></div>" +
-        '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span></div>" +
+        '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span>" +
+        (p.author === me ? '<button class="del-btn" title="Delete post">✕</button>' : "") +
+      "</div>" +
       '<p class="card-text">' + linkify(p.text) + "</p>" + preview +
       '<div class="comments"></div>';
+
+    var delBtn = el.querySelector(".del-btn");
+    if (delBtn) {
+      delBtn.onclick = function () {
+        if (!confirm("Delete this post?")) return;
+        LuanaAuth.api("post", { method: "DELETE", body: JSON.stringify({ id: p.id, author: me }) })
+          .then(function () { return loadPosts(); });
+      };
+    }
 
     var cwrap = el.querySelector(".comments");
     (p.comments || []).forEach(function (cm) {
