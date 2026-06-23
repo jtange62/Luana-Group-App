@@ -1,0 +1,71 @@
+:root{
+  --sand:#FBF6EC;--sand-2:#F3ECDC;--teal:#1B4D4A;--teal-soft:#E1F5EE;--teal-mid:#0F6E56;
+  --coral:#E8714A;--coral-dark:#993C1D;--gold:#D4A24C;--gold-soft:#FAEEDA;--gold-dark:#854F0B;
+  --ink:#2B2B28;--muted:#6B6A63;--hint:#97958c;--line:rgba(27,77,74,0.14);--card:#fff;
+  --radius:14px;--radius-sm:9px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--sand);color:var(--ink);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;
+}
+#app{max-width:620px;margin:0 auto;padding:0 14px env(safe-area-inset-bottom);}
+button{font-family:inherit;cursor:pointer;}
+input,textarea{font-family:inherit;font-size:16px;}
+a{color:inherit;}
+
+/* ---------- Gate ---------- */
+.gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+.gate-card{background:var(--card);border:0.5px solid var(--line);border-radius:18px;
+  padding:30px 24px;width:100%;max-width:360px;text-align:center;box-shadow:0 1px 3px rgba(27,77,74,0.06);}
+.gate-logo{font-size:38px;margin-bottom:6px;}
+.gate-title{font-family:'Fredoka',sans-serif;font-weight:500;font-size:24px;color:var(--teal);margin:0 0 4px;}
+.gate-sub{color:var(--muted);font-size:14px;margin:0 0 20px;}
+.gate input{width:100%;height:46px;border:0.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:0 14px;margin-bottom:10px;background:#fff;color:var(--ink);}
+.gate input:focus{outline:none;border-color:var(--teal-mid);box-shadow:0 0 0 3px var(--teal-soft);}
+.gate-error{color:#A32D2D;font-size:13px;margin:8px 0 0;}
+
+/* ---------- Buttons ---------- */
+.btn-primary{width:100%;height:46px;border:none;border-radius:var(--radius-sm);
+  background:var(--coral);color:#fff;font-weight:600;font-size:15px;transition:filter .12s,transform .06s;}
+.btn-primary:hover{filter:brightness(1.05);}
+.btn-primary:active{transform:scale(.985);}
+.btn-sm{width:auto;height:38px;padding:0 18px;font-size:14px;}
+
+/* ---------- Topbar ---------- */
+.topbar{padding:16px 4px 10px;}
+.topbar-inner{display:flex;align-items:center;justify-content:space-between;}
+.brand{display:flex;align-items:center;gap:9px;}
+.brand-mark{font-size:22px;}
+.brand-name{font-family:'Fredoka',sans-serif;font-weight:500;font-size:21px;color:var(--teal);}
+.brand-tag{margin:4px 0 0;color:var(--muted);font-size:13px;}
+.back-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);text-decoration:none;margin:2px 0 0;}
+.back-link:hover{color:var(--teal-mid);}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:0.5px solid var(--line);
+  background:#fff;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;}
+.icon-btn:hover{background:var(--sand-2);}
+
+/* ---------- Hub tool grid ---------- */
+.tool-grid{display:flex;flex-direction:column;gap:12px;padding:14px 0 40px;}
+.tool-tile{display:flex;align-items:center;gap:14px;background:var(--card);
+  border:0.5px solid var(--line);border-radius:var(--radius);padding:16px;text-decoration:none;
+  transition:border-color .12s,transform .06s;}
+.tool-tile:not(.is-soon):hover{border-color:var(--teal-mid);}
+.tool-tile:not(.is-soon):active{transform:scale(.99);}
+.tool-tile.is-soon{opacity:.6;cursor:default;}
+.tile-icon{width:46px;height:46px;min-width:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;}
+.tile-body{display:flex;flex-direction:column;flex:1;min-width:0;}
+.tile-name{font-weight:600;font-size:15.5px;}
+.tile-desc{font-size:12.5px;color:var(--muted);}
+.tile-arrow{color:var(--hint);font-size:18px;}
+.tile-soon{font-size:11px;font-weight:600;color:var(--gold-dark);background:var(--gold-soft);padding:3px 9px;border-radius:999px;}
+
+@media (prefers-color-scheme:dark){
+  :root{--sand:#16201e;--sand-2:#1f2d2a;--card:#1c2825;--ink:#ECE7DA;--muted:#9DACA6;
+    --hint:#6f7d77;--line:rgba(255,255,255,0.10);--teal:#9FE1CB;--teal-soft:#0F2E2A;}
+  body{background:var(--sand);}
+  .gate input{background:#1c2825;}
+}

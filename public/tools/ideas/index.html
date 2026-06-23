@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<title>Idea board · Luana Group App</title>
+<meta property="og:title" content="Luana Idea Board" />
+<meta property="og:description" content="Share ideas with the Luana English School team — organized by topic." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./ideas.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">💡</span>
+        <span class="brand-name">Idea board</span>
+      </div>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <a class="back-link" href="/">← all tools</a>
+  </header>
+
+  <nav id="tabs" class="tabs" aria-label="Categories"></nav>
+
+  <section class="composer">
+    <textarea id="ideaInput" rows="2" placeholder="Share an idea… paste a link and it'll preview"></textarea>
+    <div class="composer-row">
+      <span id="postingAs" class="posting-as"></span>
+      <button id="postBtn" class="btn-primary btn-sm">Post</button>
+    </div>
+  </section>
+
+  <main id="feed" class="feed" aria-live="polite"></main>
+  <div id="empty" class="empty" hidden>
+    <span class="empty-icon">✎</span>
+    <p>Nothing here yet — be the first to post.</p>
+  </div>
+  <div id="loading" class="loading">Loading…</div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./ideas.js"></script>
+</body>
+</html>

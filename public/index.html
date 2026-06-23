@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<title>Luana Group App</title>
+<meta name="description" content="Staff tools for Luana English School." />
+<meta property="og:title" content="Luana Group App" />
+<meta property="og:description" content="Staff tools for Luana English School." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Login gate -->
+  <div id="gate" class="gate">
+    <div class="gate-card">
+      <div class="gate-logo">🌺</div>
+      <h1 class="gate-title">Luana Group App</h1>
+      <p class="gate-sub">Staff tools — enter the password to continue</p>
+      <input id="pwInput" type="password" placeholder="staff password" autocomplete="current-password" />
+      <input id="gateName" type="text" placeholder="your name" autocomplete="name" />
+      <button id="enterBtn" class="btn-primary">Enter</button>
+      <p id="gateError" class="gate-error" hidden></p>
+    </div>
+  </div>
+
+  <!-- Hub home (hidden until authed) -->
+  <div id="hub" hidden>
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <span class="brand-mark">🌴</span>
+          <span class="brand-name">Luana Group App</span>
+        </div>
+        <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+      </div>
+      <p class="brand-tag">Pick a tool to get started</p>
+    </header>
+
+    <main class="tool-grid">
+      <a class="tool-tile" href="/tools/ideas/">
+        <span class="tile-icon" style="background:#E1F5EE;color:#085041;">💡</span>
+        <span class="tile-body">
+          <span class="tile-name">Idea board</span>
+          <span class="tile-desc">Share ideas, plan events, ask for supplies</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
+
+      <div class="tool-tile is-soon" aria-disabled="true">
+        <span class="tile-icon" style="background:#FAEEDA;color:#633806;">📅</span>
+        <span class="tile-body">
+          <span class="tile-name">Calendar &amp; schedule</span>
+          <span class="tile-desc">Shared events and rota</span>
+        </span>
+        <span class="tile-soon">soon</span>
+      </div>
+
+      <div class="tool-tile is-soon" aria-disabled="true">
+        <span class="tile-icon" style="background:#FAECE7;color:#712B13;">📚</span>
+        <span class="tile-body">
+          <span class="tile-name">Lesson library</span>
+          <span class="tile-desc">Curriculum &amp; lesson plans</span>
+        </span>
+        <span class="tile-soon">soon</span>
+      </div>
+    </main>
+  </div>
+
+</div>
+<script src="/shared-auth.js"></script>
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+
+  function showHub() { $("gate").style.display = "none"; $("hub").hidden = false; }
+
+  function enter() {
+    var pw = $("pwInput").value.trim();
+    var name = $("gateName").value.trim();
+    var err = $("gateError");
+    err.hidden = true;
+    if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
+    $("enterBtn").disabled = true;
+    LuanaAuth.login(pw, name).then(function (ok) {
+      $("enterBtn").disabled = false;
+      if (!ok) { err.textContent = "That password didn't work."; err.hidden = false; return; }
+      showHub();
+    }).catch(function () {
+      $("enterBtn").disabled = false;
+      err.textContent = "Couldn't reach the server. Try again.";
+      err.hidden = false;
+    });
+  }
+
+  $("enterBtn").onclick = enter;
+  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("gateName").focus(); });
+  $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
+  $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
+
+  if (LuanaAuth.isLoggedIn()) showHub();
+})();
+</script>
+</body>
+</html>

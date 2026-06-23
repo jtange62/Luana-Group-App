@@ -1,0 +1,5 @@
+# Copy this file to ".dev.vars" for local testing with `wrangler pages dev`.
+# Do NOT commit the real .dev.vars file (it's in .gitignore).
+
+STAFF_PASSWORD = "choose-a-staff-password"
+SESSION_SECRET = "any-long-random-string-keep-this-secret"

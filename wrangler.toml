@@ -1,0 +1,10 @@
+name = "luana-group-app"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "public"
+
+# D1 database binding. After you create the database (see SETUP.md),
+# paste its database_id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "luana-board"
+database_id = "PASTE_YOUR_DATABASE_ID_HERE"
