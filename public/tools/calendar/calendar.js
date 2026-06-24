@@ -20,13 +20,29 @@
   var $ = function (id) { return document.getElementById(id); };
   var now = new Date();
   var STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  // Weekday chips in school order (Mon→Sun); value is JS getDay() index.
+  var WEEKDAY_CHIPS = [["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]];
+  var WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   var state = {
     year: now.getFullYear(), month: now.getMonth(), selected: fmtYMD(now),
     view: "month", calendar: "general",
     events: [], lessons: [], lessonMap: {}, editingId: null,
     students: [], staff: [], attDate: fmtYMD(now), attProgram: "Preschool",
-    attMarks: {}, rosterMode: "students"
+    attMarks: {}, rosterMode: "students", newDays: []
   };
+
+  function daysArr(d) { return d ? String(d).split(",").map(Number) : []; }
+  function renderDayChips(container, selected, onToggle) {
+    container.innerHTML = "";
+    WEEKDAY_CHIPS.forEach(function (wd) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "day-chip" + (selected.indexOf(wd[1]) !== -1 ? " active" : "");
+      b.textContent = wd[0];
+      b.onclick = function () { onToggle(wd[1], b); };
+      container.appendChild(b);
+    });
+  }
 
   function prog(id) { return PROGRAMS.filter(function (p) { return p.id === id; })[0] || PROGRAMS[4]; }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
@@ -278,8 +294,10 @@
     $("attDate").value = state.attDate;
     renderClassToggle();
     var roster = $("roster"); roster.innerHTML = "";
-    var list = state.students.filter(function (s) { return s.program === state.attProgram; });
-    $("rosterEmpty").hidden = list.length > 0;
+    var wd = parseYMD(state.attDate).getDay();
+    var inClass = state.students.filter(function (s) { return s.program === state.attProgram; });
+    // Show only students scheduled that weekday (no schedule = every day).
+    var list = inClass.filter(function (s) { return !s.days || daysArr(s.days).indexOf(wd) !== -1; });
 
     var counts = { present: 0, absent: 0, late: 0 };
     list.forEach(function (s) {
@@ -295,8 +313,15 @@
       roster.appendChild(row);
     });
 
+    var empty = $("rosterEmpty");
+    empty.hidden = list.length > 0;
+    if (!list.length) {
+      empty.textContent = inClass.length
+        ? "No " + state.attProgram + " students scheduled on " + WEEKDAY_FULL[wd] + "."
+        : "No students in this class yet — tap “Manage students” to add some.";
+    }
     $("attSummary").textContent = list.length
-      ? "Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
+      ? WEEKDAY_FULL[wd] + " · Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
   }
 
   function mark(studentId, status) {
@@ -317,8 +342,18 @@
   // ---------- Roster management (students + staff) ----------
   function openRoster(mode) {
     state.rosterMode = mode;
+    state.newDays = [];
     $("rosterModalTitle").textContent = mode === "staff" ? "Manage staff" : "Manage students — " + state.attProgram;
     $("rosterAddName").value = "";
+    var addDays = $("rosterAddDays");
+    addDays.hidden = mode === "staff";
+    if (mode !== "staff") {
+      renderDayChips(addDays, state.newDays, function (dayNum, btn) {
+        var i = state.newDays.indexOf(dayNum);
+        if (i === -1) { state.newDays.push(dayNum); btn.classList.add("active"); }
+        else { state.newDays.splice(i, 1); btn.classList.remove("active"); }
+      });
+    }
     renderRosterManage();
     $("rosterModal").hidden = false;
     $("rosterAddName").focus();
@@ -326,14 +361,28 @@
 
   function renderRosterManage() {
     var wrap = $("rosterModalList"); wrap.innerHTML = "";
-    var items = state.rosterMode === "staff" ? state.staff
+    var staff = state.rosterMode === "staff";
+    var items = staff ? state.staff
       : state.students.filter(function (s) { return s.program === state.attProgram; });
     if (!items.length) { wrap.innerHTML = '<p class="day-empty" style="padding:8px 0">None yet.</p>'; return; }
     items.forEach(function (it) {
       var row = document.createElement("div");
-      row.className = "manage-row";
-      row.innerHTML = "<span>" + esc(it.name) + '</span><button class="del-btn" title="Remove">✕</button>';
+      row.className = "manage-row" + (staff ? "" : " manage-student");
+      row.innerHTML = '<div class="manage-top"><span>' + esc(it.name) + '</span><button class="del-btn" title="Remove">✕</button></div>' +
+        (staff ? "" : '<div class="day-chips"></div>');
       row.querySelector(".del-btn").onclick = function () { removeRosterItem(it.id); };
+      if (!staff) {
+        var sel = daysArr(it.days);
+        renderDayChips(row.querySelector(".day-chips"), sel, function (dayNum, btn) {
+          var i = sel.indexOf(dayNum);
+          if (i === -1) { sel.push(dayNum); btn.classList.add("active"); }
+          else { sel.splice(i, 1); btn.classList.remove("active"); }
+          it.days = sel.join(",");
+          LuanaAuth.api("students", { method: "PATCH", body: JSON.stringify({
+            id: it.id, name: it.name, program: it.program, days: it.days
+          }) }).then(function () { return loadStudents(); });
+        });
+      }
       wrap.appendChild(row);
     });
   }
@@ -348,8 +397,18 @@
     var name = $("rosterAddName").value.trim();
     if (!name) return;
     var path = state.rosterMode === "staff" ? "staff" : "students";
-    var body = state.rosterMode === "staff" ? { name: name } : { name: name, program: state.attProgram };
+    var body = state.rosterMode === "staff"
+      ? { name: name }
+      : { name: name, program: state.attProgram, days: state.newDays.join(",") };
     $("rosterAddName").value = "";
+    state.newDays = [];
+    if (state.rosterMode !== "staff") {
+      renderDayChips($("rosterAddDays"), state.newDays, function (dayNum, btn) {
+        var i = state.newDays.indexOf(dayNum);
+        if (i === -1) { state.newDays.push(dayNum); btn.classList.add("active"); }
+        else { state.newDays.splice(i, 1); btn.classList.remove("active"); }
+      });
+    }
     LuanaAuth.api(path, { method: "POST", body: JSON.stringify(body) })
       .then(function () { return state.rosterMode === "staff" ? loadStaff() : loadStudents(); })
       .then(afterRosterChange);
