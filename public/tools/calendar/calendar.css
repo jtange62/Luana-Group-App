@@ -79,7 +79,15 @@
 .seg-class .seg-btn{border:0.5px solid var(--line);background:var(--card);color:var(--muted);
   border-radius:11px;padding:13px 8px;font-size:14px;box-shadow:none;}
 .seg-class .seg-btn.active{background:var(--teal-soft);color:var(--teal-mid);border-color:var(--teal-mid);box-shadow:none;}
+.seg-attview{margin-bottom:12px;}
 .att-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+
+/* Week attendance overview */
+.week-att-day{border:0.5px solid var(--line);border-radius:var(--radius-sm);background:var(--card);padding:9px 11px;margin-bottom:10px;}
+.week-att-day.is-today{border-color:var(--teal-mid);}
+.week-att-head{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:7px;}
+.week-att-day .roster-row{background:var(--sand);margin-top:6px;}
+.week-att-day .week-none{margin:0;color:var(--hint);font-size:13px;}
 .att-summary{font-size:13px;color:var(--muted);font-weight:500;}
 .link-btn{background:none;border:none;color:var(--teal-mid);font-size:13px;cursor:pointer;padding:2px;text-decoration:underline;}
 .roster{display:flex;flex-direction:column;gap:7px;}

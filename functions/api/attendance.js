@@ -7,9 +7,25 @@ const STATUSES = ["present", "absent", "late"];
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
   const url = new URL(request.url);
-  const date = clean(url.searchParams.get("date"), 10);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json({ error: "valid date required" }, 400);
+  const re = /^\d{4}-\d{2}-\d{2}$/;
 
+  // Range mode: ?from=&to= -> { byDate: { date: { student_id: status } } }
+  const from = clean(url.searchParams.get("from"), 10);
+  const to = clean(url.searchParams.get("to"), 10);
+  if (re.test(from) && re.test(to)) {
+    const res = await env.DB.prepare(
+      "SELECT student_id, date, status FROM attendance WHERE date BETWEEN ? AND ?"
+    ).bind(from, to).all();
+    const byDate = {};
+    (res.results || []).forEach((r) => {
+      (byDate[r.date] = byDate[r.date] || {})[r.student_id] = r.status;
+    });
+    return json({ byDate });
+  }
+
+  // Single-day mode: ?date= -> { marks: { student_id: status } }
+  const date = clean(url.searchParams.get("date"), 10);
+  if (!re.test(date)) return json({ error: "valid date required" }, 400);
   const res = await env.DB.prepare(
     "SELECT student_id, status FROM attendance WHERE date = ?"
   ).bind(date).all();

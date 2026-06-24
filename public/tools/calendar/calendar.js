@@ -28,7 +28,7 @@
     view: "month", calendar: "general",
     events: [], lessons: [], lessonMap: {}, editingId: null,
     students: [], staff: [], attDate: fmtYMD(now), attProgram: "Preschool",
-    attMarks: {}, rosterMode: "students", newDays: []
+    attMarks: {}, weekMarks: {}, attView: "day", rosterMode: "students", newDays: []
   };
 
   function daysArr(d) { return d ? String(d).split(",").map(Number) : []; }
@@ -290,27 +290,43 @@
     return '<button class="att-btn att-' + st + (current === st ? " active" : "") + '" data-st="' + st + '">' + label + "</button>";
   }
 
+  function scheduledFor(wd) {
+    return state.students.filter(function (s) {
+      return s.program === state.attProgram && (!s.days || daysArr(s.days).indexOf(wd) !== -1);
+    });
+  }
+
+  // One student row with P/A/L buttons that mark against a given date.
+  function rosterRowEl(s, status, date) {
+    var row = document.createElement("div");
+    row.className = "roster-row";
+    row.innerHTML = '<span class="roster-name">' + esc(s.name) + "</span>" +
+      '<span class="att-btns">' + attBtn("present", "P", status) + attBtn("absent", "A", status) + attBtn("late", "L", status) + "</span>";
+    row.querySelectorAll(".att-btn").forEach(function (btn) {
+      btn.onclick = function () { var st = btn.getAttribute("data-st"); setMark(s.id, date, status === st ? "" : st); };
+    });
+    return row;
+  }
+
   function renderAttendance() {
     $("attDate").value = state.attDate;
     renderClassToggle();
+    setActive("attViewToggle", "data-attview", state.attView);
+    if (state.attView === "week") { renderWeekAttendance(); return; }
+    renderDayRegister();
+  }
+
+  function renderDayRegister() {
     var roster = $("roster"); roster.innerHTML = "";
     var wd = parseYMD(state.attDate).getDay();
     var inClass = state.students.filter(function (s) { return s.program === state.attProgram; });
-    // Show only students scheduled that weekday (no schedule = every day).
-    var list = inClass.filter(function (s) { return !s.days || daysArr(s.days).indexOf(wd) !== -1; });
+    var list = scheduledFor(wd);
 
     var counts = { present: 0, absent: 0, late: 0 };
     list.forEach(function (s) {
       var status = state.attMarks[s.id] || "";
       if (counts[status] !== undefined) counts[status]++;
-      var row = document.createElement("div");
-      row.className = "roster-row";
-      row.innerHTML = '<span class="roster-name">' + esc(s.name) + "</span>" +
-        '<span class="att-btns">' + attBtn("present", "P", status) + attBtn("absent", "A", status) + attBtn("late", "L", status) + "</span>";
-      row.querySelectorAll(".att-btn").forEach(function (btn) {
-        btn.onclick = function () { var st = btn.getAttribute("data-st"); mark(s.id, status === st ? "" : st); };
-      });
-      roster.appendChild(row);
+      roster.appendChild(rosterRowEl(s, status, state.attDate));
     });
 
     var empty = $("rosterEmpty");
@@ -324,15 +340,57 @@
       ? WEEKDAY_FULL[wd] + " · Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
   }
 
-  function mark(studentId, status) {
-    if (status) state.attMarks[studentId] = status; else delete state.attMarks[studentId];
+  function renderWeekAttendance() {
+    $("attSummary").textContent = "";
+    $("rosterEmpty").hidden = true;
+    var roster = $("roster"); roster.innerHTML = "";
+    var ws = startOfWeek(parseYMD(state.attDate));
+    var today = fmtYMD(new Date());
+
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(ws, i);
+      var ymd = fmtYMD(d);
+      var wd = d.getDay();
+      var marks = state.weekMarks[ymd] || {};
+      var list = scheduledFor(wd);
+
+      var card = document.createElement("div");
+      card.className = "week-att-day" + (ymd === today ? " is-today" : "");
+      var head = document.createElement("div");
+      head.className = "week-att-head";
+      head.textContent = WEEKDAY_FULL[wd] + " · " + (d.getMonth() + 1) + "/" + d.getDate() + (list.length ? "  (" + list.length + ")" : "");
+      card.appendChild(head);
+
+      if (!list.length) {
+        var none = document.createElement("p"); none.className = "week-none"; none.textContent = "—";
+        card.appendChild(none);
+      } else {
+        list.forEach(function (s) { card.appendChild(rosterRowEl(s, marks[s.id] || "", ymd)); });
+      }
+      roster.appendChild(card);
+    }
+  }
+
+  function setMark(studentId, date, status) {
+    if (date === state.attDate) {
+      if (status) state.attMarks[studentId] = status; else delete state.attMarks[studentId];
+    }
+    state.weekMarks[date] = state.weekMarks[date] || {};
+    if (status) state.weekMarks[date][studentId] = status; else delete state.weekMarks[date][studentId];
     renderAttendance();
     LuanaAuth.api("attendance", { method: "POST", body: JSON.stringify({
-      student_id: studentId, date: state.attDate, status: status, marked_by: me
+      student_id: studentId, date: date, status: status, marked_by: me
     }) }).catch(function () { loadAttendance(); });
   }
 
   function loadAttendance() {
+    if (state.attView === "week") {
+      var ws = startOfWeek(parseYMD(state.attDate));
+      return LuanaAuth.api("attendance?from=" + fmtYMD(ws) + "&to=" + fmtYMD(addDays(ws, 6))).then(function (res) {
+        state.weekMarks = res.byDate || {};
+        if (state.calendar === "students") renderAttendance();
+      }).catch(function () {});
+    }
     return LuanaAuth.api("attendance?date=" + encodeURIComponent(state.attDate)).then(function (res) {
       state.attMarks = res.marks || {};
       if (state.calendar === "students") renderAttendance();
@@ -589,8 +647,17 @@
   };
   $("attPrev").onclick = function () { stepAtt(-1); };
   $("attNext").onclick = function () { stepAtt(1); };
-  function stepAtt(dir) { state.attDate = fmtYMD(addDays(parseYMD(state.attDate), dir)); renderAttendance(); loadAttendance(); }
+  function stepAtt(dir) {
+    var n = state.attView === "week" ? 7 : 1;
+    state.attDate = fmtYMD(addDays(parseYMD(state.attDate), dir * n));
+    renderAttendance(); loadAttendance();
+  }
   $("attDate").onchange = function (e) { state.attDate = e.target.value || state.attDate; loadAttendance(); };
+  $("attViewToggle").onclick = function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    state.attView = b.getAttribute("data-attview");
+    loadAttendance();
+  };
   $("manageStudentsBtn").onclick = function () { openRoster("students"); };
   $("manageStaffBtn").onclick = function () { openRoster("staff"); };
   $("rosterAddBtn").onclick = addRosterItem;
