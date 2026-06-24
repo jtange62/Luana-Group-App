@@ -66,6 +66,22 @@
       .catch(function () { alert("Couldn't open that file. Try again."); });
   }
 
+  function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
+
+  // Fetch a saved image (auth-gated) and show it as a thumbnail; tap to open full.
+  function loadThumb(btn, fileId) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        btn.style.backgroundImage = "url('" + url + "')";
+        btn.classList.add("loaded");
+        btn.onclick = function () { window.open(url, "_blank"); };
+      })
+      .catch(function () { btn.textContent = "🖼️"; });
+  }
+
   function matches(l, q) {
     if (!q) return true;
     var hay = [l.title, l.notes, l.tags].concat(
@@ -115,7 +131,14 @@
       linkHtml = '<a class="lesson-link" href="' + esc(l.link_url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + esc(domain || l.link_url) + "</a>";
     }
 
-    var filesHtml = (l.files || []).map(function (f) {
+    var pics = (l.files || []).filter(isImage);
+    var docs = (l.files || []).filter(function (f) { return !isImage(f); });
+    var picsHtml = pics.length
+      ? '<div class="photo-grid">' + pics.map(function (f) {
+          return '<button class="photo" data-fid="' + esc(f.id) + '" aria-label="' + esc(f.filename) + '"></button>';
+        }).join("") + "</div>"
+      : "";
+    var filesHtml = docs.map(function (f) {
       var label = esc(f.filename) + (f.size ? ' <span class="file-size">' + fileSize(f.size) + "</span>" : "");
       return '<button class="file-chip" data-fid="' + esc(f.id) + '">📄 ' + label + "</button>";
     }).join("");
@@ -134,9 +157,11 @@
       '<p class="lesson-meta">' + esc(l.author) + " · " + timeAgo(Number(l.created_at)) + "</p>" +
       (l.notes ? '<p class="lesson-notes">' + linkify(l.notes) + "</p>" : "") +
       (linkHtml ? '<div class="lesson-linkrow">' + linkHtml + "</div>" : "") +
+      picsHtml +
       (filesHtml ? '<div class="lesson-files">' + filesHtml + "</div>" : "") +
       (tagsHtml ? '<div class="lesson-tags">' + tagsHtml + "</div>" : "");
 
+    el.querySelectorAll(".photo").forEach(function (btn) { loadThumb(btn, btn.getAttribute("data-fid")); });
     el.querySelectorAll(".file-chip").forEach(function (btn) {
       btn.onclick = function () { openFile(btn.getAttribute("data-fid")); };
     });
@@ -156,7 +181,37 @@
   }
 
   // ---------- Add / edit form ----------
-  var chosenFiles = null;
+  var chosen = []; // { file, url } for the compose preview cluster
+
+  function addFiles(fileList) {
+    Array.prototype.forEach.call(fileList, function (f) {
+      chosen.push({ file: f, url: isImage(f) ? URL.createObjectURL(f) : null });
+    });
+    renderChosen();
+  }
+  function clearChosen() {
+    chosen.forEach(function (c) { if (c.url) URL.revokeObjectURL(c.url); });
+    chosen = [];
+    renderChosen();
+  }
+  function renderChosen() {
+    var wrap = $("fileList"); wrap.innerHTML = "";
+    chosen.forEach(function (c, idx) {
+      var item = document.createElement("div");
+      if (c.url) {
+        item.className = "thumb";
+        item.innerHTML = '<img src="' + c.url + '" alt="">';
+      } else {
+        item.className = "thumb thumb-file";
+        item.innerHTML = '<span class="thumb-doc">📄</span><span class="thumb-name">' + esc(c.file.name) + "</span>";
+      }
+      var x = document.createElement("button");
+      x.type = "button"; x.className = "thumb-x"; x.textContent = "✕";
+      x.onclick = function () { if (c.url) URL.revokeObjectURL(c.url); chosen.splice(idx, 1); renderChosen(); };
+      item.appendChild(x);
+      wrap.appendChild(item);
+    });
+  }
 
   function openForm() { $("form").hidden = false; $("fTitle").focus(); }
   function resetForm() {
@@ -164,7 +219,7 @@
     $("formTitle").textContent = "New lesson";
     $("fTitle").value = ""; $("fNotes").value = ""; $("fLink").value = ""; $("fTags").value = "";
     $("fProgram").value = ""; $("fMonth").value = "";
-    $("fFiles").value = ""; chosenFiles = null; $("fileList").textContent = "";
+    $("fFiles").value = ""; clearChosen();
     $("formMsg").textContent = "";
     $("fileRow").hidden = false; $("editFilesHint").hidden = true;
     $("saveBtn").disabled = false;
@@ -213,9 +268,7 @@
     fd.append("notes", $("fNotes").value.trim());
     fd.append("link", $("fLink").value.trim());
     fd.append("tags", $("fTags").value.trim());
-    if (chosenFiles) {
-      for (var i = 0; i < chosenFiles.length; i++) fd.append("files", chosenFiles[i]);
-    }
+    chosen.forEach(function (c) { fd.append("files", c.file); });
 
     var t = LuanaAuth.token();
     msg.textContent = "Uploading…";
@@ -279,10 +332,8 @@
   $("cancelBtn").onclick = closeForm;
   $("saveBtn").onclick = save;
   $("fFiles").onchange = function (e) {
-    chosenFiles = e.target.files;
-    var names = [];
-    for (var i = 0; i < chosenFiles.length; i++) names.push(chosenFiles[i].name);
-    $("fileList").textContent = names.length ? names.join(", ") : "";
+    addFiles(e.target.files);
+    e.target.value = ""; // allow adding more in a second pick
   };
   $("search").oninput = function (e) { state.query = e.target.value; render(); };
   $("monthFilter").onchange = function (e) { state.month = e.target.value; render(); };
