@@ -80,8 +80,10 @@
       '<div class="card-head"><div class="who">' +
         '<div class="avatar" style="background:' + c.soft + ";color:" + c.dark + '">' + esc((p.author || "?").charAt(0).toUpperCase()) + "</div>" +
         "<div><p class=\"who-name\">" + esc(p.author) + '</p><p class="who-time">' + timeAgo(p.created_at) + "</p></div></div>" +
-        '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span>" +
-        (p.author === me ? '<button class="edit-btn" title="Edit post">✎</button><button class="del-btn" title="Delete post">✕</button>' : "") +
+        '<div class="card-head-right">' +
+          '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span>" +
+          (p.author === me ? '<button class="edit-btn" title="Edit post">✎</button><button class="del-btn" title="Delete post">✕</button>' : "") +
+        "</div>" +
       "</div>" +
       '<p class="card-text">' + linkify(p.text) + "</p>" +
       (p.author === me ? '<div class="edit-box"><textarea class="edit-ta"></textarea><div class="edit-actions"><button class="edit-save">Save</button><button class="edit-cancel">Cancel</button></div></div>' : "") +
