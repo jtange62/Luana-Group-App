@@ -67,4 +67,33 @@ CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
+-- Student roster (for attendance) and staff roster (for shift assignment).
+CREATE TABLE IF NOT EXISTS students (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  program     TEXT NOT NULL,   -- Preschool|Kinder|After School|Summer School
+  active      INTEGER DEFAULT 1,
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS staff (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  active      INTEGER DEFAULT 1,
+  created_at  INTEGER NOT NULL
+);
+
+-- One attendance mark per student per day.
+CREATE TABLE IF NOT EXISTS attendance (
+  id          TEXT PRIMARY KEY,
+  student_id  TEXT NOT NULL,
+  date        TEXT NOT NULL,   -- "YYYY-MM-DD"
+  status      TEXT NOT NULL,   -- present|absent|late
+  marked_by   TEXT,
+  created_at  INTEGER NOT NULL,
+  UNIQUE (student_id, date)
+);
+
 CREATE INDEX IF NOT EXISTS idx_events_start ON events (start_date);
+CREATE INDEX IF NOT EXISTS idx_students_program ON students (program);
+CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);

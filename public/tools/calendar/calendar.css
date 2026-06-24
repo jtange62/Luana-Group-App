@@ -71,6 +71,35 @@
 .agenda-group{display:flex;flex-direction:column;gap:8px;}
 .agenda-date{font-size:13px;font-weight:600;color:var(--teal-mid);border-bottom:0.5px solid var(--line);padding-bottom:4px;}
 
+/* Attendance (Students) */
+.attendance{padding-bottom:40px;}
+.att-datebar{display:flex;align-items:center;gap:8px;padding:4px 0 12px;}
+.att-date{flex:1;text-align:center;}
+.seg-class{margin-bottom:14px;overflow-x:auto;}
+.att-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.att-summary{font-size:13px;color:var(--muted);font-weight:500;}
+.link-btn{background:none;border:none;color:var(--teal-mid);font-size:13px;cursor:pointer;padding:2px;text-decoration:underline;}
+.roster{display:flex;flex-direction:column;gap:7px;}
+.roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;}
+.roster-name{font-size:14.5px;font-weight:500;min-width:0;word-break:break-word;}
+.att-btns{display:flex;gap:5px;flex-shrink:0;}
+.att-btn{width:32px;height:32px;border-radius:8px;border:0.5px solid var(--line);
+  background:var(--sand);color:var(--muted);font-size:13px;font-weight:700;}
+.att-btn.att-present.active{background:#0F6E56;border-color:#0F6E56;color:#fff;}
+.att-btn.att-absent.active{background:#C0392B;border-color:#C0392B;color:#fff;}
+.att-btn.att-late.active{background:#D4A24C;border-color:#D4A24C;color:#fff;}
+
+/* Roster management modal */
+.roster-manage{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-bottom:4px;}
+.manage-row{display:flex;align-items:center;justify-content:space-between;
+  background:var(--sand);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;}
+.manage-row .del-btn{border:none;background:none;color:var(--hint);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.manage-row .del-btn:hover{background:var(--sand-2);color:#c0392b;}
+.roster-add{display:flex;gap:8px;margin-top:6px;}
+.roster-add input{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;background:var(--sand);color:var(--ink);}
+.roster-add input:focus{outline:none;border-color:var(--teal-mid);}
+
 /* Modal form */
 .modal{position:fixed;inset:0;background:rgba(20,30,28,0.45);display:flex;align-items:flex-end;
   justify-content:center;z-index:50;padding:0;}

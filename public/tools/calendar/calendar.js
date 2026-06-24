@@ -19,10 +19,13 @@
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var now = new Date();
+  var STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   var state = {
     year: now.getFullYear(), month: now.getMonth(), selected: fmtYMD(now),
     view: "month", calendar: "general",
-    events: [], lessons: [], lessonMap: {}, editingId: null
+    events: [], lessons: [], lessonMap: {}, editingId: null,
+    students: [], staff: [], attDate: fmtYMD(now), attProgram: "Preschool",
+    attMarks: {}, rosterMode: "students"
   };
 
   function prog(id) { return PROGRAMS.filter(function (p) { return p.id === id; })[0] || PROGRAMS[4]; }
@@ -130,6 +133,19 @@
 
   function render() {
     setActive("calToggle", "data-cal", state.calendar);
+    var isStudents = state.calendar === "students";
+
+    // The Students tab is an attendance register, not an event calendar.
+    $("calBar").hidden = isStudents;
+    $("viewBar").hidden = isStudents;
+    $("attendance").hidden = !isStudents;
+    if (isStudents) {
+      $("weekdays").hidden = true; $("view").hidden = true; $("dayPanel").hidden = true;
+      renderAttendance();
+      return;
+    }
+
+    $("view").hidden = false;
     setActive("viewToggle", "data-view", state.view);
     $("weekdays").hidden = state.view !== "month";
     $("dayPanel").hidden = state.view !== "month";
@@ -242,6 +258,131 @@
     }
   }
 
+  // ---------- Attendance (Students) ----------
+  function renderClassToggle() {
+    var c = $("attClasses"); c.innerHTML = "";
+    STUDENT_PROGRAMS.forEach(function (p) {
+      var b = document.createElement("button");
+      b.className = "seg-btn" + (p === state.attProgram ? " active" : "");
+      b.textContent = p;
+      b.onclick = function () { state.attProgram = p; renderAttendance(); };
+      c.appendChild(b);
+    });
+  }
+
+  function attBtn(st, label, current) {
+    return '<button class="att-btn att-' + st + (current === st ? " active" : "") + '" data-st="' + st + '">' + label + "</button>";
+  }
+
+  function renderAttendance() {
+    $("attDate").value = state.attDate;
+    renderClassToggle();
+    var roster = $("roster"); roster.innerHTML = "";
+    var list = state.students.filter(function (s) { return s.program === state.attProgram; });
+    $("rosterEmpty").hidden = list.length > 0;
+
+    var counts = { present: 0, absent: 0, late: 0 };
+    list.forEach(function (s) {
+      var status = state.attMarks[s.id] || "";
+      if (counts[status] !== undefined) counts[status]++;
+      var row = document.createElement("div");
+      row.className = "roster-row";
+      row.innerHTML = '<span class="roster-name">' + esc(s.name) + "</span>" +
+        '<span class="att-btns">' + attBtn("present", "P", status) + attBtn("absent", "A", status) + attBtn("late", "L", status) + "</span>";
+      row.querySelectorAll(".att-btn").forEach(function (btn) {
+        btn.onclick = function () { var st = btn.getAttribute("data-st"); mark(s.id, status === st ? "" : st); };
+      });
+      roster.appendChild(row);
+    });
+
+    $("attSummary").textContent = list.length
+      ? "Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
+  }
+
+  function mark(studentId, status) {
+    if (status) state.attMarks[studentId] = status; else delete state.attMarks[studentId];
+    renderAttendance();
+    LuanaAuth.api("attendance", { method: "POST", body: JSON.stringify({
+      student_id: studentId, date: state.attDate, status: status, marked_by: me
+    }) }).catch(function () { loadAttendance(); });
+  }
+
+  function loadAttendance() {
+    return LuanaAuth.api("attendance?date=" + encodeURIComponent(state.attDate)).then(function (res) {
+      state.attMarks = res.marks || {};
+      if (state.calendar === "students") renderAttendance();
+    }).catch(function () {});
+  }
+
+  // ---------- Roster management (students + staff) ----------
+  function openRoster(mode) {
+    state.rosterMode = mode;
+    $("rosterModalTitle").textContent = mode === "staff" ? "Manage staff" : "Manage students — " + state.attProgram;
+    $("rosterAddName").value = "";
+    renderRosterManage();
+    $("rosterModal").hidden = false;
+    $("rosterAddName").focus();
+  }
+
+  function renderRosterManage() {
+    var wrap = $("rosterModalList"); wrap.innerHTML = "";
+    var items = state.rosterMode === "staff" ? state.staff
+      : state.students.filter(function (s) { return s.program === state.attProgram; });
+    if (!items.length) { wrap.innerHTML = '<p class="day-empty" style="padding:8px 0">None yet.</p>'; return; }
+    items.forEach(function (it) {
+      var row = document.createElement("div");
+      row.className = "manage-row";
+      row.innerHTML = "<span>" + esc(it.name) + '</span><button class="del-btn" title="Remove">✕</button>';
+      row.querySelector(".del-btn").onclick = function () { removeRosterItem(it.id); };
+      wrap.appendChild(row);
+    });
+  }
+
+  function afterRosterChange() {
+    renderRosterManage();
+    if (state.rosterMode === "staff") fillStaffSelect();
+    else if (state.calendar === "students") renderAttendance();
+  }
+
+  function addRosterItem() {
+    var name = $("rosterAddName").value.trim();
+    if (!name) return;
+    var path = state.rosterMode === "staff" ? "staff" : "students";
+    var body = state.rosterMode === "staff" ? { name: name } : { name: name, program: state.attProgram };
+    $("rosterAddName").value = "";
+    LuanaAuth.api(path, { method: "POST", body: JSON.stringify(body) })
+      .then(function () { return state.rosterMode === "staff" ? loadStaff() : loadStudents(); })
+      .then(afterRosterChange);
+    $("rosterAddName").focus();
+  }
+
+  function removeRosterItem(id) {
+    var path = state.rosterMode === "staff" ? "staff" : "students";
+    LuanaAuth.api(path, { method: "DELETE", body: JSON.stringify({ id: id }) })
+      .then(function () { return state.rosterMode === "staff" ? loadStaff() : loadStudents(); })
+      .then(afterRosterChange);
+  }
+
+  // ---------- Staff select ----------
+  function fillStaffSelect() {
+    var sel = $("fStaff");
+    var current = sel.value;
+    var opts = ['<option value="">Select staff…</option>'];
+    state.staff.forEach(function (s) { opts.push('<option value="' + esc(s.name) + '">' + esc(s.name) + "</option>"); });
+    opts.push('<option value="__add__">＋ Add new…</option>');
+    sel.innerHTML = opts.join("");
+    if (current && current !== "__add__") sel.value = current;
+  }
+  function setStaffValue(name) {
+    fillStaffSelect();
+    var sel = $("fStaff");
+    if (name && !Array.prototype.some.call(sel.options, function (o) { return o.value === name; })) {
+      var o = document.createElement("option"); o.value = name; o.textContent = name;
+      sel.insertBefore(o, sel.options[sel.options.length - 1]);
+    }
+    sel.value = name || "";
+  }
+
   // ---------- Form ----------
   function fillProgramSelect() {
     $("fProgram").innerHTML = PROGRAMS.map(function (p) { return '<option value="' + p.id + '">' + p.id + "</option>"; }).join("");
@@ -271,7 +412,7 @@
   function openAdd() {
     state.editingId = null;
     $("formTitle").textContent = state.calendar === "staff" ? "New shift" : "New event";
-    $("fStaff").value = ""; $("fTitle").value = "";
+    setStaffValue(""); $("fTitle").value = "";
     $("fProgram").value = "General"; $("fLesson").value = "";
     $("fDate").value = state.selected;
     $("fAllDay").checked = false; $("fStart").value = ""; $("fEnd").value = "";
@@ -287,7 +428,7 @@
     state.calendar = ev.calendar || "students";
     state.editingId = ev.id;
     $("formTitle").textContent = "Edit" + (ev.recur && ev.recur !== "none" ? " (whole series)" : "");
-    $("fStaff").value = ev.staff_name || "";
+    setStaffValue(ev.staff_name || "");
     $("fTitle").value = ev.title || "";
     $("fProgram").value = ev.program || "General";
     $("fLesson").value = ev.lesson_id || "";
@@ -367,11 +508,45 @@
       fillLessonSelect();
     }).catch(function () {});
   }
+  function loadStudents() {
+    return LuanaAuth.api("students").then(function (res) {
+      state.students = res.students || [];
+      if (state.calendar === "students") renderAttendance();
+    }).catch(function () {});
+  }
+  function loadStaff() {
+    return LuanaAuth.api("staff").then(function (res) {
+      state.staff = res.staff || [];
+      fillStaffSelect();
+    }).catch(function () {});
+  }
 
   // ---------- Wire up ----------
   $("calToggle").onclick = function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
-    state.calendar = b.getAttribute("data-cal"); render();
+    state.calendar = b.getAttribute("data-cal");
+    render();
+    if (state.calendar === "students") loadAttendance();
+  };
+  $("attPrev").onclick = function () { stepAtt(-1); };
+  $("attNext").onclick = function () { stepAtt(1); };
+  function stepAtt(dir) { state.attDate = fmtYMD(addDays(parseYMD(state.attDate), dir)); renderAttendance(); loadAttendance(); }
+  $("attDate").onchange = function (e) { state.attDate = e.target.value || state.attDate; loadAttendance(); };
+  $("manageStudentsBtn").onclick = function () { openRoster("students"); };
+  $("manageStaffBtn").onclick = function () { openRoster("staff"); };
+  $("rosterAddBtn").onclick = addRosterItem;
+  $("rosterAddName").addEventListener("keydown", function (e) { if (e.key === "Enter") addRosterItem(); });
+  $("rosterModalClose").onclick = function () { $("rosterModal").hidden = true; };
+  $("rosterModal").onclick = function (e) { if (e.target === $("rosterModal")) $("rosterModal").hidden = true; };
+  $("fStaff").onchange = function () {
+    if ($("fStaff").value !== "__add__") return;
+    var name = prompt("New staff member's name:");
+    setStaffValue("");
+    if (name && name.trim()) {
+      LuanaAuth.api("staff", { method: "POST", body: JSON.stringify({ name: name.trim() }) })
+        .then(function () { return loadStaff(); })
+        .then(function () { setStaffValue(name.trim()); });
+    }
   };
   $("viewToggle").onclick = function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
@@ -405,5 +580,7 @@
 
   fillProgramSelect();
   $("weekdays").innerHTML = WEEKDAYS.map(function (w) { return "<span>" + w + "</span>"; }).join("");
+  loadStudents();
+  loadStaff();
   loadLessons().then(loadEvents);
 })();

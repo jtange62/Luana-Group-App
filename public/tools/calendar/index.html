@@ -35,7 +35,7 @@
   </div>
 
   <!-- Month nav -->
-  <div class="cal-bar">
+  <div id="calBar" class="cal-bar">
     <button id="prevBtn" class="nav-btn" aria-label="Previous">‹</button>
     <h2 id="periodLabel" class="month-label"></h2>
     <button id="nextBtn" class="nav-btn" aria-label="Next">›</button>
@@ -43,7 +43,7 @@
   </div>
 
   <!-- View + add -->
-  <div class="view-bar">
+  <div id="viewBar" class="view-bar">
     <div id="viewToggle" class="seg seg-view">
       <button class="seg-btn" data-view="month">Month</button>
       <button class="seg-btn" data-view="week">Week</button>
@@ -62,6 +62,35 @@
     <p id="dayEmpty" class="day-empty" hidden>No events this day.</p>
   </section>
 
+  <!-- Attendance (Students calendar) -->
+  <section id="attendance" class="attendance" hidden>
+    <div class="att-datebar">
+      <button id="attPrev" class="nav-btn" aria-label="Previous day">‹</button>
+      <input id="attDate" type="date" class="form-input att-date" />
+      <button id="attNext" class="nav-btn" aria-label="Next day">›</button>
+    </div>
+    <div id="attClasses" class="seg seg-class"></div>
+    <div class="att-head">
+      <span id="attSummary" class="att-summary"></span>
+      <button id="manageStudentsBtn" class="link-btn">Manage students</button>
+    </div>
+    <div id="roster" class="roster"></div>
+    <p id="rosterEmpty" class="day-empty" hidden>No students in this class yet — tap “Manage students” to add some.</p>
+  </section>
+
+  <!-- Roster management (students or staff) -->
+  <div id="rosterModal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="rosterModalTitle" class="form-heading">Manage</p>
+      <div id="rosterModalList" class="roster-manage"></div>
+      <div class="roster-add">
+        <input id="rosterAddName" type="text" placeholder="Add a name…" maxlength="80" />
+        <button id="rosterAddBtn" class="btn-primary btn-sm">Add</button>
+      </div>
+      <div class="modal-actions"><span class="spacer"></span><button id="rosterModalClose" class="btn-ghost">Done</button></div>
+    </div>
+  </div>
+
   <!-- Add / edit form (overlay) -->
   <div id="modal" class="modal" hidden>
     <div class="modal-card">
@@ -69,7 +98,8 @@
 
       <div id="fStaffWrap" hidden>
         <label class="field-label">Staff member</label>
-        <input id="fStaff" type="text" class="form-input" placeholder="Who's working — e.g. Justin" maxlength="60" />
+        <select id="fStaff" class="form-select"></select>
+        <button id="manageStaffBtn" type="button" class="link-btn">Manage staff list</button>
       </div>
 
       <label class="field-label" id="titleLabel">Title</label>
