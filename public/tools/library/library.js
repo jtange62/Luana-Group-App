@@ -4,9 +4,16 @@
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
 
-  var state = { lessons: [], query: "", editingId: null };
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var MONTHS = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  var state = { lessons: [], query: "", program: "all", month: "all", editingId: null };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
+
+  function monthName(m) { var n = parseInt(m, 10); return n >= 1 && n <= 12 ? MONTHS[n - 1] : ""; }
+  function monthShort(m) { var name = monthName(m); return name ? name.slice(0, 3) : ""; }
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
 
@@ -65,7 +72,11 @@
     var list = $("list");
     list.innerHTML = "";
     var q = state.query.trim().toLowerCase();
-    var items = state.lessons.filter(function (l) { return matches(l, q); });
+    var items = state.lessons.filter(function (l) {
+      if (state.program !== "all" && l.program !== state.program) return false;
+      if (state.month !== "all" && String(l.month || "") !== state.month) return false;
+      return matches(l, q);
+    });
 
     $("empty").hidden = state.lessons.length > 0;
     $("noMatch").hidden = !(state.lessons.length > 0 && items.length === 0);
@@ -92,11 +103,17 @@
       return '<button class="file-chip" data-fid="' + esc(f.id) + '">📄 ' + label + "</button>";
     }).join("");
 
+    var badgeBits = [];
+    if (l.program) badgeBits.push(esc(l.program));
+    if (l.month) badgeBits.push(monthShort(l.month));
+    var badgeHtml = badgeBits.length ? '<span class="lesson-badge">' + badgeBits.join(" · ") + "</span>" : "";
+
     el.innerHTML =
       '<div class="lesson-head">' +
         '<h2 class="lesson-title">' + esc(l.title) + "</h2>" +
         (l.author === me ? '<div class="lesson-actions"><button class="edit-btn" title="Edit">✎</button><button class="del-btn" title="Delete">✕</button></div>' : "") +
       "</div>" +
+      (badgeHtml ? '<div class="lesson-badgerow">' + badgeHtml + "</div>" : "") +
       '<p class="lesson-meta">' + esc(l.author) + " · " + timeAgo(Number(l.created_at)) + "</p>" +
       (l.notes ? '<p class="lesson-notes">' + linkify(l.notes) + "</p>" : "") +
       (linkHtml ? '<div class="lesson-linkrow">' + linkHtml + "</div>" : "") +
@@ -129,6 +146,7 @@
     state.editingId = null;
     $("formTitle").textContent = "New lesson";
     $("fTitle").value = ""; $("fNotes").value = ""; $("fLink").value = ""; $("fTags").value = "";
+    $("fProgram").value = ""; $("fMonth").value = "";
     $("fFiles").value = ""; chosenFiles = null; $("fileList").textContent = "";
     $("formMsg").textContent = "";
     $("fileRow").hidden = false; $("editFilesHint").hidden = true;
@@ -141,6 +159,8 @@
     state.editingId = l.id;
     $("formTitle").textContent = "Edit lesson";
     $("fTitle").value = l.title || "";
+    $("fProgram").value = l.program || "";
+    $("fMonth").value = l.month || "";
     $("fNotes").value = l.notes || "";
     $("fLink").value = l.link_url || "";
     $("fTags").value = l.tags || "";
@@ -161,6 +181,7 @@
     if (state.editingId) {
       LuanaAuth.api("lesson", { method: "PATCH", body: JSON.stringify({
         id: state.editingId, author: me, title: title,
+        program: $("fProgram").value, month: $("fMonth").value,
         notes: $("fNotes").value.trim(), link: $("fLink").value.trim(), tags: $("fTags").value.trim()
       }) }).then(function () { closeForm(); return loadLessons(); })
         .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });
@@ -170,6 +191,8 @@
     var fd = new FormData();
     fd.append("title", title);
     fd.append("author", me);
+    fd.append("program", $("fProgram").value);
+    fd.append("month", $("fMonth").value);
     fd.append("notes", $("fNotes").value.trim());
     fd.append("link", $("fLink").value.trim());
     fd.append("tags", $("fTags").value.trim());
@@ -201,6 +224,36 @@
     }).catch(function () { $("loading").style.display = "none"; });
   }
 
+  // ---------- Build filters & form controls ----------
+  function renderProgramTabs() {
+    var nav = $("programTabs"); nav.innerHTML = "";
+    ["all"].concat(PROGRAMS).forEach(function (p) {
+      var b = document.createElement("button");
+      var active = state.program === p;
+      b.className = "tab" + (active ? " active" : "");
+      b.textContent = p === "all" ? "All" : p;
+      b.onclick = function () { state.program = p; renderProgramTabs(); render(); };
+      nav.appendChild(b);
+    });
+  }
+
+  function fillMonthFilter() {
+    var sel = $("monthFilter");
+    sel.innerHTML = '<option value="all">All months</option>';
+    MONTHS.forEach(function (name, i) {
+      sel.innerHTML += '<option value="' + (i + 1) + '">' + name + "</option>";
+    });
+  }
+
+  function fillFormSelects() {
+    var ps = $("fProgram");
+    ps.innerHTML = '<option value="">Program…</option>';
+    PROGRAMS.forEach(function (p) { ps.innerHTML += '<option value="' + p + '">' + p + "</option>"; });
+    var ms = $("fMonth");
+    ms.innerHTML = '<option value="">All-year / no month</option>';
+    MONTHS.forEach(function (name, i) { ms.innerHTML += '<option value="' + (i + 1) + '">' + name + "</option>"; });
+  }
+
   // ---------- Wire up ----------
   $("addBtn").onclick = function () {
     if (!$("form").hidden && !state.editingId) { closeForm(); return; }
@@ -215,7 +268,11 @@
     $("fileList").textContent = names.length ? names.join(", ") : "";
   };
   $("search").oninput = function (e) { state.query = e.target.value; render(); };
+  $("monthFilter").onchange = function (e) { state.month = e.target.value; render(); };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
+  renderProgramTabs();
+  fillMonthFilter();
+  fillFormSelects();
   loadLessons();
 })();

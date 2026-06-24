@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS lessons (
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
   author      TEXT NOT NULL,
+  program     TEXT,          -- Preschool | Kinder | After School | Summer School
+  month       TEXT,          -- "1".."12", or empty for all-year/general
   notes       TEXT,
   link_url    TEXT,
   tags        TEXT,

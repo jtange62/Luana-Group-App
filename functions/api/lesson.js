@@ -2,11 +2,22 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const MAX_FILE = 25 * 1024 * 1024; // 25 MB per file
 const MAX_FILES = 8;
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 
 function normalizeLink(raw) {
   const v = clean(raw, 1000);
   if (!v) return null;
   return /^https?:\/\//i.test(v) ? v : "https://" + v;
+}
+
+function cleanProgram(raw) {
+  const v = clean(raw, 40);
+  return PROGRAMS.includes(v) ? v : null;
+}
+
+function cleanMonth(raw) {
+  const n = parseInt(clean(raw, 2), 10);
+  return n >= 1 && n <= 12 ? String(n) : null;
 }
 
 // Create a lesson. Sent as multipart/form-data so files can ride along.
@@ -19,6 +30,8 @@ export async function onRequestPost({ request, env }) {
   const title = clean(form.get("title"), 200);
   if (!title) return json({ error: "title required" }, 400);
   const author = clean(form.get("author"), 60) || "anonymous";
+  const program = cleanProgram(form.get("program"));
+  const month = cleanMonth(form.get("month"));
   const notes = clean(form.get("notes"), 8000) || null;
   const link = normalizeLink(form.get("link"));
   const tags = clean(form.get("tags"), 300) || null;
@@ -33,8 +46,8 @@ export async function onRequestPost({ request, env }) {
   const now = Date.now();
 
   await env.DB.prepare(
-    "INSERT INTO lessons (id, title, author, notes, link_url, tags, created_at) VALUES (?,?,?,?,?,?,?)"
-  ).bind(lessonId, title, author, notes, link, tags, now).run();
+    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
+  ).bind(lessonId, title, author, program, month, notes, link, tags, now).run();
 
   for (const f of files) {
     const fileId = crypto.randomUUID();
@@ -66,9 +79,11 @@ export async function onRequestPatch({ request, env }) {
   if (lesson.author !== author) return json({ error: "forbidden" }, 403);
 
   await env.DB.prepare(
-    "UPDATE lessons SET title = ?, notes = ?, link_url = ?, tags = ? WHERE id = ?"
+    "UPDATE lessons SET title = ?, program = ?, month = ?, notes = ?, link_url = ?, tags = ? WHERE id = ?"
   ).bind(
     title,
+    cleanProgram(body.program),
+    cleanMonth(body.month),
     clean(body.notes, 8000) || null,
     normalizeLink(body.link),
     clean(body.tags, 300) || null,
