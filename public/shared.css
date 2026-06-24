@@ -5,6 +5,7 @@
   --radius:14px;--radius-sm:9px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+[hidden]{display:none !important;}
 html,body{margin:0;padding:0;}
 body{
   background:var(--sand);color:var(--ink);

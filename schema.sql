@@ -45,7 +45,23 @@ CREATE TABLE IF NOT EXISTS lesson_files (
   created_at  INTEGER NOT NULL
 );
 
+-- Calendar events. Recurring events store a rule and are expanded on read.
+CREATE TABLE IF NOT EXISTS events (
+  id          TEXT PRIMARY KEY,
+  title       TEXT NOT NULL,
+  author      TEXT NOT NULL,
+  program     TEXT,            -- Preschool|Kinder|After School|Summer School|General
+  start_date  TEXT NOT NULL,   -- "YYYY-MM-DD"
+  start_time  TEXT,            -- "HH:MM", or empty for all-day
+  end_time    TEXT,            -- optional "HH:MM"
+  notes       TEXT,
+  recur       TEXT,            -- none|daily|weekly|monthly
+  recur_until TEXT,            -- optional "YYYY-MM-DD" end of recurrence
+  created_at  INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
+CREATE INDEX IF NOT EXISTS idx_events_start ON events (start_date);

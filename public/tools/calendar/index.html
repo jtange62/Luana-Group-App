@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<title>Calendar · Luana Group App</title>
+<meta property="og:title" content="Luana Calendar" />
+<meta property="og:description" content="Shared schedule for the Luana English School team." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./calendar.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">📅</span>
+        <span class="brand-name">Calendar</span>
+      </div>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <a class="back-link" href="/">← all tools</a>
+  </header>
+
+  <div class="cal-bar">
+    <button id="prevBtn" class="nav-btn" aria-label="Previous month">‹</button>
+    <h2 id="monthLabel" class="month-label"></h2>
+    <button id="nextBtn" class="nav-btn" aria-label="Next month">›</button>
+    <button id="todayBtn" class="today-btn">Today</button>
+  </div>
+
+  <div id="weekdays" class="weekdays"></div>
+  <div id="grid" class="cal-grid"></div>
+
+  <section class="day-panel">
+    <div class="day-panel-head">
+      <h3 id="dayLabel" class="day-label">—</h3>
+      <button id="addBtn" class="btn-primary btn-sm">＋ Event</button>
+    </div>
+    <div id="dayEvents" class="day-events"></div>
+    <p id="dayEmpty" class="day-empty" hidden>No events this day.</p>
+  </section>
+
+  <!-- Add / edit form (overlay) -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="formTitle" class="form-heading">New event</p>
+      <input id="fTitle" type="text" placeholder="Event title" maxlength="200" />
+      <select id="fProgram" class="form-select"></select>
+      <label class="field-label">Date</label>
+      <input id="fDate" type="date" class="form-input" />
+      <label class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
+      <div id="timeRow" class="form-row">
+        <div class="time-field"><label class="field-label">Start</label><input id="fStart" type="time" class="form-input" /></div>
+        <div class="time-field"><label class="field-label">End</label><input id="fEnd" type="time" class="form-input" /></div>
+      </div>
+      <label class="field-label">Repeat</label>
+      <select id="fRecur" class="form-select">
+        <option value="none">Does not repeat</option>
+        <option value="daily">Every day</option>
+        <option value="weekly">Every week</option>
+        <option value="monthly">Every month</option>
+      </select>
+      <div id="untilRow" hidden>
+        <label class="field-label">Repeat until (optional)</label>
+        <input id="fUntil" type="date" class="form-input" />
+      </div>
+      <textarea id="fNotes" rows="2" placeholder="Notes (optional)"></textarea>
+      <p id="formMsg" class="form-msg"></p>
+      <div class="modal-actions">
+        <button id="deleteBtn" class="btn-danger" hidden>Delete</button>
+        <span class="spacer"></span>
+        <button id="cancelBtn" class="btn-ghost">Cancel</button>
+        <button id="saveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="loading" class="loading">Loading…</div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./calendar.js"></script>
+</body>
+</html>
