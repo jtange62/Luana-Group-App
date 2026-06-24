@@ -359,6 +359,15 @@
       });
     });
 
+    // Per-day totals (all programs combined).
+    grid.appendChild(cell("ov-rowhead ov-total-head", "Total"));
+    days.forEach(function (wd) {
+      var n = state.students.filter(function (s) {
+        return !s.days || daysArr(s.days).indexOf(wd[1]) !== -1;
+      }).length;
+      grid.appendChild(cell("ov-total", String(n)));
+    });
+
     wrap.appendChild(grid);
     roster.appendChild(wrap);
   }
