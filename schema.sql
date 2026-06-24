@@ -94,6 +94,29 @@ CREATE TABLE IF NOT EXISTS attendance (
   UNIQUE (student_id, date)
 );
 
+-- Website inbox: staff drop content (photos, PDFs, newsletters, requests,
+-- suggestions) for the site manager. Files live in R2 like lesson files.
+CREATE TABLE IF NOT EXISTS submissions (
+  id          TEXT PRIMARY KEY,
+  author      TEXT NOT NULL,
+  type        TEXT,            -- Photo|Newsletter|Document|Request|Suggestion|Other
+  title       TEXT,
+  notes       TEXT,
+  status      TEXT DEFAULT 'new',  -- new|done
+  created_at  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS submission_files (
+  id            TEXT PRIMARY KEY,
+  submission_id TEXT NOT NULL,
+  filename      TEXT NOT NULL,
+  size          INTEGER,
+  type          TEXT,
+  created_at    INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_events_start ON events (start_date);
+CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_submission_files_sub ON submission_files (submission_id);
 CREATE INDEX IF NOT EXISTS idx_students_program ON students (program);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);

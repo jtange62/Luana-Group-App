@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<title>Website inbox · Luana Group App</title>
+<meta property="og:title" content="Luana Website Inbox" />
+<meta property="og:description" content="Drop photos, PDFs, newsletters and ideas for the school website." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./website.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">🌐</span>
+        <span class="brand-name">Website inbox</span>
+      </div>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <a class="back-link" href="/">← all tools</a>
+  </header>
+
+  <p class="intro">Drop photos, PDFs, newsletters, requests or ideas here for the website manager. Nothing is published automatically.</p>
+
+  <div class="wi-toolbar">
+    <div id="filterTabs" class="seg"></div>
+    <button id="addBtn" class="btn-primary btn-sm">＋ Add</button>
+  </div>
+
+  <section id="form" class="wi-form" hidden>
+    <label class="field-label">What is it?</label>
+    <select id="fType" class="form-select"></select>
+    <input id="fTitle" type="text" placeholder="Short label (optional)" maxlength="200" />
+    <textarea id="fNotes" rows="3" placeholder="Describe it, or write your request / suggestion…"></textarea>
+    <div class="file-row">
+      <label class="file-label">📎 Attach photos / files
+        <input id="fFiles" type="file" multiple accept="image/*,application/pdf,.doc,.docx,.pages,.key,.ppt,.pptx" hidden />
+      </label>
+      <span id="fileList" class="file-chosen"></span>
+    </div>
+    <div class="form-actions">
+      <span id="formMsg" class="form-msg"></span>
+      <button id="cancelBtn" class="btn-ghost">Cancel</button>
+      <button id="saveBtn" class="btn-primary btn-sm">Send</button>
+    </div>
+  </section>
+
+  <main id="list" class="wi-list" aria-live="polite"></main>
+  <div id="empty" class="empty" hidden>
+    <span class="empty-icon">🌐</span>
+    <p>Nothing here yet — tap “＋ Add” to send the first item.</p>
+  </div>
+  <div id="noMatch" class="empty" hidden>
+    <span class="empty-icon">✅</span>
+    <p>Nothing in this list.</p>
+  </div>
+  <div id="loading" class="loading">Loading…</div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./website.js"></script>
+</body>
+</html>
