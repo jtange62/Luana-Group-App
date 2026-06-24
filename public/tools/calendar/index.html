@@ -64,7 +64,7 @@
 
   <!-- Attendance (Students calendar) -->
   <section id="attendance" class="attendance" hidden>
-    <div class="att-datebar">
+    <div id="attDatebar" class="att-datebar">
       <button id="attPrev" class="nav-btn" aria-label="Previous day">‹</button>
       <input id="attDate" type="date" class="form-input att-date" />
       <button id="attNext" class="nav-btn" aria-label="Next day">›</button>
@@ -72,9 +72,10 @@
     <div id="attViewToggle" class="seg seg-attview">
       <button class="seg-btn" data-attview="day">Day</button>
       <button class="seg-btn" data-attview="week">Week</button>
+      <button class="seg-btn" data-attview="overview">Overview</button>
     </div>
     <div id="attClasses" class="seg seg-class"></div>
-    <div class="att-head">
+    <div id="attHead" class="att-head">
       <span id="attSummary" class="att-summary"></span>
       <button id="manageStudentsBtn" class="link-btn">Manage students</button>
     </div>

@@ -312,8 +312,55 @@
     $("attDate").value = state.attDate;
     renderClassToggle();
     setActive("attViewToggle", "data-attview", state.attView);
+
+    var ov = state.attView === "overview";
+    $("attDatebar").hidden = ov;
+    $("attClasses").hidden = ov;
+    $("attHead").hidden = ov;
+
+    if (ov) { renderOverview(); return; }
     if (state.attView === "week") { renderWeekAttendance(); return; }
     renderDayRegister();
+  }
+
+  // Whole-school weekly schedule: weekday columns × program rows.
+  function renderOverview() {
+    var roster = $("roster"); roster.innerHTML = "";
+    var dayHas = {};
+    state.students.forEach(function (s) {
+      (s.days ? daysArr(s.days) : [0, 1, 2, 3, 4, 5, 6]).forEach(function (d) { dayHas[d] = true; });
+    });
+    var days = WEEKDAY_CHIPS.filter(function (wd) { return dayHas[wd[1]]; });
+    if (!days.length) days = WEEKDAY_CHIPS.slice(0, 5); // Mon–Fri default
+
+    function cell(cls, text) { var d = document.createElement("div"); d.className = cls; if (text != null) d.textContent = text; return d; }
+
+    var wrap = document.createElement("div"); wrap.className = "overview";
+    var grid = document.createElement("div"); grid.className = "ov-grid";
+    grid.style.gridTemplateColumns = "70px repeat(" + days.length + ",minmax(92px,1fr))";
+
+    grid.appendChild(cell("ov-corner", ""));
+    days.forEach(function (wd) { grid.appendChild(cell("ov-colhead", wd[0])); });
+
+    STUDENT_PROGRAMS.forEach(function (p) {
+      grid.appendChild(cell("ov-rowhead", p));
+      days.forEach(function (wd) {
+        var names = state.students.filter(function (s) {
+          return s.program === p && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
+        }).map(function (s) { return s.name; });
+        var c = document.createElement("div"); c.className = "ov-cell";
+        if (names.length) {
+          c.innerHTML = '<span class="ov-count">' + names.length + "</span>" +
+            names.map(function (n) { return '<span class="ov-name">' + esc(n) + "</span>"; }).join("");
+        } else {
+          c.innerHTML = '<span class="ov-empty">·</span>';
+        }
+        grid.appendChild(c);
+      });
+    });
+
+    wrap.appendChild(grid);
+    roster.appendChild(wrap);
   }
 
   function renderDayRegister() {
@@ -384,6 +431,10 @@
   }
 
   function loadAttendance() {
+    if (state.attView === "overview") {
+      if (state.calendar === "students") renderAttendance();
+      return Promise.resolve();
+    }
     if (state.attView === "week") {
       var ws = startOfWeek(parseYMD(state.attDate));
       return LuanaAuth.api("attendance?from=" + fmtYMD(ws) + "&to=" + fmtYMD(addDays(ws, 6))).then(function (res) {
