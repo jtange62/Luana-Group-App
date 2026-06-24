@@ -66,6 +66,12 @@ a.brand:active{opacity:.7;}
 .tile-arrow{color:var(--hint);font-size:18px;}
 .tile-soon{font-size:11px;font-weight:600;color:var(--gold-dark);background:var(--gold-soft);padding:3px 9px;border-radius:999px;}
 
+/* Hub footer — external shared Drive link */
+.hub-footer{margin-top:6px;padding:18px 0 40px;border-top:0.5px solid var(--line);}
+.footer-label{font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.05em;text-transform:uppercase;margin:0 0 11px;}
+.drive-tile{border-style:dashed;}
+.drive-tile:hover{border-color:var(--teal-mid);}
+
 @media (prefers-color-scheme:dark){
   :root{--sand:#16201e;--sand-2:#1f2d2a;--card:#1c2825;--ink:#ECE7DA;--muted:#9DACA6;
     --hint:#6f7d77;--line:rgba(255,255,255,0.10);--teal:#9FE1CB;--teal-soft:#0F2E2A;}
