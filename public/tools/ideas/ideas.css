@@ -3,7 +3,7 @@
 .tabs{display:flex;gap:7px;overflow-x:auto;padding:10px 0 12px;scrollbar-width:none;-ms-overflow-style:none;}
 .tabs::-webkit-scrollbar{display:none;}
 .tab{flex-shrink:0;display:flex;align-items:center;gap:6px;border:0.5px solid var(--line);
-  background:#fff;color:var(--muted);border-radius:999px;padding:8px 15px;font-size:13.5px;font-weight:500;transition:all .12s;}
+  background:var(--card);color:var(--muted);border-radius:999px;padding:8px 15px;font-size:13.5px;font-weight:500;transition:all .12s;}
 .tab .dot{width:8px;height:8px;border-radius:50%;}
 .tab.active{font-weight:600;}
 
