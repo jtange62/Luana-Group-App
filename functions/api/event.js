@@ -2,7 +2,7 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "General"];
 const RECUR = ["none", "daily", "weekly", "monthly"];
-const CALENDARS = ["students", "staff"];
+const CALENDARS = ["general", "students", "staff"];
 
 function cleanProgram(raw) {
   const v = clean(raw, 40);
@@ -10,7 +10,7 @@ function cleanProgram(raw) {
 }
 function cleanCalendar(raw) {
   const v = clean(raw, 20);
-  return CALENDARS.includes(v) ? v : "students";
+  return CALENDARS.includes(v) ? v : "general";
 }
 function cleanDate(raw) {
   const v = clean(raw, 10);

@@ -11,6 +11,7 @@
     { id: "General",       color: "#5F5E5A", soft: "#F1EFE8", dark: "#444441" }
   ];
   var STAFF_COLORS = ["#0F6E56", "#E8714A", "#D4A24C", "#2A6F97", "#7A4F9E", "#B5485D", "#3C8C6E", "#C57B2C"];
+  var GENERAL_COLOR = "#E8714A";
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
@@ -20,7 +21,7 @@
   var now = new Date();
   var state = {
     year: now.getFullYear(), month: now.getMonth(), selected: fmtYMD(now),
-    view: "month", calendar: "students",
+    view: "month", calendar: "general",
     events: [], lessons: [], lessonMap: {}, editingId: null
   };
 
@@ -43,13 +44,15 @@
 
   // Color + chip for an event, depending on which calendar it's on.
   function eventColor(ev) {
-    return (ev.calendar === "staff") ? colorForName(ev.staff_name) : prog(ev.program).color;
+    if (ev.calendar === "staff") return colorForName(ev.staff_name);
+    if (ev.calendar === "general") return GENERAL_COLOR;
+    return prog(ev.program).color;
   }
   function eventChip(ev) {
     if (ev.calendar === "staff") {
-      var c = colorForName(ev.staff_name);
-      return { label: ev.staff_name || "Staff", bg: c, fg: "#fff" };
+      return { label: ev.staff_name || "Staff", bg: colorForName(ev.staff_name), fg: "#fff" };
     }
+    if (ev.calendar === "general") return null; // school-wide, no sub-label
     var p = prog(ev.program);
     return { label: ev.program || "General", bg: p.soft, fg: p.dark };
   }
@@ -86,6 +89,7 @@
   // ---------- Shared event row ----------
   function eventRow(ev) {
     var chip = eventChip(ev);
+    var chipHtml = chip ? '<div class="ev-chip" style="color:' + chip.fg + ";background:" + chip.bg + '">' + esc(chip.label) + "</div>" : "";
     var time = ev.start_time ? esc(ev.start_time) + (ev.end_time ? "–" + esc(ev.end_time) : "") : "All day";
     var repeat = ev.recur && ev.recur !== "none" ? '<span class="ev-repeat">↻ ' + esc(ev.recur) + "</span>" : "";
 
@@ -102,7 +106,7 @@
       '<div class="ev-main">' +
         '<div class="ev-top"><span class="ev-time">' + time + "</span>" + repeat + "</div>" +
         '<div class="ev-title">' + esc(ev.title) + "</div>" +
-        '<div class="ev-chip" style="color:' + chip.fg + ";background:" + chip.bg + '">' + esc(chip.label) + "</div>" +
+        chipHtml +
         (ev.notes ? '<div class="ev-notes">' + esc(ev.notes) + "</div>" : "") +
         lessonHtml +
       "</div>" +
@@ -254,9 +258,10 @@
 
   function syncFormForCalendar() {
     var staff = state.calendar === "staff";
+    var students = state.calendar === "students";
     $("fStaffWrap").hidden = !staff;
-    $("fProgramWrap").hidden = staff;
-    $("fLessonWrap").hidden = staff;
+    $("fProgramWrap").hidden = !students;
+    $("fLessonWrap").hidden = !students;
     $("titleLabel").textContent = staff ? "Note / role (optional)" : "Title";
     $("fTitle").placeholder = staff ? "e.g. Front desk (optional)" : "Event title";
   }
@@ -301,6 +306,7 @@
 
   function save() {
     var staff = state.calendar === "staff";
+    var students = state.calendar === "students";
     var staffName = $("fStaff").value.trim();
     var title = $("fTitle").value.trim();
     var date = $("fDate").value;
@@ -317,8 +323,8 @@
       calendar: state.calendar,
       title: title,
       staff_name: staff ? staffName : "",
-      program: staff ? "" : $("fProgram").value,
-      lesson_id: staff ? "" : $("fLesson").value,
+      program: students ? $("fProgram").value : "",
+      lesson_id: students ? $("fLesson").value : "",
       start_date: date,
       start_time: allDay ? "" : $("fStart").value,
       end_time: allDay ? "" : $("fEnd").value,
