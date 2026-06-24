@@ -37,7 +37,8 @@ a{color:inherit;}
 .btn-sm{width:auto;height:44px;padding:0 22px;font-size:15px;}
 
 /* ---------- Topbar ---------- */
-.topbar{padding:16px 4px 10px;}
+.topbar{position:sticky;top:0;z-index:20;background:var(--sand);padding:14px 0 9px;
+  box-shadow:0 4px 10px -6px rgba(27,77,74,0.12);}
 .topbar-inner{display:flex;align-items:center;justify-content:space-between;}
 .brand{display:flex;align-items:center;gap:9px;text-decoration:none;}
 a.brand:active{opacity:.7;}
