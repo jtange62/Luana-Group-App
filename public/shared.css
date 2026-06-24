@@ -39,7 +39,8 @@ a{color:inherit;}
 /* ---------- Topbar ---------- */
 .topbar{padding:16px 4px 10px;}
 .topbar-inner{display:flex;align-items:center;justify-content:space-between;}
-.brand{display:flex;align-items:center;gap:9px;}
+.brand{display:flex;align-items:center;gap:9px;text-decoration:none;}
+a.brand:active{opacity:.7;}
 .brand-mark{font-size:22px;}
 .brand-name{font-family:'Fredoka',sans-serif;font-weight:500;font-size:21px;color:var(--teal);}
 .brand-tag{margin:4px 0 0;color:var(--muted);font-size:13px;}
