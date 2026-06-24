@@ -12,6 +12,12 @@
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
 
+  // When opened from the calendar (?lesson=<id>), highlight that theme.
+  var highlightId = (function () {
+    var m = /[?&]lesson=([^&]+)/.exec(location.search);
+    return m ? decodeURIComponent(m[1]) : null;
+  })();
+
   function monthName(m) { var n = parseInt(m, 10); return n >= 1 && n <= 12 ? MONTHS[n - 1] : ""; }
   function monthShort(m) { var name = monthName(m); return name ? name.slice(0, 3) : ""; }
 
@@ -82,11 +88,22 @@
     $("noMatch").hidden = !(state.lessons.length > 0 && items.length === 0);
 
     items.forEach(function (l) { list.appendChild(card(l)); });
+
+    if (highlightId) {
+      var target = list.querySelector('[data-id="' + (window.CSS && CSS.escape ? CSS.escape(highlightId) : highlightId) + '"]');
+      if (target) {
+        target.classList.add("is-highlight");
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(function () { target.classList.remove("is-highlight"); }, 2600);
+      }
+      highlightId = null; // only once
+    }
   }
 
   function card(l) {
     var el = document.createElement("article");
     el.className = "lesson-card";
+    el.setAttribute("data-id", l.id);
 
     var tags = tagList(l.tags);
     var tagsHtml = tags.map(function (t) { return '<span class="tag-pill">' + esc(t) + "</span>"; }).join("");

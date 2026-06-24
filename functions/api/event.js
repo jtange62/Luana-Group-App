@@ -2,10 +2,15 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "General"];
 const RECUR = ["none", "daily", "weekly", "monthly"];
+const CALENDARS = ["students", "staff"];
 
 function cleanProgram(raw) {
   const v = clean(raw, 40);
   return PROGRAMS.includes(v) ? v : "General";
+}
+function cleanCalendar(raw) {
+  const v = clean(raw, 20);
+  return CALENDARS.includes(v) ? v : "students";
 }
 function cleanDate(raw) {
   const v = clean(raw, 10);
@@ -22,13 +27,19 @@ function cleanRecur(raw) {
 
 // Pull and validate the shared fields from a parsed body.
 function fields(body) {
-  const title = clean(body.title, 200);
+  const calendar = cleanCalendar(body.calendar);
+  const staff_name = clean(body.staff_name, 60) || null;
+  // Staff shifts fall back to the person's name as the title.
+  const title = clean(body.title, 200) || (calendar === "staff" ? staff_name : "");
   const startDate = cleanDate(body.start_date);
-  if (!title) return { error: "title required" };
+  if (!title) return { error: calendar === "staff" ? "staff name required" : "title required" };
   if (!startDate) return { error: "valid date required" };
   return {
     title,
+    calendar,
     program: cleanProgram(body.program),
+    staff_name,
+    lesson_id: calendar === "students" ? (clean(body.lesson_id, 64) || null) : null,
     start_date: startDate,
     start_time: cleanTime(body.start_time),
     end_time: cleanTime(body.end_time),
@@ -51,11 +62,11 @@ export async function onRequestPost({ request, env }) {
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
-    `INSERT INTO events (id, title, author, program, start_date, start_time, end_time, notes, recur, recur_until, created_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO events (id, title, author, calendar, program, staff_name, lesson_id, start_date, start_time, end_time, notes, recur, recur_until, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
-    id, f.title, author, f.program, f.start_date, f.start_time, f.end_time,
-    f.notes, f.recur, f.recur_until, Date.now()
+    id, f.title, author, f.calendar, f.program, f.staff_name, f.lesson_id,
+    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, Date.now()
   ).run();
 
   return json({ ok: true, id });
@@ -76,9 +87,10 @@ export async function onRequestPatch({ request, env }) {
   if (f.error) return json({ error: f.error }, 400);
 
   await env.DB.prepare(
-    `UPDATE events SET title=?, program=?, start_date=?, start_time=?, end_time=?, notes=?, recur=?, recur_until=? WHERE id=?`
+    `UPDATE events SET title=?, calendar=?, program=?, staff_name=?, lesson_id=?, start_date=?, start_time=?, end_time=?, notes=?, recur=?, recur_until=? WHERE id=?`
   ).bind(
-    f.title, f.program, f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, body.id
+    f.title, f.calendar, f.program, f.staff_name, f.lesson_id,
+    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, body.id
   ).run();
 
   return json({ ok: true });

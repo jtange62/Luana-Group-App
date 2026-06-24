@@ -50,7 +50,10 @@ CREATE TABLE IF NOT EXISTS events (
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
   author      TEXT NOT NULL,
-  program     TEXT,            -- Preschool|Kinder|After School|Summer School|General
+  calendar    TEXT,            -- students|staff
+  program     TEXT,            -- Preschool|Kinder|After School|Summer School|General (students)
+  staff_name  TEXT,            -- person working (staff calendar)
+  lesson_id   TEXT,            -- optional link to a lesson-library theme (students)
   start_date  TEXT NOT NULL,   -- "YYYY-MM-DD"
   start_time  TEXT,            -- "HH:MM", or empty for all-day
   end_time    TEXT,            -- optional "HH:MM"

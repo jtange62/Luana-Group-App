@@ -27,21 +27,36 @@
     <a class="back-link" href="/">← all tools</a>
   </header>
 
+  <!-- Which calendar -->
+  <div id="calToggle" class="seg seg-cal">
+    <button class="seg-btn" data-cal="students">👧 Students</button>
+    <button class="seg-btn" data-cal="staff">🧑‍🏫 Staff shifts</button>
+  </div>
+
+  <!-- Month nav -->
   <div class="cal-bar">
-    <button id="prevBtn" class="nav-btn" aria-label="Previous month">‹</button>
-    <h2 id="monthLabel" class="month-label"></h2>
-    <button id="nextBtn" class="nav-btn" aria-label="Next month">›</button>
+    <button id="prevBtn" class="nav-btn" aria-label="Previous">‹</button>
+    <h2 id="periodLabel" class="month-label"></h2>
+    <button id="nextBtn" class="nav-btn" aria-label="Next">›</button>
     <button id="todayBtn" class="today-btn">Today</button>
   </div>
 
-  <div id="weekdays" class="weekdays"></div>
-  <div id="grid" class="cal-grid"></div>
-
-  <section class="day-panel">
-    <div class="day-panel-head">
-      <h3 id="dayLabel" class="day-label">—</h3>
-      <button id="addBtn" class="btn-primary btn-sm">＋ Event</button>
+  <!-- View + add -->
+  <div class="view-bar">
+    <div id="viewToggle" class="seg seg-view">
+      <button class="seg-btn" data-view="month">Month</button>
+      <button class="seg-btn" data-view="week">Week</button>
+      <button class="seg-btn" data-view="agenda">Agenda</button>
     </div>
+    <button id="addBtn" class="btn-primary btn-sm">＋ Event</button>
+  </div>
+
+  <div id="weekdays" class="weekdays"></div>
+  <div id="view" class="cal-grid"></div>
+
+  <!-- Selected-day panel (month view only) -->
+  <section id="dayPanel" class="day-panel">
+    <h3 id="dayLabel" class="day-label">—</h3>
     <div id="dayEvents" class="day-events"></div>
     <p id="dayEmpty" class="day-empty" hidden>No events this day.</p>
   </section>
@@ -50,8 +65,25 @@
   <div id="modal" class="modal" hidden>
     <div class="modal-card">
       <p id="formTitle" class="form-heading">New event</p>
+
+      <div id="fStaffWrap" hidden>
+        <label class="field-label">Staff member</label>
+        <input id="fStaff" type="text" class="form-input" placeholder="Who's working — e.g. Justin" maxlength="60" />
+      </div>
+
+      <label class="field-label" id="titleLabel">Title</label>
       <input id="fTitle" type="text" placeholder="Event title" maxlength="200" />
-      <select id="fProgram" class="form-select"></select>
+
+      <div id="fProgramWrap">
+        <label class="field-label">Program</label>
+        <select id="fProgram" class="form-select"></select>
+      </div>
+
+      <div id="fLessonWrap">
+        <label class="field-label">Linked lesson theme (optional)</label>
+        <select id="fLesson" class="form-select"></select>
+      </div>
+
       <label class="field-label">Date</label>
       <input id="fDate" type="date" class="form-input" />
       <label class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
@@ -59,6 +91,7 @@
         <div class="time-field"><label class="field-label">Start</label><input id="fStart" type="time" class="form-input" /></div>
         <div class="time-field"><label class="field-label">End</label><input id="fEnd" type="time" class="form-input" /></div>
       </div>
+
       <label class="field-label">Repeat</label>
       <select id="fRecur" class="form-select">
         <option value="none">Does not repeat</option>
@@ -70,6 +103,7 @@
         <label class="field-label">Repeat until (optional)</label>
         <input id="fUntil" type="date" class="form-input" />
       </div>
+
       <textarea id="fNotes" rows="2" placeholder="Notes (optional)"></textarea>
       <p id="formMsg" class="form-msg"></p>
       <div class="modal-actions">
