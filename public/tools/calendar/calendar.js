@@ -583,11 +583,7 @@
     items.forEach(function (it) {
       var row = document.createElement("div");
       row.className = "manage-row" + (staff ? "" : " manage-student");
-      row.innerHTML = '<div class="manage-top"><span>' + esc(it.name) + '</span>' +
-        '<div class="manage-btns">' +
-          (!staff ? '<a class="profile-link" href="/tools/students/?program=' + encodeURIComponent(it.program || "") + '" title="View profile">👤</a>' : "") +
-          '<button class="del-btn" title="Remove">✕</button>' +
-        '</div></div>' +
+      row.innerHTML = '<div class="manage-top"><span>' + esc(it.name) + '</span><button class="del-btn" title="Remove">✕</button></div>' +
         (staff ? "" : '<div class="day-chips"></div>');
       row.querySelector(".del-btn").onclick = function () { removeRosterItem(it.id); };
       if (!staff) {
