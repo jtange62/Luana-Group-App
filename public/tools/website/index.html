@@ -63,6 +63,15 @@
     <p>Nothing in this list.</p>
   </div>
   <div id="loading" class="loading">Loading…</div>
+
+  <!-- Photo lightbox -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button id="lbClose" class="lb-close" aria-label="Close">✕</button>
+    <img id="lbImg" class="lb-img" src="" alt="Photo" />
+    <button id="lbPrev" class="lb-nav lb-prev" aria-label="Previous">‹</button>
+    <button id="lbNext" class="lb-nav lb-next" aria-label="Next">›</button>
+    <div id="lbCounter" class="lb-counter"></div>
+  </div>
 </div>
 
 <script src="/shared-auth.js"></script>

@@ -153,7 +153,7 @@
     });
   }
 
-  // Fetch a sent image (auth-gated) and show it as a thumbnail; tap to open full.
+  // Fetch a sent image (auth-gated) and show it as a thumbnail; tap to open lightbox.
   function loadThumb(btn, fileId) {
     var t = LuanaAuth.token();
     fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
@@ -162,7 +162,12 @@
         var url = URL.createObjectURL(blob);
         btn.style.backgroundImage = "url('" + url + "')";
         btn.classList.add("loaded");
-        btn.onclick = function () { window.open(url, "_blank"); };
+        btn._src = url;
+        btn.onclick = function () {
+          var grid = btn.closest(".photo-grid");
+          var all = grid ? Array.prototype.slice.call(grid.querySelectorAll(".photo")) : [btn];
+          openLightbox(all, btn);
+        };
       })
       .catch(function () { btn.textContent = "🖼️"; });
   }
@@ -226,6 +231,41 @@
     e.target.value = ""; // allow adding more in a second pick
   };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
+
+  // ---------- Lightbox ----------
+  var lbUrls = [], lbIdx = 0, lbTx = 0, lbTy = 0, lbDir = null;
+  function showLbFrame() {
+    $("lbImg").src = lbUrls[lbIdx];
+    var multi = lbUrls.length > 1;
+    $("lbPrev").hidden = !multi;
+    $("lbNext").hidden = !multi;
+    $("lbCounter").textContent = multi ? (lbIdx + 1) + " / " + lbUrls.length : "";
+  }
+  function openLightbox(btns, tapped) {
+    var loaded = btns.filter(function (b) { return !!b._src; });
+    if (!loaded.length) return;
+    lbUrls = loaded.map(function (b) { return b._src; });
+    lbIdx = loaded.indexOf(tapped); if (lbIdx < 0) lbIdx = 0;
+    showLbFrame();
+    $("lightbox").hidden = false;
+  }
+  $("lbClose").onclick = function () { $("lightbox").hidden = true; };
+  $("lightbox").onclick = function (e) { if (e.target === $("lightbox")) $("lightbox").hidden = true; };
+  $("lbPrev").onclick = function () { lbIdx = (lbIdx - 1 + lbUrls.length) % lbUrls.length; showLbFrame(); };
+  $("lbNext").onclick = function () { lbIdx = (lbIdx + 1) % lbUrls.length; showLbFrame(); };
+  $("lightbox").addEventListener("touchstart", function (e) {
+    lbTx = e.touches[0].clientX; lbTy = e.touches[0].clientY; lbDir = null;
+  }, { passive: true });
+  $("lightbox").addEventListener("touchmove", function (e) {
+    var dx = Math.abs(e.touches[0].clientX - lbTx), dy = Math.abs(e.touches[0].clientY - lbTy);
+    if (!lbDir && (dx > 6 || dy > 6)) lbDir = dx >= dy ? "h" : "v";
+    if (lbDir === "h") e.preventDefault();
+  }, { passive: false });
+  $("lightbox").addEventListener("touchend", function (e) {
+    if (lbDir !== "h" || lbUrls.length < 2) return;
+    var dx = e.changedTouches[0].clientX - lbTx;
+    if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
+  });
 
   load();
 })();
