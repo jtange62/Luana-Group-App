@@ -342,7 +342,8 @@
     grid.appendChild(cell("ov-corner", ""));
     days.forEach(function (wd) { grid.appendChild(cell("ov-colhead", wd[0])); });
 
-    STUDENT_PROGRAMS.forEach(function (p) {
+    var ovPrograms = STUDENT_PROGRAMS.filter(function (p) { return p !== "Summer School"; });
+    ovPrograms.forEach(function (p) {
       grid.appendChild(cell("ov-rowhead", p));
       days.forEach(function (wd) {
         var names = state.students.filter(function (s) {
@@ -403,7 +404,7 @@
     var ws = startOfWeek(parseYMD(state.attDate));
     var today = fmtYMD(new Date());
 
-    for (var i = 0; i < 7; i++) {
+    for (var i = 1; i <= 5; i++) {
       var d = addDays(ws, i);
       var ymd = fmtYMD(d);
       var wd = d.getDay();
