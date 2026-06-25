@@ -391,7 +391,7 @@
     if (!list.length) {
       empty.textContent = inClass.length
         ? “No “ + state.attProgram + “ students scheduled on “ + WEEKDAY_FULL[wd] + “.”
-        : “No students in this class yet — tap “Manage students” to add some.”;
+        : 'No students in this class yet — tap “Manage students” to add some.';
     }
     $(“attSummary”).textContent = list.length
       ? WEEKDAY_FULL[wd] + “ · Present “ + counts.present + “ · Absent “ + counts.absent + “ · Late “ + counts.late : “”;
