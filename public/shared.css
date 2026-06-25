@@ -50,6 +50,11 @@ a.brand:active{opacity:.7;}
 .icon-btn{width:36px;height:36px;border-radius:50%;border:0.5px solid var(--line);
   background:var(--card);color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;}
 .icon-btn:hover{background:var(--sand-2);}
+.back-btn{width:36px;height:36px;border-radius:50%;border:0.5px solid var(--line);
+  background:var(--card);color:var(--teal);font-size:22px;display:flex;align-items:center;
+  justify-content:center;text-decoration:none;flex-shrink:0;}
+.back-btn:hover{background:var(--sand-2);}
+.back-btn:active{opacity:.7;}
 
 /* ---------- Hub tool grid ---------- */
 .tool-grid{display:flex;flex-direction:column;gap:12px;padding:14px 0 40px;}
