@@ -311,10 +311,10 @@
   function guestRowEl(s, type, date) {
     var row = document.createElement("div");
     row.className = "roster-row";
-    var badge = type === "trial" ? "Trial" : "Makeup";
-    var badgeClass = type === "trial" ? "guest-badge-trial" : "guest-badge-makeup";
+    var badges = { trial: ["Trial", "guest-badge-trial"], makeup: ["Makeup", "guest-badge-makeup"], other: ["Other", "guest-badge-other"] };
+    var b = badges[type] || badges.other;
     row.innerHTML = '<span class="roster-name">' + esc(s.name) +
-      ' <span class="guest-badge ' + badgeClass + '">' + badge + '</span></span>' +
+      ' <span class="guest-badge ' + b[1] + '">' + b[0] + '</span></span>' +
       '<button class="guest-remove" title="Remove">&#x2715;</button>';
     row.querySelector(".guest-remove").onclick = function () { setMark(s.id, date, ""); };
     return row;
@@ -413,7 +413,7 @@
     var guestStudents = state.students.filter(function (s) {
       return s.program === state.attProgram
         && scheduledIds.indexOf(s.id) === -1
-        && (state.attMarks[s.id] === "trial" || state.attMarks[s.id] === "makeup");
+        && (state.attMarks[s.id] === "trial" || state.attMarks[s.id] === "makeup" || state.attMarks[s.id] === "other");
     });
     if (guestStudents.length) {
       var gdiv = document.createElement("div");
@@ -442,7 +442,7 @@
       });
       var typeSelect = document.createElement("select");
       typeSelect.className = "guest-type-select";
-      ["Trial", "Makeup"].forEach(function (t) {
+      ["Makeup", "Other"].forEach(function (t) {
         var o = document.createElement("option");
         o.value = t.toLowerCase(); o.textContent = t;
         typeSelect.appendChild(o);
@@ -455,6 +455,41 @@
       addRow.appendChild(typeSelect);
       addRow.appendChild(addBtn);
       roster.appendChild(addRow);
+    }
+    var trialPrograms = ["Preschool", "Kinder", "After School"];
+    if (trialPrograms.indexOf(state.attProgram) !== -1) {
+      var trialRow = document.createElement("div");
+      trialRow.className = "trial-add-row";
+      var trialNameInput = document.createElement("input");
+      trialNameInput.type = "text";
+      trialNameInput.placeholder = "Trial student name";
+      trialNameInput.className = "guest-select";
+      var trialAgeInput = document.createElement("input");
+      trialAgeInput.type = "text";
+      trialAgeInput.placeholder = "Age";
+      trialAgeInput.className = "trial-age-input";
+      var trialBtn = document.createElement("button");
+      trialBtn.className = "btn-primary btn-sm";
+      trialBtn.textContent = "+ Trial";
+      (function (ni, ai) {
+        trialBtn.onclick = function () {
+          var n = ni.value.trim();
+          if (!n) return;
+          var a = ai.value.trim();
+          var displayName = a ? n + " (" + a + ")" : n;
+          ni.value = ""; ai.value = "";
+          LuanaAuth.api("students", { method: "POST", body: JSON.stringify({ name: displayName, program: state.attProgram, days: "" }) })
+            .then(function (res) {
+              if (!res.id) return;
+              state.students.push({ id: res.id, name: displayName, program: state.attProgram, days: "" });
+              setMark(res.id, state.attDate, "trial");
+            }).catch(function () {});
+        };
+      })(trialNameInput, trialAgeInput);
+      trialRow.appendChild(trialNameInput);
+      trialRow.appendChild(trialAgeInput);
+      trialRow.appendChild(trialBtn);
+      roster.appendChild(trialRow);
     }
   }
 

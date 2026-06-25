@@ -120,11 +120,14 @@
 .guest-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;vertical-align:middle;margin-left:6px;}
 .guest-badge-trial{background:#E2EEF5;color:#1D4E6B;}
 .guest-badge-makeup{background:#EAE5F8;color:#3D2B8E;}
+.guest-badge-other{background:#F1EFE8;color:#444441;}
 .guest-remove{border:none;background:none;color:var(--hint);font-size:14px;cursor:pointer;padding:2px 8px;border-radius:4px;flex-shrink:0;}
 .guest-remove:hover{background:var(--sand-2);color:#c0392b;}
 .guest-add-row{display:flex;align-items:center;gap:6px;margin-top:10px;}
 .guest-select{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 10px;background:var(--sand);color:var(--ink);font:inherit;}
 .guest-type-select{border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 8px;background:var(--sand);color:var(--ink);font:inherit;}
+.trial-add-row{display:flex;align-items:center;gap:6px;margin-top:8px;}
+.trial-age-input{width:60px;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 8px;background:var(--sand);color:var(--ink);font:inherit;}
 
 /* Roster management modal */
 .roster-manage{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-bottom:4px;}
