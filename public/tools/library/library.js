@@ -176,8 +176,94 @@
     var delBtn = el.querySelector(".del-btn");
     if (delBtn) delBtn.onclick = function () { removeLesson(l); };
 
+    el.onclick = function (e) {
+      if (e.target.closest(".lesson-actions,.photo,.file-chip,a")) return;
+      openDetail(l);
+    };
+
     return el;
   }
+
+  function openDetail(l) {
+    $("detailTitle").textContent = l.title;
+    var body = $("detailBody");
+    body.innerHTML = "";
+
+    var badgeBits = [];
+    if (l.program) badgeBits.push(esc(l.program));
+    if (l.month) badgeBits.push(monthName(l.month));
+    if (badgeBits.length) {
+      var badgeRow = document.createElement("div");
+      badgeRow.className = "detail-badge-row";
+      badgeRow.innerHTML = '<span class="lesson-badge">' + badgeBits.join(" · ") + "</span>";
+      body.appendChild(badgeRow);
+    }
+
+    var meta = document.createElement("p");
+    meta.className = "detail-meta";
+    meta.textContent = l.author + " · " + timeAgo(Number(l.created_at));
+    body.appendChild(meta);
+
+    if (l.notes) {
+      var notes = document.createElement("p");
+      notes.className = "detail-notes";
+      notes.innerHTML = linkify(l.notes);
+      body.appendChild(notes);
+    }
+
+    if (l.link_url) {
+      var domain = "";
+      try { domain = new URL(l.link_url).hostname.replace(/^www\./, ""); } catch (e) {}
+      var linkRow = document.createElement("div");
+      linkRow.className = "detail-linkrow";
+      linkRow.innerHTML = '<a class="lesson-link" href="' + esc(l.link_url) + '" target="_blank" rel="noopener noreferrer">🔗 ' + esc(domain || l.link_url) + "</a>";
+      body.appendChild(linkRow);
+    }
+
+    var pics = (l.files || []).filter(isImage);
+    if (pics.length) {
+      var photoDiv = document.createElement("div");
+      photoDiv.className = "detail-photos";
+      var grid = document.createElement("div");
+      grid.className = "photo-grid";
+      pics.forEach(function (f) {
+        var btn = document.createElement("button");
+        btn.className = "photo";
+        btn.setAttribute("aria-label", f.filename);
+        grid.appendChild(btn);
+        loadThumb(btn, f.id);
+      });
+      photoDiv.appendChild(grid);
+      body.appendChild(photoDiv);
+    }
+
+    var docs = (l.files || []).filter(function (f) { return !isImage(f); });
+    if (docs.length) {
+      var filesDiv = document.createElement("div");
+      filesDiv.className = "detail-files";
+      docs.forEach(function (f) {
+        var chip = document.createElement("button");
+        chip.className = "file-chip";
+        chip.innerHTML = "📄 " + esc(f.filename) + (f.size ? ' <span class="file-size">' + fileSize(f.size) + "</span>" : "");
+        chip.onclick = function () { openFile(f.id); };
+        filesDiv.appendChild(chip);
+      });
+      body.appendChild(filesDiv);
+    }
+
+    var tags = tagList(l.tags);
+    if (tags.length) {
+      var tagsDiv = document.createElement("div");
+      tagsDiv.className = "detail-tags";
+      tagsDiv.innerHTML = tags.map(function (t) { return '<span class="tag-pill">' + esc(t) + "</span>"; }).join("");
+      body.appendChild(tagsDiv);
+    }
+
+    $("detail").hidden = false;
+    $("detail").scrollTop = 0;
+  }
+
+  function closeDetail() { $("detail").hidden = true; }
 
   function removeLesson(l) {
     if (!confirm('Delete "' + l.title + '" and its files?')) return;
@@ -266,6 +352,7 @@
   function closeForm() { $("form").hidden = true; resetForm(); }
 
   function startEdit(l) {
+    closeDetail();
     resetForm();
     state.editingId = l.id;
     $("formTitle").textContent = "Edit lesson";
@@ -393,6 +480,8 @@
   }
 
   // ---------- Wire up ----------
+  $("detailClose").onclick = closeDetail;
+
   $("addBtn").onclick = function () {
     if (!$("form").hidden && !state.editingId) { closeForm(); return; }
     resetForm(); openForm();

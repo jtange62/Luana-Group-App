@@ -78,6 +78,23 @@
 .lesson-tags{display:flex;flex-wrap:wrap;gap:6px;}
 .tag-pill{font-size:11px;font-weight:500;color:var(--gold-dark);background:var(--gold-soft);padding:3px 10px;border-radius:999px;}
 
+/* ---------- Lesson detail overlay ---------- */
+.detail-overlay{position:fixed;inset:0;z-index:100;background:var(--sand);overflow-y:auto;}
+.detail-topbar{position:sticky;top:0;z-index:10;background:var(--sand);padding:14px 14px 10px;
+  display:flex;align-items:center;gap:10px;box-shadow:0 4px 10px -6px rgba(27,77,74,0.12);}
+.detail-title{font-family:'Fredoka',sans-serif;font-weight:500;font-size:18px;color:var(--teal);
+  margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.detail-body{padding:14px 14px 60px;max-width:620px;margin:0 auto;}
+.detail-badge-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px;}
+.detail-meta{font-size:12px;color:var(--hint);margin:0 0 12px;}
+.detail-notes{font-size:15px;line-height:1.65;white-space:pre-wrap;word-break:break-word;margin:0 0 14px;}
+.detail-notes a{color:var(--teal-mid);}
+.detail-linkrow{margin-bottom:14px;}
+.detail-photos{margin-bottom:14px;}
+.detail-files{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:14px;}
+.detail-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.lesson-card{cursor:pointer;}
+
 /* ---------- States ---------- */
 .empty{text-align:center;color:var(--muted);padding:40px 20px;}
 .empty-icon{font-size:30px;display:block;margin-bottom:8px;}
