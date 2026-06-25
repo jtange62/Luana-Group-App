@@ -11,7 +11,7 @@
     { id: "general",    label: "general",    color: "#5F5E5A", soft: "#F1EFE8", dark: "#444441" }
   ];
 
-  var state = { activeCat: "curriculum", posts: [] };
+  var state = { activeCat: "all", posts: [] };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
 
@@ -38,8 +38,19 @@
     });
   }
 
+  function syncComposer() {
+    $("catSelect").hidden = state.activeCat !== "all";
+  }
+
   function renderTabs() {
     var nav = $("tabs"); nav.innerHTML = "";
+    var allActive = state.activeCat === "all";
+    var allBtn = document.createElement("button");
+    allBtn.className = "tab" + (allActive ? " active" : "");
+    if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "var(--teal)"; }
+    allBtn.textContent = "All";
+    allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); renderTabs(); renderFeed(); };
+    nav.appendChild(allBtn);
     CATS.forEach(function (c) {
       var active = c.id === state.activeCat;
       var b = document.createElement("button");
@@ -48,7 +59,7 @@
       b.style.background = active ? c.soft : "";
       b.style.color = active ? c.dark : "";
       b.innerHTML = '<span class="dot" style="background:' + c.color + '"></span>' + c.label;
-      b.onclick = function () { state.activeCat = c.id; renderTabs(); renderFeed(); };
+      b.onclick = function () { state.activeCat = c.id; syncComposer(); renderTabs(); renderFeed(); };
       nav.appendChild(b);
     });
   }
@@ -56,7 +67,7 @@
   function renderFeed() {
     var feed = $("feed");
     var items = state.posts
-      .filter(function (p) { return p.category === state.activeCat; })
+      .filter(function (p) { return state.activeCat === "all" || p.category === state.activeCat; })
       .sort(function (a, b) { return b.created_at - a.created_at; });
     feed.innerHTML = "";
     $("empty").hidden = items.length > 0;
@@ -170,9 +181,10 @@
   function post() {
     var text = $("ideaInput").value.trim();
     if (!text) return;
+    var category = state.activeCat === "all" ? $("catSelect").value : state.activeCat;
     $("postBtn").disabled = true;
     LuanaAuth.api("post", { method: "POST", body: JSON.stringify({
-      category: state.activeCat, author: me, text: text, link: firstUrl(text)
+      category: category, author: me, text: text, link: firstUrl(text)
     }) }).then(function () {
       $("ideaInput").value = "";
       $("postBtn").disabled = false;
@@ -186,5 +198,6 @@
   setInterval(function () { if (LuanaAuth.isLoggedIn() && !document.hidden) loadPosts(); }, 30000);
 
   renderTabs();
+  syncComposer();
   loadPosts();
 })();

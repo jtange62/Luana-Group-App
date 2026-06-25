@@ -9,8 +9,11 @@
 .composer{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:18px;}
 .composer textarea{width:100%;border:none;resize:none;background:transparent;color:var(--ink);line-height:1.5;padding:4px 4px 0;}
 .composer textarea:focus{outline:none;}
-.composer-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
-.posting-as{font-size:12.5px;color:var(--hint);}
+.composer-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
+.posting-as{font-size:12.5px;color:var(--hint);flex:1;}
+.cat-select{border:0.5px solid var(--line);border-radius:999px;background:var(--card);
+  color:var(--ink);font-size:12.5px;padding:5px 10px;cursor:pointer;flex-shrink:0;}
+.cat-select:focus{outline:none;border-color:var(--teal-mid);}
 
 .feed{display:flex;flex-direction:column;gap:13px;padding-bottom:40px;}
 .card{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
