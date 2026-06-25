@@ -13,3 +13,7 @@ database_id = "a2008abc-ebf0-400c-929c-cf1af2cc515c"
 [[r2_buckets]]
 binding = "FILES"
 bucket_name = "luana-lessons"
+
+# Secrets required for the Drive upload tool — set via wrangler CLI, not here:
+#   npx wrangler secret put GOOGLE_SA_KEY     (paste the service account JSON)
+#   npx wrangler secret put DRIVE_FOLDER_ID   (the folder ID from the Drive URL)

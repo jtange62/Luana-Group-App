@@ -1,0 +1,40 @@
+.drive-wrap{padding:18px 0 60px;display:flex;flex-direction:column;gap:14px;}
+
+.drive-hint{margin:0;font-size:13.5px;color:var(--muted);line-height:1.5;}
+
+.drop-zone{
+  background:var(--card);border:1.5px dashed var(--line);border-radius:var(--radius);
+  padding:36px 20px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;cursor:pointer;text-align:center;transition:border-color .12s,background .12s;
+  user-select:none;-webkit-user-select:none;
+}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--teal-mid);background:var(--teal-soft);}
+.drop-icon{font-size:36px;}
+.drop-label{font-size:14px;color:var(--muted);}
+.file-info{font-size:13.5px;font-weight:500;color:var(--teal-mid);word-break:break-all;}
+
+.progress-wrap{display:flex;flex-direction:column;gap:7px;}
+.progress-track{height:8px;background:var(--sand-2);border-radius:999px;overflow:hidden;}
+.progress-bar{height:100%;background:var(--teal-mid);border-radius:999px;width:0%;transition:width .2s;}
+.progress-label{margin:0;font-size:13px;color:var(--muted);}
+
+.result-card{display:flex;align-items:center;gap:12px;background:var(--teal-soft);
+  border:0.5px solid var(--teal-mid);border-radius:var(--radius);padding:14px 16px;}
+.result-icon{font-size:22px;color:var(--teal-mid);flex-shrink:0;}
+.result-body{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.result-text{margin:0;font-size:13.5px;font-weight:600;color:var(--teal);}
+.result-link{font-size:13px;color:var(--teal-mid);text-decoration:none;font-weight:500;}
+.result-link:hover{text-decoration:underline;}
+
+.history-label{margin:12px 0 8px;font-size:11px;font-weight:600;color:var(--hint);
+  letter-spacing:.05em;text-transform:uppercase;}
+.history-item{display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-top:0.5px solid var(--line);}
+.history-name{flex:1;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
+.history-size{font-size:11.5px;color:var(--hint);flex-shrink:0;}
+.history-link{font-size:13px;color:var(--teal-mid);text-decoration:none;flex-shrink:0;font-weight:500;}
+.history-link:hover{text-decoration:underline;}
+
+@media (prefers-color-scheme:dark){
+  .drop-zone:hover,.drop-zone.drag-over{background:rgba(159,225,203,0.08);}
+}
