@@ -301,7 +301,7 @@
     var row = document.createElement("div");
     row.className = "roster-row";
     row.innerHTML = '<span class="roster-name">' + esc(s.name) + "</span>" +
-      '<span class="att-btns">' + attBtn("present", "P", status) + attBtn("absent", "A", status) + attBtn("late", "L", status) + "</span>";
+      '<span class="att-btns">' + attBtn("present", "P", status) + attBtn("absent", "A", status) + attBtn("late", "L", status) + attBtn("makeup", "M", status) + "</span>";
     row.querySelectorAll(".att-btn").forEach(function (btn) {
       btn.onclick = function () { var st = btn.getAttribute("data-st"); setMark(s.id, date, status === st ? "" : st); };
     });
@@ -386,15 +386,58 @@
       roster.appendChild(rosterRowEl(s, status, state.attDate));
     });
 
-    var empty = $("rosterEmpty");
+    var empty = $(“rosterEmpty”);
     empty.hidden = list.length > 0;
     if (!list.length) {
       empty.textContent = inClass.length
-        ? "No " + state.attProgram + " students scheduled on " + WEEKDAY_FULL[wd] + "."
-        : "No students in this class yet — tap “Manage students” to add some.";
+        ? “No “ + state.attProgram + “ students scheduled on “ + WEEKDAY_FULL[wd] + “.”
+        : “No students in this class yet — tap “Manage students” to add some.”;
     }
-    $("attSummary").textContent = list.length
-      ? WEEKDAY_FULL[wd] + " · Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
+    $(“attSummary”).textContent = list.length
+      ? WEEKDAY_FULL[wd] + “ · Present “ + counts.present + “ · Absent “ + counts.absent + “ · Late “ + counts.late : “”;
+
+    // Makeup students: in this program, not on today's schedule, but have a mark for today.
+    var scheduledIds = list.map(function (s) { return s.id; });
+    var makeupStudents = state.students.filter(function (s) {
+      return s.program === state.attProgram
+        && scheduledIds.indexOf(s.id) === -1
+        && state.attMarks[s.id];
+    });
+    if (makeupStudents.length) {
+      var mdiv = document.createElement(“div”);
+      mdiv.className = “makeup-divider”;
+      mdiv.textContent = “Makeups”;
+      roster.appendChild(mdiv);
+      makeupStudents.forEach(function (s) {
+        roster.appendChild(rosterRowEl(s, state.attMarks[s.id] || “”, state.attDate));
+      });
+    }
+
+    // “+ Makeup” picker — students in this program not already on today's roster.
+    var makeupIds = makeupStudents.map(function (s) { return s.id; });
+    var available = state.students.filter(function (s) {
+      return s.program === state.attProgram
+        && scheduledIds.indexOf(s.id) === -1
+        && makeupIds.indexOf(s.id) === -1;
+    });
+    if (available.length) {
+      var addRow = document.createElement(“div”);
+      addRow.className = “makeup-add-row”;
+      var sel = document.createElement(“select”);
+      sel.className = “makeup-select”;
+      available.forEach(function (s) {
+        var o = document.createElement(“option”);
+        o.value = s.id; o.textContent = s.name;
+        sel.appendChild(o);
+      });
+      var addBtn = document.createElement(“button”);
+      addBtn.className = “btn-primary btn-sm”;
+      addBtn.textContent = “+ Makeup”;
+      addBtn.onclick = function () { setMark(sel.value, state.attDate, “makeup”); };
+      addRow.appendChild(sel);
+      addRow.appendChild(addBtn);
+      roster.appendChild(addRow);
+    }
   }
 
   function renderWeekAttendance() {
@@ -423,6 +466,17 @@
         card.appendChild(none);
       } else {
         list.forEach(function (s) { card.appendChild(rosterRowEl(s, marks[s.id] || "", ymd)); });
+      }
+      var wScheduledIds = list.map(function (s) { return s.id; });
+      var wMakeups = state.students.filter(function (s) {
+        return s.program === state.attProgram
+          && wScheduledIds.indexOf(s.id) === -1
+          && marks[s.id];
+      });
+      if (wMakeups.length) {
+        var wmd = document.createElement("div"); wmd.className = "makeup-divider"; wmd.textContent = "Makeups";
+        card.appendChild(wmd);
+        wMakeups.forEach(function (s) { card.appendChild(rosterRowEl(s, marks[s.id] || "", ymd)); });
       }
       roster.appendChild(card);
     }
