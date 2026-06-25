@@ -186,7 +186,9 @@
   }
 
   // ---------- Add / edit form ----------
-  var chosen = []; // { file, url } for the compose preview cluster
+  var chosen = []; // { file, url } for new files being staged
+  var editingFiles = []; // existing files on the lesson being edited
+  var pendingDeletes = []; // file ids to delete on save
 
   function addFiles(fileList) {
     Array.prototype.forEach.call(fileList, function (f) {
@@ -197,10 +199,43 @@
   function clearChosen() {
     chosen.forEach(function (c) { if (c.url) URL.revokeObjectURL(c.url); });
     chosen = [];
+    editingFiles = [];
+    pendingDeletes = [];
     renderChosen();
   }
   function renderChosen() {
     var wrap = $("fileList"); wrap.innerHTML = "";
+    var t = LuanaAuth.token();
+
+    // Existing files on the lesson (shown in edit mode)
+    editingFiles.forEach(function (f) {
+      var item = document.createElement("div");
+      item.className = "thumb";
+      if (isImage(f)) {
+        item.style.backgroundSize = "cover";
+        item.style.backgroundPosition = "center";
+        fetch("/api/file/" + f.id, { headers: t ? { Authorization: "Bearer " + t } : {} })
+          .then(function (r) { return r.blob(); })
+          .then(function (blob) { item.style.backgroundImage = "url('" + URL.createObjectURL(blob) + "')"; })
+          .catch(function () { item.textContent = "🖼️"; });
+      } else {
+        item.classList.add("thumb-file");
+        item.innerHTML = '<span class="thumb-doc">📄</span><span class="thumb-name">' + esc(f.filename) + "</span>";
+      }
+      var x = document.createElement("button");
+      x.type = "button"; x.className = "thumb-x"; x.textContent = "✕";
+      x.onclick = (function (fileId) {
+        return function () {
+          pendingDeletes.push(fileId);
+          editingFiles = editingFiles.filter(function (ff) { return ff.id !== fileId; });
+          renderChosen();
+        };
+      })(f.id);
+      item.appendChild(x);
+      wrap.appendChild(item);
+    });
+
+    // New files being staged
     chosen.forEach(function (c, idx) {
       var item = document.createElement("div");
       if (c.url) {
@@ -226,7 +261,6 @@
     $("fProgram").value = ""; $("fMonth").value = "";
     $("fFiles").value = ""; clearChosen();
     $("formMsg").textContent = "";
-    $("fileRow").hidden = false; $("editFilesHint").hidden = true;
     $("saveBtn").disabled = false;
   }
   function closeForm() { $("form").hidden = true; resetForm(); }
@@ -241,8 +275,8 @@
     $("fNotes").value = l.notes || "";
     $("fLink").value = l.link_url || "";
     $("fTags").value = l.tags || "";
-    $("fileRow").hidden = true;
-    $("editFilesHint").hidden = (l.files || []).length === 0;
+    editingFiles = (l.files || []).slice();
+    renderChosen();
     $("form").hidden = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
     $("fTitle").focus();
@@ -256,12 +290,41 @@
     $("saveBtn").disabled = true;
 
     if (state.editingId) {
+      var editId = state.editingId;
+      var editToken = LuanaAuth.token();
+      msg.textContent = "Saving…";
       LuanaAuth.api("lesson", { method: "PATCH", body: JSON.stringify({
-        id: state.editingId, author: me, title: title,
+        id: editId, author: me, title: title,
         program: $("fProgram").value, month: $("fMonth").value,
         notes: $("fNotes").value.trim(), link: $("fLink").value.trim(), tags: $("fTags").value.trim()
-      }) }).then(function () { closeForm(); return loadLessons(); })
-        .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });
+      }) })
+      .then(function () {
+        if (!pendingDeletes.length) return;
+        return Promise.all(pendingDeletes.map(function (fileId) {
+          return LuanaAuth.api("lesson-file", { method: "DELETE",
+            body: JSON.stringify({ id: fileId, lessonId: editId, author: me }) });
+        }));
+      })
+      .then(function () {
+        if (!chosen.length) return;
+        var fd = new FormData();
+        fd.append("lessonId", editId);
+        fd.append("author", me);
+        chosen.forEach(function (c) { fd.append("files", c.file); });
+        msg.textContent = "Uploading files…";
+        return fetch("/api/lesson-file", {
+          method: "POST",
+          headers: editToken ? { Authorization: "Bearer " + editToken } : {},
+          body: fd
+        }).then(function (r) { return r.json().then(function (j) {
+          if (!r.ok) throw new Error(j.error || "upload failed");
+        }); });
+      })
+      .then(function () { closeForm(); return loadLessons(); })
+      .catch(function (e) {
+        msg.textContent = (e && e.message) || "Couldn't save. Try again.";
+        $("saveBtn").disabled = false;
+      });
       return;
     }
 
