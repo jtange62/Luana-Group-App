@@ -1,7 +1,7 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const MAX_FILE = 25 * 1024 * 1024; // 25 MB per file
-const MAX_FILES = 10;
+const MAX_FILES = 20;
 const TYPES = ["Photo", "Newsletter", "Document", "Request", "Suggestion", "Other"];
 
 function cleanType(raw) {
