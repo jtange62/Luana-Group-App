@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const MAX_FILE = 25 * 1024 * 1024; // 25 MB per file
+const MAX_FILE = 50 * 1024 * 1024; // 50 MB per file
 const MAX_FILES = 20;
 const TYPES = ["Photo", "Newsletter", "Document", "Request", "Suggestion", "Other"];
 
@@ -25,7 +25,7 @@ export async function onRequestPost({ request, env }) {
   if (!title && !notes && files.length === 0) return json({ error: "Add a note or a file." }, 400);
   if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
   for (const f of files) {
-    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 25 MB' }, 400);
+    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 50 MB' }, 400);
   }
 
   const subId = crypto.randomUUID();

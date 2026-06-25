@@ -1,7 +1,7 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const CATEGORIES = ["curriculum", "events", "supplies", "general"];
-const MAX_FILE = 25 * 1024 * 1024;
+const MAX_FILE = 50 * 1024 * 1024;
 const MAX_FILES = 20;
 
 export async function onRequestPost({ request, env }) {
@@ -18,7 +18,7 @@ export async function onRequestPost({ request, env }) {
   const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
   if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
   for (const f of files) {
-    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 25 MB' }, 400);
+    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 50 MB' }, 400);
   }
 
   const id = crypto.randomUUID();

@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const MAX_FILE = 25 * 1024 * 1024;
+const MAX_FILE = 50 * 1024 * 1024;
 const MAX_FILES = 20;
 
 // Remove a single file from a post.
@@ -48,7 +48,7 @@ export async function onRequestPost({ request, env }) {
   const existing = countRow ? (countRow.n || 0) : 0;
   if (existing + files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
   for (const f of files) {
-    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 25 MB' }, 400);
+    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 50 MB' }, 400);
   }
 
   const now = Date.now();
