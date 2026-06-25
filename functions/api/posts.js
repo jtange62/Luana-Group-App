@@ -16,13 +16,27 @@ export async function onRequestGet({ request, env }) {
     `SELECT * FROM comments WHERE post_id IN (${placeholders}) ORDER BY created_at ASC`
   ).bind(...ids).all();
 
-  const byPost = {};
+  const commentsByPost = {};
   (commentsRes.results || []).forEach((c) => {
-    (byPost[c.post_id] = byPost[c.post_id] || []).push({
+    (commentsByPost[c.post_id] = commentsByPost[c.post_id] || []).push({
       author: c.author, text: c.text, created_at: c.created_at,
     });
   });
 
-  posts.forEach((p) => { p.comments = byPost[p.id] || []; });
+  const filesRes = await env.DB.prepare(
+    `SELECT * FROM post_files WHERE post_id IN (${placeholders}) ORDER BY created_at ASC`
+  ).bind(...ids).all();
+
+  const filesByPost = {};
+  (filesRes.results || []).forEach((f) => {
+    (filesByPost[f.post_id] = filesByPost[f.post_id] || []).push({
+      id: f.id, filename: f.filename, size: f.size, type: f.type,
+    });
+  });
+
+  posts.forEach((p) => {
+    p.comments = commentsByPost[p.id] || [];
+    p.files = filesByPost[p.id] || [];
+  });
   return json({ posts });
 }

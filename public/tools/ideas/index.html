@@ -34,6 +34,12 @@
 
   <section class="composer">
     <textarea id="ideaInput" rows="2" placeholder="Share an idea… paste a link and it'll preview"></textarea>
+    <div id="ideaFileRow" class="file-row">
+      <label class="file-label">📎 Attach
+        <input id="ideaFiles" type="file" multiple hidden />
+      </label>
+      <span id="ideaFileList" class="file-chosen"></span>
+    </div>
     <div class="composer-row">
       <span id="postingAs" class="posting-as"></span>
       <select id="catSelect" class="cat-select" aria-label="Category">
@@ -52,6 +58,15 @@
     <p>Nothing here yet — be the first to post.</p>
   </div>
   <div id="loading" class="loading">Loading…</div>
+
+  <!-- Photo lightbox -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button id="lbClose" class="lb-close" aria-label="Close">✕</button>
+    <img id="lbImg" class="lb-img" src="" alt="Photo" />
+    <button id="lbPrev" class="lb-nav lb-prev" aria-label="Previous">‹</button>
+    <button id="lbNext" class="lb-nav lb-next" aria-label="Next">›</button>
+    <div id="lbCounter" class="lb-counter"></div>
+  </div>
 </div>
 
 <script src="/shared-auth.js"></script>

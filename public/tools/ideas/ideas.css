@@ -58,6 +58,32 @@
 .reply-box input:focus{outline:none;border-color:var(--teal-mid);}
 .reply-box button{height:36px;border:0.5px solid var(--line);background:#fff;border-radius:var(--radius-sm);padding:0 13px;color:var(--teal-mid);font-weight:500;font-size:13px;}
 
+/* ---------- File attachments ---------- */
+.file-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 0;}
+.file-label{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--teal-mid);
+  border:0.5px dashed var(--line);border-radius:var(--radius-sm);padding:6px 10px;cursor:pointer;}
+.file-label:hover{background:var(--sand-2);}
+.file-chosen{display:flex;flex-wrap:wrap;gap:6px;width:100%;}
+.thumb{position:relative;width:64px;height:64px;border-radius:9px;overflow:hidden;
+  border:0.5px solid var(--line);background:var(--sand-2);flex-shrink:0;background-size:cover;background-position:center;}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.thumb-file{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;}
+.thumb-doc{font-size:20px;}
+.thumb-name{font-size:9px;color:var(--muted);text-align:center;line-height:1.1;max-height:20px;overflow:hidden;word-break:break-word;}
+.thumb-x{position:absolute;top:2px;right:2px;width:18px;height:18px;border-radius:50%;border:none;
+  background:rgba(0,0,0,0.55);color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+
+/* ---------- Photos and files on cards ---------- */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0 0 10px;}
+.photo{aspect-ratio:1;border-radius:8px;border:0.5px solid var(--line);background:var(--sand-2) center/cover no-repeat;
+  cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:var(--hint);}
+.photo.loaded{border-color:transparent;}
+.idea-files{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px;}
+.file-chip{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--ink);
+  background:var(--sand-2);border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:6px 10px;text-align:left;cursor:pointer;}
+.file-chip:hover{border-color:var(--teal-mid);}
+.file-size{color:var(--hint);font-size:11px;}
+
 .empty{text-align:center;padding:40px 20px;color:var(--muted);}
 .empty-icon{font-size:30px;display:block;margin-bottom:8px;}
 .loading{text-align:center;padding:30px;color:var(--hint);font-size:14px;}

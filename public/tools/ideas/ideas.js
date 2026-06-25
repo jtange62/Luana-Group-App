@@ -38,6 +38,77 @@
     });
   }
 
+  function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
+
+  function fileSize(bytes) {
+    if (!bytes) return "";
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function openFile(fileId) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      })
+      .catch(function () { alert("Couldn't open that file. Try again."); });
+  }
+
+  function loadThumb(btn, fileId) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        btn.style.backgroundImage = "url('" + url + "')";
+        btn.classList.add("loaded");
+        btn._src = url;
+        btn.onclick = function () {
+          var grid = btn.closest(".photo-grid");
+          var all = grid ? Array.prototype.slice.call(grid.querySelectorAll(".photo")) : [btn];
+          openLightbox(all, btn);
+        };
+      })
+      .catch(function () { btn.textContent = "🖼️"; });
+  }
+
+  // ---------- Composer file staging ----------
+  var chosen = [];
+  function addFiles(fileList) {
+    Array.prototype.forEach.call(fileList, function (f) {
+      chosen.push({ file: f, url: isImage(f) ? URL.createObjectURL(f) : null });
+    });
+    renderChosen();
+  }
+  function clearChosen() {
+    chosen.forEach(function (c) { if (c.url) URL.revokeObjectURL(c.url); });
+    chosen = [];
+    renderChosen();
+  }
+  function renderChosen() {
+    var wrap = $("ideaFileList"); wrap.innerHTML = "";
+    chosen.forEach(function (c, idx) {
+      var item = document.createElement("div");
+      if (c.url) {
+        item.className = "thumb";
+        item.innerHTML = '<img src="' + c.url + '" alt="">';
+      } else {
+        item.className = "thumb thumb-file";
+        item.innerHTML = '<span class="thumb-doc">📄</span><span class="thumb-name">' + esc(c.file.name) + "</span>";
+      }
+      var x = document.createElement("button");
+      x.type = "button"; x.className = "thumb-x"; x.textContent = "✕";
+      x.onclick = function () { if (c.url) URL.revokeObjectURL(c.url); chosen.splice(idx, 1); renderChosen(); };
+      item.appendChild(x);
+      wrap.appendChild(item);
+    });
+  }
+
   function syncComposer() {
     $("catSelect").hidden = state.activeCat !== "all";
   }
@@ -87,6 +158,18 @@
             (p.link_desc ? '<p class="link-desc">' + esc(p.link_desc) + "</p>" : "") +
             '<p class="link-domain">' + esc(p.link_domain || "") + "</p></div></a>";
     }
+    var pics = (p.files || []).filter(isImage);
+    var docs = (p.files || []).filter(function (f) { return !isImage(f); });
+    var picsHtml = pics.length
+      ? '<div class="photo-grid">' + pics.map(function (f) {
+          return '<button class="photo" data-fid="' + esc(f.id) + '" aria-label="' + esc(f.filename) + '"></button>';
+        }).join("") + "</div>"
+      : "";
+    var filesHtml = docs.map(function (f) {
+      var label = esc(f.filename) + (f.size ? ' <span class="file-size">' + fileSize(f.size) + "</span>" : "");
+      return '<button class="file-chip" data-fid="' + esc(f.id) + '">📄 ' + label + "</button>";
+    }).join("");
+
     el.innerHTML =
       '<div class="card-head"><div class="who">' +
         '<div class="avatar" style="background:' + c.soft + ";color:" + c.dark + '">' + esc((p.author || "?").charAt(0).toUpperCase()) + "</div>" +
@@ -99,7 +182,14 @@
       '<p class="card-text">' + linkify(p.text) + "</p>" +
       (p.author === me ? '<div class="edit-box"><textarea class="edit-ta"></textarea><div class="edit-actions"><button class="edit-save">Save</button><button class="edit-cancel">Cancel</button></div></div>' : "") +
       preview +
+      picsHtml +
+      (filesHtml ? '<div class="idea-files">' + filesHtml + "</div>" : "") +
       '<div class="comments"></div>';
+
+    el.querySelectorAll(".photo").forEach(function (btn) { loadThumb(btn, btn.getAttribute("data-fid")); });
+    el.querySelectorAll(".file-chip[data-fid]").forEach(function (btn) {
+      btn.onclick = function () { openFile(btn.getAttribute("data-fid")); };
+    });
 
     var editBtn = el.querySelector(".edit-btn");
     var editBox = el.querySelector(".edit-box");
@@ -183,19 +273,69 @@
     if (!text) return;
     var category = state.activeCat === "all" ? $("catSelect").value : state.activeCat;
     $("postBtn").disabled = true;
-    LuanaAuth.api("post", { method: "POST", body: JSON.stringify({
-      category: category, author: me, text: text, link: firstUrl(text)
-    }) }).then(function () {
-      $("ideaInput").value = "";
-      $("postBtn").disabled = false;
-      return loadPosts();
-    }).catch(function () { $("postBtn").disabled = false; });
+    var fd = new FormData();
+    fd.append("text", text);
+    fd.append("author", me);
+    fd.append("category", category);
+    var link = firstUrl(text);
+    if (link) fd.append("link", link);
+    chosen.forEach(function (c) { fd.append("files", c.file); });
+    var t = LuanaAuth.token();
+    fetch("/api/post", {
+      method: "POST",
+      headers: t ? { Authorization: "Bearer " + t } : {},
+      body: fd
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $("postBtn").disabled = false; return; }
+        $("ideaInput").value = "";
+        clearChosen();
+        $("postBtn").disabled = false;
+        return loadPosts();
+      })
+      .catch(function () { $("postBtn").disabled = false; });
   }
 
   $("postingAs").textContent = "Posting as " + me;
   $("postBtn").onclick = post;
+  $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
   setInterval(function () { if (LuanaAuth.isLoggedIn() && !document.hidden) loadPosts(); }, 30000);
+
+  // ---------- Lightbox ----------
+  var lbUrls = [], lbIdx = 0, lbTx = 0, lbTy = 0, lbDir = null;
+  function showLbFrame() {
+    $("lbImg").src = lbUrls[lbIdx];
+    var multi = lbUrls.length > 1;
+    $("lbPrev").hidden = !multi;
+    $("lbNext").hidden = !multi;
+    $("lbCounter").textContent = multi ? (lbIdx + 1) + " / " + lbUrls.length : "";
+  }
+  function openLightbox(btns, tapped) {
+    var loaded = btns.filter(function (b) { return !!b._src; });
+    if (!loaded.length) return;
+    lbUrls = loaded.map(function (b) { return b._src; });
+    lbIdx = loaded.indexOf(tapped); if (lbIdx < 0) lbIdx = 0;
+    showLbFrame();
+    $("lightbox").hidden = false;
+  }
+  $("lbClose").onclick = function () { $("lightbox").hidden = true; };
+  $("lightbox").onclick = function (e) { if (e.target === $("lightbox")) $("lightbox").hidden = true; };
+  $("lbPrev").onclick = function () { lbIdx = (lbIdx - 1 + lbUrls.length) % lbUrls.length; showLbFrame(); };
+  $("lbNext").onclick = function () { lbIdx = (lbIdx + 1) % lbUrls.length; showLbFrame(); };
+  $("lightbox").addEventListener("touchstart", function (e) {
+    lbTx = e.touches[0].clientX; lbTy = e.touches[0].clientY; lbDir = null;
+  }, { passive: true });
+  $("lightbox").addEventListener("touchmove", function (e) {
+    var dx = Math.abs(e.touches[0].clientX - lbTx), dy = Math.abs(e.touches[0].clientY - lbTy);
+    if (!lbDir && (dx > 6 || dy > 6)) lbDir = dx >= dy ? "h" : "v";
+    if (lbDir === "h") e.preventDefault();
+  }, { passive: false });
+  $("lightbox").addEventListener("touchend", function (e) {
+    if (lbDir !== "h" || lbUrls.length < 2) return;
+    var dx = e.changedTouches[0].clientX - lbTx;
+    if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
+  });
 
   renderTabs();
   syncComposer();

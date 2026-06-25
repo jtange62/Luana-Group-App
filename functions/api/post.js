@@ -1,25 +1,34 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const CATEGORIES = ["curriculum", "events", "supplies", "general"];
+const MAX_FILE = 25 * 1024 * 1024;
+const MAX_FILES = 20;
 
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
-  let body;
-  try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
+  let form;
+  try { form = await request.formData(); } catch { return json({ error: "bad request" }, 400); }
 
-  const category = CATEGORIES.includes(body.category) ? body.category : "general";
-  const author = clean(body.author, 60) || "anonymous";
-  const text = clean(body.text, 4000);
+  const category = CATEGORIES.includes(clean(form.get("category"), 20)) ? clean(form.get("category"), 20) : "general";
+  const author = clean(form.get("author"), 60) || "anonymous";
+  const text = clean(form.get("text"), 4000);
   if (!text) return json({ error: "empty" }, 400);
+
+  const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
+  if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
+  for (const f of files) {
+    if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 25 MB' }, 400);
+  }
 
   const id = crypto.randomUUID();
   const now = Date.now();
 
   // Unfurl the link if one was detected. Failures are non-fatal — we just skip the preview.
   let link = { url: null, title: null, desc: null, image: null, domain: null };
-  if (body.link) {
-    try { link = await unfurl(body.link); } catch { /* ignore */ }
+  const linkVal = clean(form.get("link"), 1000);
+  if (linkVal) {
+    try { link = await unfurl(linkVal); } catch { /* ignore */ }
   }
 
   await env.DB.prepare(
@@ -29,6 +38,16 @@ export async function onRequestPost({ request, env }) {
     id, category, author, text, now,
     link.url, link.title, link.desc, link.image, link.domain
   ).run();
+
+  for (const f of files) {
+    const fileId = crypto.randomUUID();
+    await env.FILES.put(fileId, await f.arrayBuffer(), {
+      httpMetadata: { contentType: f.type || "application/octet-stream" },
+    });
+    await env.DB.prepare(
+      "INSERT INTO post_files (id, post_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
+    ).bind(fileId, id, clean(f.name, 255) || "file", f.size, f.type || null, now).run();
+  }
 
   return json({ ok: true, id });
 }
@@ -66,6 +85,11 @@ export async function onRequestDelete({ request, env }) {
   if (!post) return json({ error: "not found" }, 404);
   if (post.author !== author) return json({ error: "forbidden" }, 403);
 
+  const filesRes = await env.DB.prepare("SELECT id FROM post_files WHERE post_id = ?").bind(id).all();
+  for (const f of (filesRes.results || [])) {
+    try { await env.FILES.delete(f.id); } catch { /* ignore */ }
+  }
+  await env.DB.prepare("DELETE FROM post_files WHERE post_id = ?").bind(id).run();
   await env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id).run();
   await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id).run();
 

@@ -63,8 +63,18 @@ CREATE TABLE IF NOT EXISTS events (
   created_at  INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS post_files (
+  id       TEXT PRIMARY KEY,
+  post_id  TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  size     INTEGER,
+  type     TEXT,
+  created_at INTEGER NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
+CREATE INDEX IF NOT EXISTS idx_post_files_post ON post_files (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
 -- Student roster (for attendance) and staff roster (for shift assignment).
