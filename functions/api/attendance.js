@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const STATUSES = ["present", "absent", "late", "makeup"];
+const STATUSES = ["present", "absent", "late"];
 
 // GET /api/attendance?date=YYYY-MM-DD  -> { marks: { student_id: status } } for that day
 // POST /api/attendance {student_id,date,status}  -> upsert one mark (status "" clears it)

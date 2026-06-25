@@ -114,11 +114,6 @@
 .att-btn.att-present.active{background:#0F6E56;border-color:#0F6E56;color:#fff;}
 .att-btn.att-absent.active{background:#C0392B;border-color:#C0392B;color:#fff;}
 .att-btn.att-late.active{background:#D4A24C;border-color:#D4A24C;color:#fff;}
-.att-btn.att-makeup.active{background:#6B4C9E;border-color:#6B4C9E;color:#fff;}
-
-.makeup-divider{font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.05em;text-transform:uppercase;padding:8px 0 2px;}
-.makeup-add-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
-.makeup-select{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;background:var(--sand);color:var(--ink);font:inherit;}
 
 /* Roster management modal */
 .roster-manage{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-bottom:4px;}
