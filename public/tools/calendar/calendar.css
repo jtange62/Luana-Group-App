@@ -115,6 +115,17 @@
 .att-btn.att-absent.active{background:#C0392B;border-color:#C0392B;color:#fff;}
 .att-btn.att-late.active{background:#D4A24C;border-color:#D4A24C;color:#fff;}
 
+/* Trials & Makeups */
+.guest-divider{font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.05em;text-transform:uppercase;padding:8px 0 2px;}
+.guest-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;vertical-align:middle;margin-left:6px;}
+.guest-badge-trial{background:#E2EEF5;color:#1D4E6B;}
+.guest-badge-makeup{background:#EAE5F8;color:#3D2B8E;}
+.guest-remove{border:none;background:none;color:var(--hint);font-size:14px;cursor:pointer;padding:2px 8px;border-radius:4px;flex-shrink:0;}
+.guest-remove:hover{background:var(--sand-2);color:#c0392b;}
+.guest-add-row{display:flex;align-items:center;gap:6px;margin-top:10px;}
+.guest-select{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 10px;background:var(--sand);color:var(--ink);font:inherit;}
+.guest-type-select{border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 8px;background:var(--sand);color:var(--ink);font:inherit;}
+
 /* Roster management modal */
 .roster-manage{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-bottom:4px;}
 .manage-row{display:flex;align-items:center;justify-content:space-between;

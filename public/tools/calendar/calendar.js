@@ -308,6 +308,18 @@
     return row;
   }
 
+  function guestRowEl(s, type, date) {
+    var row = document.createElement("div");
+    row.className = "roster-row";
+    var badge = type === "trial" ? "Trial" : "Makeup";
+    var badgeClass = type === "trial" ? "guest-badge-trial" : "guest-badge-makeup";
+    row.innerHTML = '<span class="roster-name">' + esc(s.name) +
+      ' <span class="guest-badge ' + badgeClass + '">' + badge + '</span></span>' +
+      '<button class="guest-remove" title="Remove">&#x2715;</button>';
+    row.querySelector(".guest-remove").onclick = function () { setMark(s.id, date, ""); };
+    return row;
+  }
+
   function renderAttendance() {
     $("attDate").value = state.attDate;
     renderClassToggle();
@@ -395,6 +407,55 @@
     }
     $("attSummary").textContent = list.length
       ? WEEKDAY_FULL[wd] + " · Present " + counts.present + " · Absent " + counts.absent + " · Late " + counts.late : "";
+
+    // Trials & Makeups — students not on the regular schedule for today.
+    var scheduledIds = list.map(function (s) { return s.id; });
+    var guestStudents = state.students.filter(function (s) {
+      return s.program === state.attProgram
+        && scheduledIds.indexOf(s.id) === -1
+        && (state.attMarks[s.id] === "trial" || state.attMarks[s.id] === "makeup");
+    });
+    if (guestStudents.length) {
+      var gdiv = document.createElement("div");
+      gdiv.className = "guest-divider";
+      gdiv.textContent = "Trials & Makeups";
+      roster.appendChild(gdiv);
+      guestStudents.forEach(function (s) {
+        roster.appendChild(guestRowEl(s, state.attMarks[s.id], state.attDate));
+      });
+    }
+    var guestIds = guestStudents.map(function (s) { return s.id; });
+    var available = state.students.filter(function (s) {
+      return s.program === state.attProgram
+        && scheduledIds.indexOf(s.id) === -1
+        && guestIds.indexOf(s.id) === -1;
+    });
+    if (available.length) {
+      var addRow = document.createElement("div");
+      addRow.className = "guest-add-row";
+      var nameSelect = document.createElement("select");
+      nameSelect.className = "guest-select";
+      available.forEach(function (s) {
+        var o = document.createElement("option");
+        o.value = s.id; o.textContent = s.name;
+        nameSelect.appendChild(o);
+      });
+      var typeSelect = document.createElement("select");
+      typeSelect.className = "guest-type-select";
+      ["Trial", "Makeup"].forEach(function (t) {
+        var o = document.createElement("option");
+        o.value = t.toLowerCase(); o.textContent = t;
+        typeSelect.appendChild(o);
+      });
+      var addBtn = document.createElement("button");
+      addBtn.className = "btn-primary btn-sm";
+      addBtn.textContent = "+ Add";
+      addBtn.onclick = function () { setMark(nameSelect.value, state.attDate, typeSelect.value); };
+      addRow.appendChild(nameSelect);
+      addRow.appendChild(typeSelect);
+      addRow.appendChild(addBtn);
+      roster.appendChild(addRow);
+    }
   }
 
   function renderWeekAttendance() {
