@@ -13,9 +13,9 @@ export async function onRequestDelete({ request, env }) {
   const { id, lessonId, author } = body;
   if (!id || !lessonId) return json({ error: "missing fields" }, 400);
 
+  // Any signed-in teacher may edit any lesson, including removing its files.
   const lesson = await env.DB.prepare("SELECT author FROM lessons WHERE id = ?").bind(lessonId).first();
   if (!lesson) return json({ error: "not found" }, 404);
-  if (lesson.author !== clean(author, 60)) return json({ error: "forbidden" }, 403);
 
   const file = await env.DB.prepare("SELECT id FROM lesson_files WHERE id = ? AND lesson_id = ?").bind(id, lessonId).first();
   if (!file) return json({ error: "file not found" }, 404);
@@ -37,9 +37,9 @@ export async function onRequestPost({ request, env }) {
   const author = clean(form.get("author"), 60);
   if (!lessonId) return json({ error: "missing lessonId" }, 400);
 
+  // Any signed-in teacher may edit any lesson, including attaching files.
   const lesson = await env.DB.prepare("SELECT author FROM lessons WHERE id = ?").bind(lessonId).first();
   if (!lesson) return json({ error: "not found" }, 404);
-  if (lesson.author !== author) return json({ error: "forbidden" }, 403);
 
   const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
   if (!files.length) return json({ ok: true });

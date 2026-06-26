@@ -74,9 +74,9 @@ export async function onRequestPatch({ request, env }) {
   const title = clean(body.title, 200);
   if (!title) return json({ error: "title required" }, 400);
 
+  // Any signed-in teacher may edit any lesson's text fields; author is preserved.
   const lesson = await env.DB.prepare("SELECT author FROM lessons WHERE id = ?").bind(id).first();
   if (!lesson) return json({ error: "not found" }, 404);
-  if (lesson.author !== author) return json({ error: "forbidden" }, 403);
 
   await env.DB.prepare(
     "UPDATE lessons SET title = ?, program = ?, month = ?, notes = ?, link_url = ?, tags = ? WHERE id = ?"

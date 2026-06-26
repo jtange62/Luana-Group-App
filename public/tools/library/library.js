@@ -156,7 +156,9 @@
     el.innerHTML =
       '<div class="lesson-head">' +
         '<h2 class="lesson-title">' + esc(l.title) + "</h2>" +
-        (l.author === me ? '<div class="lesson-actions"><button class="edit-btn" title="Edit">✎</button><button class="del-btn" title="Delete">✕</button></div>' : "") +
+        '<div class="lesson-actions"><button class="edit-btn" title="Edit">✎</button>' +
+          (l.author === me ? '<button class="del-btn" title="Delete">✕</button>' : "") +
+        "</div>" +
       "</div>" +
       (badgeHtml ? '<div class="lesson-badgerow">' + badgeHtml + "</div>" : "") +
       '<p class="lesson-meta">' + esc(l.author) + " · " + timeAgo(Number(l.created_at)) + "</p>" +
