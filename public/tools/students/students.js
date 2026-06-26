@@ -159,6 +159,7 @@
   }
 
   function openEdit(s) {
+    closeDetail();
     state.editingId = s.id;
     state.newDays = daysArr(s.days);
     $("formTitle").textContent = "Edit student";
