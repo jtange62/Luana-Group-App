@@ -428,7 +428,8 @@
     var available = state.students.filter(function (s) {
       return s.program === state.attProgram
         && scheduledIds.indexOf(s.id) === -1
-        && guestIds.indexOf(s.id) === -1;
+        && guestIds.indexOf(s.id) === -1
+        && s.days !== "x";
     });
     if (available.length) {
       var addRow = document.createElement("div");
