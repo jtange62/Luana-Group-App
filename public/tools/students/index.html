@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#1B4D4A" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+<title>Students · Luana Group App</title>
+<meta property="og:title" content="Luana Student Roster" />
+<meta property="og:description" content="Student profiles for the Luana English School team." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./students.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="back-btn" href="/" aria-label="Back" onclick="event.preventDefault();history.length>1?history.back():location.href='/'">‹</a>
+      <a class="brand" href="/" title="Home">
+        <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
+        <span class="brand-name">Luana Group App</span>
+      </a>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <p class="brand-tag">👧 Student roster</p>
+  </header>
+
+  <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
+
+  <div class="stu-toolbar">
+    <input id="search" class="search" type="search" placeholder="Search name, guardian, allergies…" />
+    <button id="addBtn" class="btn-primary btn-sm">＋ Add</button>
+  </div>
+
+  <main id="list" class="stu-list" aria-live="polite"></main>
+  <div id="empty" class="empty" hidden>
+    <span class="empty-icon">👧</span>
+    <p>No students yet — tap “＋ Add” to add the first one.</p>
+  </div>
+  <div id="noMatch" class="empty" hidden>
+    <span class="empty-icon">🔍</span>
+    <p>Nothing matches that search.</p>
+  </div>
+  <div id="loading" class="loading">Loading…</div>
+
+  <!-- Add / edit form (overlay) -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="formTitle" class="form-heading">New student</p>
+
+      <label class="field-label">Name</label>
+      <input id="fName" type="text" placeholder="Student name" maxlength="80" />
+
+      <label class="field-label">Class</label>
+      <select id="fProgram" class="form-select"></select>
+
+      <div class="form-row">
+        <div class="time-field">
+          <label class="field-label">Birthday</label>
+          <input id="fBirthday" type="date" class="form-input" />
+        </div>
+        <div class="time-field">
+          <label class="field-label">Enrolled</label>
+          <input id="fEnrolled" type="date" class="form-input" />
+        </div>
+      </div>
+
+      <label class="field-label">Days attending</label>
+      <div id="fDays" class="day-chips"></div>
+
+      <label class="field-label">Guardian / parent</label>
+      <input id="fGuardian" type="text" placeholder="Parent or guardian name" maxlength="120" />
+
+      <div class="form-row">
+        <div class="time-field">
+          <label class="field-label">Phone</label>
+          <input id="fPhone" type="tel" class="form-input" placeholder="Contact phone" />
+        </div>
+        <div class="time-field">
+          <label class="field-label">Email</label>
+          <input id="fEmail" type="email" class="form-input" placeholder="Contact email" />
+        </div>
+      </div>
+
+      <label class="field-label">Emergency contact</label>
+      <input id="fEmergency" type="text" placeholder="Name &amp; number" maxlength="200" />
+
+      <label class="field-label">Allergies / medical</label>
+      <textarea id="fAllergies" rows="2" placeholder="Allergies, medical notes (optional)"></textarea>
+
+      <label class="field-label">Notes</label>
+      <textarea id="fNotes" rows="2" placeholder="Anything else (optional)"></textarea>
+
+      <p id="formMsg" class="form-msg"></p>
+      <div class="modal-actions">
+        <button id="deleteBtn" class="btn-danger" hidden>Remove</button>
+        <span class="spacer"></span>
+        <button id="cancelBtn" class="btn-ghost">Cancel</button>
+        <button id="saveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Student detail (overlay) -->
+  <div id="detail" class="detail-overlay" hidden>
+    <div class="detail-topbar">
+      <button id="detailClose" class="back-btn" aria-label="Close">‹</button>
+      <h2 id="detailName" class="detail-title"></h2>
+      <button id="detailEdit" class="link-btn">Edit</button>
+    </div>
+    <div id="detailBody" class="detail-body"></div>
+  </div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./students.js"></script>
+</body>
+</html>
