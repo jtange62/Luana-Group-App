@@ -28,7 +28,8 @@
     view: "month", calendar: "general",
     events: [], lessons: [], lessonMap: {}, editingId: null,
     students: [], staff: [], attDate: fmtYMD(now), attProgram: "Preschool",
-    attMarks: {}, weekMarks: {}, attView: "day", rosterMode: "students", newDays: []
+    attMarks: {}, weekMarks: {}, attView: "day", rosterMode: "students", newDays: [],
+    trials: []
   };
 
   function daysArr(d) { return d ? String(d).split(",").map(Number) : []; }
@@ -457,41 +458,49 @@
       addRow.appendChild(addBtn);
       roster.appendChild(addRow);
     }
-    var trialPrograms = ["Preschool", "Kinder", "After School"];
-    if (trialPrograms.indexOf(state.attProgram) !== -1) {
-      var trialRow = document.createElement("div");
-      trialRow.className = "trial-add-row";
-      var trialNameInput = document.createElement("input");
-      trialNameInput.type = "text";
-      trialNameInput.placeholder = "Trial student name";
-      trialNameInput.className = "guest-select";
-      var trialAgeInput = document.createElement("input");
-      trialAgeInput.type = "text";
-      trialAgeInput.placeholder = "Age";
-      trialAgeInput.className = "trial-age-input";
-      var trialBtn = document.createElement("button");
-      trialBtn.className = "btn-primary btn-sm";
-      trialBtn.textContent = "+ Trial";
-      (function (ni, ai) {
-        trialBtn.onclick = function () {
-          var n = ni.value.trim();
-          if (!n) return;
-          var a = ai.value.trim();
-          var displayName = a ? n + " (" + a + ")" : n;
-          ni.value = ""; ai.value = "";
-          LuanaAuth.api("students", { method: "POST", body: JSON.stringify({ name: displayName, program: state.attProgram, days: "x" }) })
-            .then(function (res) {
-              if (!res.id) return;
-              state.students.push({ id: res.id, name: displayName, program: state.attProgram, days: "" });
-              setMark(res.id, state.attDate, "trial");
-            }).catch(function () {});
+    // Trials section — one-time visitors, stored separately from the roster.
+    var trialsToday = state.trials.filter(function (t) { return t.program === state.attProgram; });
+    if (trialsToday.length) {
+      var trialDiv = document.createElement("div");
+      trialDiv.className = "guest-divider";
+      trialDiv.textContent = "Trials";
+      roster.appendChild(trialDiv);
+      trialsToday.forEach(function (t) {
+        var row = document.createElement("div");
+        row.className = "roster-row";
+        row.innerHTML = '<span class="roster-name">' + esc(t.name) +
+          ' <span class="guest-badge guest-badge-trial">Trial</span></span>' +
+          '<button class="guest-remove" title="Remove">&#x2715;</button>';
+        row.querySelector(".guest-remove").onclick = function () {
+          LuanaAuth.api("trials", { method: "DELETE", body: JSON.stringify({ id: t.id }) })
+            .then(function () { return loadTrials(); }).catch(function () {});
         };
-      })(trialNameInput, trialAgeInput);
-      trialRow.appendChild(trialNameInput);
-      trialRow.appendChild(trialAgeInput);
-      trialRow.appendChild(trialBtn);
-      roster.appendChild(trialRow);
+        roster.appendChild(row);
+      });
     }
+    var trialRow = document.createElement("div");
+    trialRow.className = "trial-add-row";
+    var trialNameInput = document.createElement("input");
+    trialNameInput.type = "text";
+    trialNameInput.placeholder = "Trial student name";
+    trialNameInput.className = "guest-select";
+    var trialBtn = document.createElement("button");
+    trialBtn.className = "btn-primary btn-sm";
+    trialBtn.textContent = "+ Trial";
+    (function (ni) {
+      trialBtn.onclick = function () {
+        var n = ni.value.trim();
+        if (!n) return;
+        ni.value = "";
+        LuanaAuth.api("trials", { method: "POST", body: JSON.stringify({
+          name: n, program: state.attProgram, date: state.attDate
+        }) }).then(function () { return loadTrials(); }).catch(function () {});
+      };
+      ni.addEventListener("keydown", function (e) { if (e.key === "Enter") trialBtn.click(); });
+    })(trialNameInput);
+    trialRow.appendChild(trialNameInput);
+    trialRow.appendChild(trialBtn);
+    roster.appendChild(trialRow);
   }
 
   function renderWeekAttendance() {
@@ -537,11 +546,19 @@
     }) }).catch(function () { loadAttendance(); });
   }
 
+  function loadTrials() {
+    return LuanaAuth.api("trials?date=" + encodeURIComponent(state.attDate)).then(function (res) {
+      state.trials = res.trials || [];
+      if (state.calendar === "students") renderAttendance();
+    }).catch(function () {});
+  }
+
   function loadAttendance() {
     if (state.attView === "overview") {
       if (state.calendar === "students") renderAttendance();
       return Promise.resolve();
     }
+    loadTrials();
     if (state.attView === "week") {
       var ws = startOfWeek(parseYMD(state.attDate));
       return LuanaAuth.api("attendance?from=" + fmtYMD(ws) + "&to=" + fmtYMD(addDays(ws, 6))).then(function (res) {
