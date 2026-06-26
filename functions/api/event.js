@@ -79,9 +79,9 @@ export async function onRequestPatch({ request, env }) {
   try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   if (!body.id) return json({ error: "missing id" }, 400);
 
+  // Any signed-in teacher may edit any event; the author byline is preserved.
   const existing = await env.DB.prepare("SELECT author FROM events WHERE id = ?").bind(body.id).first();
   if (!existing) return json({ error: "not found" }, 404);
-  if (existing.author !== clean(body.author, 60)) return json({ error: "forbidden" }, 403);
 
   const f = fields(body);
   if (f.error) return json({ error: f.error }, 400);

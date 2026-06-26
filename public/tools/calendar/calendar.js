@@ -130,7 +130,7 @@
         (ev.notes ? '<div class="ev-notes">' + esc(ev.notes) + "</div>" : "") +
         lessonHtml +
       "</div>" +
-      (ev.author === me ? '<button class="ev-edit" title="Edit">✎</button>' : "");
+      '<button class="ev-edit" title="Edit">✎</button>';
 
     var editBtn = row.querySelector(".ev-edit");
     if (editBtn) editBtn.onclick = function () { openEdit(ev); };
@@ -767,7 +767,8 @@
     $("fStart").value = ev.start_time || ""; $("fEnd").value = ev.end_time || "";
     $("fRecur").value = ev.recur || "none"; $("fUntil").value = ev.recur_until || "";
     $("fNotes").value = ev.notes || "";
-    $("formMsg").textContent = ""; $("deleteBtn").hidden = false; $("saveBtn").disabled = false;
+    // Anyone can edit, but only the event's author may delete it.
+    $("formMsg").textContent = ""; $("deleteBtn").hidden = ev.author !== me; $("saveBtn").disabled = false;
     syncFormForCalendar(); syncTimeRow(); syncUntilRow();
     $("modal").hidden = false;
     $("fTitle").focus();

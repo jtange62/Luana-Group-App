@@ -63,9 +63,9 @@ export async function onRequestPatch({ request, env }) {
   const newText = clean(text, 4000);
   if (!newText) return json({ error: "empty" }, 400);
 
+  // Any signed-in teacher may edit any post's text; the author byline is preserved.
   const post = await env.DB.prepare("SELECT author FROM posts WHERE id = ?").bind(id).first();
   if (!post) return json({ error: "not found" }, 404);
-  if (post.author !== author) return json({ error: "forbidden" }, 403);
 
   await env.DB.prepare("UPDATE posts SET text = ? WHERE id = ?").bind(newText, id).run();
 
