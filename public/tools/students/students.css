@@ -15,7 +15,7 @@
 
 /* List */
 .stu-list{display:flex;flex-direction:column;gap:8px;padding-bottom:40px;}
-.stu-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;
+.stu-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:var(--ink);
   background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius-sm);
   padding:11px 13px;transition:border-color .12s,transform .06s;}
 .stu-row:hover{border-color:var(--teal-mid);}
