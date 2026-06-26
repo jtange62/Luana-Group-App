@@ -98,6 +98,9 @@
   min-height:40px;display:flex;flex-direction:column;gap:2px;}
 .ov-count{font-size:10px;font-weight:700;color:var(--teal-mid);}
 .ov-name{font-size:11px;color:var(--ink);line-height:1.25;word-break:break-word;}
+.ov-absent{text-decoration:line-through;color:var(--hint);}
+.ov-makeup{color:#3D2B8E;}
+.ov-trial{color:#C0392B;font-weight:600;}
 .ov-empty{color:var(--hint);text-align:center;font-size:13px;}
 .ov-total-head{font-weight:700;color:var(--teal);align-items:center;}
 .ov-total{background:var(--teal-soft);border:0.5px solid var(--line);border-radius:8px;

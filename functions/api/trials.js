@@ -2,16 +2,28 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 
-// GET    /api/trials?date=YYYY-MM-DD  -> list trials for a date
-// POST   /api/trials {name,program,date}  -> add a trial
-// DELETE /api/trials {id}             -> remove a trial
+// GET    /api/trials?date=YYYY-MM-DD           -> list trials for a single date
+// GET    /api/trials?from=YYYY-MM-DD&to=...    -> list trials for a date range
+// POST   /api/trials {name,program,date}        -> add a trial
+// DELETE /api/trials {id}                       -> remove a trial
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
-  const date = new URL(request.url).searchParams.get("date") || "";
-  if (!date) return json({ error: "date required" }, 400);
-  const res = await env.DB.prepare(
-    "SELECT id, name, program, date FROM trials WHERE date = ? ORDER BY created_at"
-  ).bind(date).all();
+  const p = new URL(request.url).searchParams;
+  const date = p.get("date");
+  const from = p.get("from");
+  const to   = p.get("to");
+  let res;
+  if (date) {
+    res = await env.DB.prepare(
+      "SELECT id, name, program, date FROM trials WHERE date = ? ORDER BY created_at"
+    ).bind(date).all();
+  } else if (from && to) {
+    res = await env.DB.prepare(
+      "SELECT id, name, program, date FROM trials WHERE date >= ? AND date <= ? ORDER BY date, created_at"
+    ).bind(from, to).all();
+  } else {
+    return json({ error: "date or from/to required" }, 400);
+  }
   return json({ trials: res.results || [] });
 }
 

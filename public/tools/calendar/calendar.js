@@ -29,7 +29,7 @@
     events: [], lessons: [], lessonMap: {}, editingId: null,
     students: [], staff: [], attDate: fmtYMD(now), attProgram: "Preschool",
     attMarks: {}, weekMarks: {}, attView: "day", rosterMode: "students", newDays: [],
-    trials: []
+    trials: [], weekTrials: {}
   };
 
   function daysArr(d) { return d ? String(d).split(",").map(Number) : []; }
@@ -339,12 +339,14 @@
   // Whole-school weekly schedule: weekday columns × program rows.
   function renderOverview() {
     var roster = $("roster"); roster.innerHTML = "";
+    var ws = startOfWeek(parseYMD(state.attDate));
+
     var dayHas = {};
     state.students.forEach(function (s) {
       (s.days ? daysArr(s.days) : [0, 1, 2, 3, 4, 5, 6]).forEach(function (d) { dayHas[d] = true; });
     });
     var days = WEEKDAY_CHIPS.filter(function (wd) { return dayHas[wd[1]]; });
-    if (!days.length) days = WEEKDAY_CHIPS.slice(0, 5); // Mon–Fri default
+    if (!days.length) days = WEEKDAY_CHIPS.slice(0, 5);
 
     function cell(cls, text) { var d = document.createElement("div"); d.className = cls; if (text != null) d.textContent = text; return d; }
 
@@ -359,13 +361,33 @@
     ovPrograms.forEach(function (p) {
       grid.appendChild(cell("ov-rowhead", p));
       days.forEach(function (wd) {
-        var names = state.students.filter(function (s) {
-          return s.program === p && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
-        }).map(function (s) { return s.name; });
+        var date = fmtYMD(addDays(ws, wd[1]));
+        var marks = state.weekMarks[date] || {};
+        var dayTrials = (state.weekTrials[date] || []).filter(function (t) { return t.program === p; });
+
+        var scheduled = state.students.filter(function (s) {
+          return s.program === p && s.days !== "x" && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
+        });
+        var scheduledIds = scheduled.map(function (s) { return s.id; });
+        var makeups = state.students.filter(function (s) {
+          return s.program === p && scheduledIds.indexOf(s.id) === -1 && marks[s.id] === "makeup";
+        });
+
+        var total = scheduled.length + makeups.length + dayTrials.length;
         var c = document.createElement("div"); c.className = "ov-cell";
-        if (names.length) {
-          c.innerHTML = '<span class="ov-count">' + names.length + "</span>" +
-            names.map(function (n) { return '<span class="ov-name">' + esc(n) + "</span>"; }).join("");
+        if (total) {
+          var html = '<span class="ov-count">' + total + "</span>";
+          scheduled.forEach(function (s) {
+            var st = marks[s.id] || "";
+            html += '<span class="ov-name' + (st === "absent" ? " ov-absent" : "") + '">' + esc(s.name) + "</span>";
+          });
+          makeups.forEach(function (s) {
+            html += '<span class="ov-name ov-makeup">' + esc(s.name) + "</span>";
+          });
+          dayTrials.forEach(function (t) {
+            html += '<span class="ov-name ov-trial">' + esc(t.name) + "</span>";
+          });
+          c.innerHTML = html;
         } else {
           c.innerHTML = '<span class="ov-empty">·</span>';
         }
@@ -373,13 +395,15 @@
       });
     });
 
-    // Per-day totals (all programs combined).
+    // Per-day totals.
     grid.appendChild(cell("ov-rowhead ov-total-head", "Total"));
     days.forEach(function (wd) {
+      var date = fmtYMD(addDays(ws, wd[1]));
+      var dayTrialCount = (state.weekTrials[date] || []).length;
       var n = state.students.filter(function (s) {
-        return !s.days || daysArr(s.days).indexOf(wd[1]) !== -1;
+        return s.days !== "x" && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
       }).length;
-      grid.appendChild(cell("ov-total", String(n)));
+      grid.appendChild(cell("ov-total", String(n + dayTrialCount)));
     });
 
     wrap.appendChild(grid);
@@ -555,8 +579,22 @@
 
   function loadAttendance() {
     if (state.attView === "overview") {
-      if (state.calendar === "students") renderAttendance();
-      return Promise.resolve();
+      var ws = startOfWeek(parseYMD(state.attDate));
+      var wFrom = fmtYMD(ws), wTo = fmtYMD(addDays(ws, 6));
+      return Promise.all([
+        LuanaAuth.api("attendance?from=" + wFrom + "&to=" + wTo).then(function (res) {
+          state.weekMarks = res.byDate || {};
+        }).catch(function () {}),
+        LuanaAuth.api("trials?from=" + wFrom + "&to=" + wTo).then(function (res) {
+          state.weekTrials = {};
+          (res.trials || []).forEach(function (t) {
+            if (!state.weekTrials[t.date]) state.weekTrials[t.date] = [];
+            state.weekTrials[t.date].push(t);
+          });
+        }).catch(function () {})
+      ]).then(function () {
+        if (state.calendar === "students") renderAttendance();
+      });
     }
     loadTrials();
     if (state.attView === "week") {
