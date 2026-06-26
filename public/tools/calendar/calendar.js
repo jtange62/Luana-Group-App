@@ -478,7 +478,7 @@
           var a = ai.value.trim();
           var displayName = a ? n + " (" + a + ")" : n;
           ni.value = ""; ai.value = "";
-          LuanaAuth.api("students", { method: "POST", body: JSON.stringify({ name: displayName, program: state.attProgram, days: "" }) })
+          LuanaAuth.api("students", { method: "POST", body: JSON.stringify({ name: displayName, program: state.attProgram, days: "x" }) })
             .then(function (res) {
               if (!res.id) return;
               state.students.push({ id: res.id, name: displayName, program: state.attProgram, days: "" });
