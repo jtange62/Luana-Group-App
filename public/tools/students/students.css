@@ -80,6 +80,11 @@
   height:38px;padding:0 14px;font-size:14px;color:#c0392b;}
 .btn-danger:hover{background:rgba(192,57,43,0.08);}
 
+/* Photo consent checkbox */
+.check-row{display:flex;align-items:center;gap:10px;padding:6px 0;}
+.check-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--teal-mid);cursor:pointer;}
+.check-label{font-size:14px;color:var(--ink);cursor:pointer;}
+
 @media (min-width:560px){
   .modal{align-items:center;padding:20px;}
   .modal-card{border-radius:18px;}

@@ -23,7 +23,7 @@ function cleanDays(raw) {
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
   const res = await env.DB.prepare(
-    "SELECT id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at " +
+    "SELECT id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at, photo_ok " +
     "FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
   ).all();
   return json({ students: res.results || [] });
@@ -42,6 +42,7 @@ export async function onRequestPost({ request, env }) {
   PROFILE_FIELDS.forEach((f) => {
     if (body[f] != null) { cols.push(f); vals.push(clean(body[f], 1000)); }
   });
+  if (body.photo_ok != null) { cols.push("photo_ok"); vals.push(body.photo_ok ? 1 : 0); }
   const placeholders = cols.map(() => "?").join(",");
   await env.DB.prepare(`INSERT INTO students (${cols.join(",")}) VALUES (${placeholders})`)
     .bind(...vals).run();
@@ -70,6 +71,7 @@ export async function onRequestPatch({ request, env }) {
   PROFILE_FIELDS.forEach((f) => {
     if (body[f] != null) { sets.push(`${f} = ?`); vals.push(clean(body[f], 1000)); }
   });
+  if (body.photo_ok != null) { sets.push("photo_ok = ?"); vals.push(body.photo_ok ? 1 : 0); }
   if (!sets.length) return json({ error: "nothing to update" }, 400);
 
   vals.push(body.id);

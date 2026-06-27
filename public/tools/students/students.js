@@ -115,6 +115,7 @@
     if (s.allergies) html += '<div class="d-row d-alert"><span class="d-label">Allergies / medical</span>' +
       '<span class="d-value">' + esc(s.allergies) + "</span></div>";
     html += detailRow("Notes", s.notes);
+    html += detailRow("Photo consent", s.photo_ok ? "Yes — OK to post photos" : "No — do not post photos");
     $("detailBody").innerHTML = html;
     $("detail").hidden = false;
   }
@@ -152,6 +153,7 @@
     $("fBirthday").value = ""; $("fEnrolled").value = "";
     $("fGuardian").value = ""; $("fPhone").value = ""; $("fEmail").value = "";
     $("fEmergency").value = ""; $("fAllergies").value = ""; $("fNotes").value = "";
+    $("fPhotoOk").checked = false;
     $("formMsg").textContent = ""; $("deleteBtn").hidden = true; $("saveBtn").disabled = false;
     renderDayChips();
     $("modal").hidden = false;
@@ -168,6 +170,7 @@
     $("fBirthday").value = s.birthday || ""; $("fEnrolled").value = s.enrolled_at || "";
     $("fGuardian").value = s.guardian || ""; $("fPhone").value = s.phone || ""; $("fEmail").value = s.email || "";
     $("fEmergency").value = s.emergency || ""; $("fAllergies").value = s.allergies || ""; $("fNotes").value = s.notes || "";
+    $("fPhotoOk").checked = !!s.photo_ok;
     $("formMsg").textContent = ""; $("deleteBtn").hidden = false; $("saveBtn").disabled = false;
     renderDayChips();
     $("modal").hidden = false;
@@ -194,7 +197,8 @@
       email: $("fEmail").value.trim(),
       emergency: $("fEmergency").value.trim(),
       allergies: $("fAllergies").value.trim(),
-      notes: $("fNotes").value.trim()
+      notes: $("fNotes").value.trim(),
+      photo_ok: $("fPhotoOk").checked ? 1 : 0
     };
 
     $("saveBtn").disabled = true;
