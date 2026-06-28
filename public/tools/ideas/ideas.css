@@ -87,7 +87,3 @@
 .empty{text-align:center;padding:40px 20px;color:var(--muted);}
 .empty-icon{font-size:30px;display:block;margin-bottom:8px;}
 .loading{text-align:center;padding:30px;color:var(--hint);font-size:14px;}
-
-@media (prefers-color-scheme:dark){
-  .reply-box input{background:#1c2825;}
-}
