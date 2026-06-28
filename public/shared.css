@@ -1,5 +1,5 @@
 :root{
-  --sand:#FBF6EC;--sand-2:#F3ECDC;--teal:#1B4D4A;--teal-soft:#E1F5EE;--teal-mid:#0F6E56;
+  --sand:#FFFDF7;--sand-2:#F4EEDF;--teal:#0F8268;--teal-soft:#E2F6EE;--teal-mid:#0C7657;
   --coral:#E8714A;--coral-dark:#993C1D;--gold:#D4A24C;--gold-soft:#FAEEDA;--gold-dark:#854F0B;
   --ink:#2B2B28;--muted:#6B6A63;--hint:#97958c;--line:rgba(27,77,74,0.14);--card:#fff;
   --radius:18px;--radius-sm:12px;--radius-lg:24px;
@@ -40,7 +40,8 @@ a{color:inherit;}
 .btn-sm{width:auto;height:44px;padding:0 22px;font-size:15px;}
 
 /* ---------- Topbar ---------- */
-.topbar{position:sticky;top:0;z-index:20;background:var(--sand);padding:14px 0 10px;
+.topbar{position:sticky;top:0;z-index:20;padding:14px 0 10px;
+  background:linear-gradient(120deg,#DDF3E6 0%,#E7F0FA 45%,#FBE9D2 100%);
   box-shadow:0 6px 14px -10px rgba(27,77,74,0.22);}
 .topbar-inner{display:flex;align-items:center;justify-content:space-between;}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
@@ -114,6 +115,7 @@ a.brand:active{opacity:.7;}
     --hint:#6f7d77;--line:rgba(255,255,255,0.10);--teal:#9FE1CB;--teal-soft:#0F2E2A;
     --shadow:0 2px 12px -4px rgba(0,0,0,0.5);--shadow-lift:0 14px 30px -10px rgba(0,0,0,0.6);}
   body{background:var(--sand);}
+  .topbar{background:linear-gradient(120deg,#15302A 0%,#16283A 50%,#2A2418 100%);}
   .gate input{background:#16201e;}
   /* Muted colored hub tiles on dark instead of bright pastels */
   .tool-grid .tool-tile{background:color-mix(in srgb, var(--tile-ink,var(--card)) 26%, var(--card));}
