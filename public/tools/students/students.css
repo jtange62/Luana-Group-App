@@ -14,12 +14,12 @@
 .search:focus{outline:none;border-color:var(--teal-mid);}
 
 /* List */
-.stu-list{display:flex;flex-direction:column;gap:8px;padding-bottom:40px;}
+.stu-list{display:flex;flex-direction:column;gap:10px;padding-bottom:40px;}
 .stu-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:var(--ink);
-  background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius-sm);
-  padding:11px 13px;transition:border-color .12s,transform .06s;}
-.stu-row:hover{border-color:var(--teal-mid);}
-.stu-row:active{transform:scale(.995);}
+  background:var(--card);border:none;border-radius:var(--radius);box-shadow:var(--shadow);
+  padding:13px 15px;transition:box-shadow .12s,transform .08s;}
+.stu-row:hover{box-shadow:var(--shadow-lift);transform:translateY(-2px);}
+.stu-row:active{transform:translateY(0) scale(.99);}
 .stu-avatar{width:40px;height:40px;min-width:40px;border-radius:50%;background:var(--teal-soft);
   color:var(--teal-mid);font-weight:700;font-size:17px;display:flex;align-items:center;justify-content:center;}
 .stu-body{display:flex;flex-direction:column;flex:1;min-width:0;}

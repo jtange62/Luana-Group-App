@@ -48,8 +48,9 @@
 
 /* ---------- Lesson list ---------- */
 .lesson-list{display:flex;flex-direction:column;gap:13px;padding-bottom:40px;}
-.lesson-card{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;transition:box-shadow .3s,border-color .3s;}
-.lesson-card.is-highlight{border-color:var(--teal-mid);box-shadow:0 0 0 3px var(--teal-soft);}
+.lesson-card{background:var(--card);border:none;border-radius:var(--radius);box-shadow:var(--shadow);padding:15px 17px;transition:box-shadow .3s,transform .12s;}
+.lesson-card:hover{box-shadow:var(--shadow-lift);transform:translateY(-2px);}
+.lesson-card.is-highlight{box-shadow:0 0 0 3px var(--teal-soft),var(--shadow);}
 .lesson-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
 .lesson-title{margin:0;font-family:'Fredoka',sans-serif;font-weight:500;font-size:17px;color:var(--teal);line-height:1.3;}
 .lesson-actions{display:flex;gap:2px;flex-shrink:0;}

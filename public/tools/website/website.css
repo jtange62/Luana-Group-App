@@ -38,7 +38,7 @@
 
 /* List */
 .wi-list{display:flex;flex-direction:column;gap:13px;padding-bottom:40px;}
-.wi-card{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:13px 15px;}
+.wi-card{background:var(--card);border:none;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;}
 .wi-card.is-done{opacity:.66;}
 .wi-head{display:flex;align-items:center;gap:7px;margin-bottom:6px;flex-wrap:wrap;}
 .type-pill{font-size:11px;font-weight:600;color:var(--teal-mid);background:var(--teal-soft);padding:3px 10px;border-radius:999px;}

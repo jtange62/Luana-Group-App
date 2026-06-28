@@ -42,8 +42,8 @@
 .day-events{display:flex;flex-direction:column;gap:9px;padding-bottom:40px;}
 .day-empty{color:var(--muted);font-size:13.5px;padding:6px 0 40px;}
 
-.ev-row{display:flex;align-items:flex-start;gap:8px;background:var(--card);border:0.5px solid var(--line);
-  border-left:3px solid var(--teal-mid);border-radius:var(--radius-sm);padding:10px 12px;}
+.ev-row{display:flex;align-items:flex-start;gap:8px;background:var(--card);border:none;
+  border-left:4px solid var(--teal-mid);border-radius:var(--radius-sm);padding:11px 13px;box-shadow:var(--shadow);}
 .ev-main{flex:1;min-width:0;}
 .ev-top{display:flex;align-items:center;gap:8px;}
 .ev-time{font-size:12.5px;font-weight:600;color:var(--muted);}
@@ -109,7 +109,7 @@
 .link-btn{background:none;border:none;color:var(--teal-mid);font-size:13px;cursor:pointer;padding:2px;text-decoration:underline;}
 .roster{display:flex;flex-direction:column;gap:7px;}
 .roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
-  background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;}
+  background:var(--card);border:none;border-radius:var(--radius-sm);padding:10px 13px;box-shadow:var(--shadow);}
 .roster-name{font-size:14.5px;font-weight:500;min-width:0;word-break:break-word;}
 .att-btns{display:flex;gap:5px;flex-shrink:0;}
 .att-btn{width:40px;height:40px;border-radius:9px;border:0.5px solid var(--line);

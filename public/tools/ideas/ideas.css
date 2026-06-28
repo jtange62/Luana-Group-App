@@ -6,7 +6,7 @@
 .tab .dot{width:8px;height:8px;border-radius:50%;}
 .tab.active{font-weight:600;}
 
-.composer{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:18px;}
+.composer{background:var(--card);border:none;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px;margin-bottom:18px;}
 .composer textarea{width:100%;border:none;resize:none;background:transparent;color:var(--ink);line-height:1.5;padding:4px 4px 0;}
 .composer textarea:focus{outline:none;}
 .composer-row{display:flex;align-items:center;gap:8px;margin-top:8px;}
@@ -16,7 +16,7 @@
 .cat-select:focus{outline:none;border-color:var(--teal-mid);}
 
 .feed{display:flex;flex-direction:column;gap:13px;padding-bottom:40px;}
-.card{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);padding:14px 16px;}
+.card{background:var(--card);border:none;border-radius:var(--radius);box-shadow:var(--shadow);padding:15px 17px;}
 .card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
 .card-head-right{display:flex;align-items:center;gap:4px;flex-shrink:0;}
 .who{display:flex;align-items:center;gap:9px;min-width:0;}
