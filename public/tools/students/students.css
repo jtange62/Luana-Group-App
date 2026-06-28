@@ -47,6 +47,7 @@
 .d-value{font-size:14.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
 .d-alert{background:#FBEDEA;border-color:rgba(192,57,43,0.35);}
 .d-alert .d-label{color:#C0392B;}
+.d-alert .d-value{color:#7A2417;}
 
 /* Day chips */
 .day-chips{display:flex;flex-wrap:wrap;gap:5px;}
