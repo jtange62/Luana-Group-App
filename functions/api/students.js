@@ -3,7 +3,7 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 
 // Profile fields beyond the core name/program/days. All optional text.
-const PROFILE_FIELDS = ["birthday", "guardian", "phone", "email", "allergies", "emergency", "notes", "enrolled_at"];
+const PROFILE_FIELDS = ["birthday", "guardian", "phone", "email", "allergies", "emergency", "notes", "enrolled_at", "ss_weeks", "ss_type"];
 
 // Normalize a weekday list like "3,5" -> sorted unique ints 0-6, or null.
 // A non-numeric value (e.g. "x" for one-off trials) collapses to null.
@@ -23,7 +23,7 @@ function cleanDays(raw) {
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
   const res = await env.DB.prepare(
-    "SELECT id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at, photo_ok " +
+    "SELECT id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at, photo_ok, ss_weeks, ss_type " +
     "FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
   ).all();
   return json({ students: res.results || [] });

@@ -9,7 +9,7 @@
   var WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   var $ = function (id) { return document.getElementById(id); };
-  var state = { students: [], program: "All", search: "", editingId: null, newDays: [] };
+  var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function daysArr(d) { return d ? String(d).split(",").map(Number).filter(function (n) { return n >= 0 && n <= 6; }) : []; }
@@ -115,12 +115,48 @@
     if (s.allergies) html += '<div class="d-row d-alert"><span class="d-label">Allergies / medical</span>' +
       '<span class="d-value">' + esc(s.allergies) + "</span></div>";
     html += detailRow("Notes", s.notes);
+    if (s.program === "Summer School") {
+      var SS_DATES = { "1": "Week 1 · 7/27–7/31", "2": "Week 2 · 8/3–8/7", "3": "Week 3 · 8/17–8/21" };
+      var weeksLabel = s.ss_weeks
+        ? s.ss_weeks.split(",").map(function (w) { return SS_DATES[w] || ("Week " + w); }).join("\n")
+        : "—";
+      html += detailRow("Weeks attending", weeksLabel);
+      if (s.ss_type) html += detailRow("Student type", s.ss_type === "internal" ? "内部生 — Internal" : "外部生 — External");
+    }
     html += detailRow("Photo consent", s.photo_ok ? "Yes — OK to post photos" : "No — do not post photos");
     $("detailBody").innerHTML = html;
     $("detail").hidden = false;
   }
 
   function closeDetail() { $("detail").hidden = true; }
+
+  // ---------- Summer school fields ----------
+  function syncSSFields() {
+    var isSS = $("fProgram").value === "Summer School";
+    $("ssFields").hidden = !isSS;
+  }
+
+  function renderSSWeekChips() {
+    $("ssFields").querySelectorAll("[data-week]").forEach(function (b) {
+      var w = b.getAttribute("data-week");
+      b.classList.toggle("active", state.newSSWeeks.indexOf(w) !== -1);
+      b.onclick = function () {
+        var i = state.newSSWeeks.indexOf(w);
+        if (i === -1) { state.newSSWeeks.push(w); } else { state.newSSWeeks.splice(i, 1); }
+        renderSSWeekChips();
+      };
+    });
+  }
+
+  function renderSSTypeToggle() {
+    $("ssFields").querySelectorAll("[data-type]").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-type") === state.newSSType);
+      b.onclick = function () {
+        state.newSSType = b.getAttribute("data-type");
+        renderSSTypeToggle();
+      };
+    });
+  }
 
   // ---------- Day chips ----------
   function renderDayChips() {
@@ -154,6 +190,8 @@
     $("fGuardian").value = ""; $("fPhone").value = ""; $("fEmail").value = "";
     $("fEmergency").value = ""; $("fAllergies").value = ""; $("fNotes").value = "";
     $("fPhotoOk").checked = false;
+    state.newSSWeeks = []; state.newSSType = null;
+    syncSSFields(); renderSSWeekChips(); renderSSTypeToggle();
     $("formMsg").textContent = ""; $("deleteBtn").hidden = true; $("saveBtn").disabled = false;
     renderDayChips();
     $("modal").hidden = false;
@@ -171,6 +209,9 @@
     $("fGuardian").value = s.guardian || ""; $("fPhone").value = s.phone || ""; $("fEmail").value = s.email || "";
     $("fEmergency").value = s.emergency || ""; $("fAllergies").value = s.allergies || ""; $("fNotes").value = s.notes || "";
     $("fPhotoOk").checked = !!s.photo_ok;
+    state.newSSWeeks = s.ss_weeks ? String(s.ss_weeks).split(",") : [];
+    state.newSSType = s.ss_type || null;
+    syncSSFields(); renderSSWeekChips(); renderSSTypeToggle();
     $("formMsg").textContent = ""; $("deleteBtn").hidden = false; $("saveBtn").disabled = false;
     renderDayChips();
     $("modal").hidden = false;
@@ -198,7 +239,9 @@
       emergency: $("fEmergency").value.trim(),
       allergies: $("fAllergies").value.trim(),
       notes: $("fNotes").value.trim(),
-      photo_ok: $("fPhotoOk").checked ? 1 : 0
+      photo_ok: $("fPhotoOk").checked ? 1 : 0,
+      ss_weeks: $("fProgram").value === "Summer School" ? state.newSSWeeks.sort().join(",") : "",
+      ss_type: $("fProgram").value === "Summer School" ? (state.newSSType || "") : ""
     };
 
     $("saveBtn").disabled = true;
@@ -239,6 +282,7 @@
     var s = state.students.filter(function (x) { return x.id === state.editingId; })[0];
     if (s) openEdit(s);
   };
+  $("fProgram").addEventListener("change", function () { syncSSFields(); renderSSWeekChips(); renderSSTypeToggle(); });
   $("search").addEventListener("input", function (e) { state.search = e.target.value; render(); });
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 

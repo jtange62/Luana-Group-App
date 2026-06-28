@@ -74,6 +74,21 @@
       <label class="field-label">Days attending</label>
       <div id="fDays" class="day-chips"></div>
 
+      <!-- Summer School only -->
+      <div id="ssFields" hidden>
+        <label class="field-label">Weeks attending</label>
+        <div class="day-chips">
+          <button type="button" class="day-chip" data-week="1">Week 1<span class="ss-week-date">7/27–7/31</span></button>
+          <button type="button" class="day-chip" data-week="2">Week 2<span class="ss-week-date">8/3–8/7</span></button>
+          <button type="button" class="day-chip" data-week="3">Week 3<span class="ss-week-date">8/17–8/21</span></button>
+        </div>
+        <label class="field-label ss-type-label">Student type</label>
+        <div class="seg seg-sstype">
+          <button type="button" class="seg-btn" data-type="internal">内部生 Internal</button>
+          <button type="button" class="seg-btn" data-type="external">外部生 External</button>
+        </div>
+      </div>
+
       <label class="field-label">Guardian / parent</label>
       <input id="fGuardian" type="text" placeholder="Parent or guardian name" maxlength="120" />
 

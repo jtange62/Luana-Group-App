@@ -81,6 +81,17 @@
   height:38px;padding:0 14px;font-size:14px;color:#c0392b;}
 .btn-danger:hover{background:rgba(192,57,43,0.08);}
 
+/* Summer school week chips & type toggle */
+.ss-week-date{display:block;font-size:10px;font-weight:400;color:var(--hint);margin-top:1px;}
+.day-chip .ss-week-date{color:inherit;opacity:.72;}
+.day-chip.active .ss-week-date{opacity:.85;}
+.ss-type-label{margin-top:10px;}
+.seg-sstype{display:flex;background:var(--sand-2);border-radius:999px;padding:3px;gap:2px;margin-top:4px;}
+.seg-sstype .seg-btn{flex:1;border:none;background:none;color:var(--muted);font-size:13px;font-weight:500;
+  padding:7px 10px;border-radius:999px;white-space:nowrap;transition:all .12s;}
+.seg-sstype .seg-btn.active{background:var(--card);color:var(--teal);font-weight:600;
+  box-shadow:0 1px 2px rgba(27,77,74,0.12);}
+
 /* Photo consent checkbox */
 .check-row{display:flex;align-items:center;gap:10px;padding:6px 0;}
 .check-row input[type=checkbox]{width:18px;height:18px;flex-shrink:0;accent-color:var(--teal-mid);cursor:pointer;}
