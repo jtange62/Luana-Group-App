@@ -35,6 +35,10 @@ export async function onRequestPost({ request, env }) {
   const notes = clean(form.get("notes"), 8000) || null;
   const link = normalizeLink(form.get("link"));
   const tags = clean(form.get("tags"), 300) || null;
+  const vocab = clean(form.get("vocab"), 4000) || null;
+  const activities = clean(form.get("activities"), 4000) || null;
+  const phonics = clean(form.get("phonics"), 2000) || null;
+  const song = clean(form.get("song"), 500) || null;
 
   const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
   if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
@@ -46,8 +50,8 @@ export async function onRequestPost({ request, env }) {
   const now = Date.now();
 
   await env.DB.prepare(
-    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
-  ).bind(lessonId, title, author, program, month, notes, link, tags, now).run();
+    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, now).run();
 
   for (const f of files) {
     const fileId = crypto.randomUUID();
@@ -78,17 +82,27 @@ export async function onRequestPatch({ request, env }) {
   const lesson = await env.DB.prepare("SELECT author FROM lessons WHERE id = ?").bind(id).first();
   if (!lesson) return json({ error: "not found" }, 404);
 
+  // Only touch the fields the caller actually sent, so the Library form and the
+  // Curriculum overview can edit the same theme without clobbering each other.
+  const sets = ["title = ?"];
+  const vals = [title];
+  const maybe = (key, col, val) => {
+    if (key in body) { sets.push(col + " = ?"); vals.push(val); }
+  };
+  maybe("program", "program", cleanProgram(body.program));
+  maybe("month", "month", cleanMonth(body.month));
+  maybe("notes", "notes", clean(body.notes, 8000) || null);
+  maybe("link", "link_url", normalizeLink(body.link));
+  maybe("tags", "tags", clean(body.tags, 300) || null);
+  maybe("vocab", "vocab", clean(body.vocab, 4000) || null);
+  maybe("activities", "activities", clean(body.activities, 4000) || null);
+  maybe("phonics", "phonics", clean(body.phonics, 2000) || null);
+  maybe("song", "song", clean(body.song, 500) || null);
+
+  vals.push(id);
   await env.DB.prepare(
-    "UPDATE lessons SET title = ?, program = ?, month = ?, notes = ?, link_url = ?, tags = ? WHERE id = ?"
-  ).bind(
-    title,
-    cleanProgram(body.program),
-    cleanMonth(body.month),
-    clean(body.notes, 8000) || null,
-    normalizeLink(body.link),
-    clean(body.tags, 300) || null,
-    id
-  ).run();
+    "UPDATE lessons SET " + sets.join(", ") + " WHERE id = ?"
+  ).bind(...vals).run();
 
   return json({ ok: true });
 }

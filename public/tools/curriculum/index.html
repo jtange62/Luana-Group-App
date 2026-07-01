@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#DDF3E6" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
+<title>Curriculum · Luana Group App</title>
+<meta property="og:title" content="Luana Curriculum" />
+<meta property="og:description" content="Monthly themes, vocab, activities, phonics and songs for the Luana English School team." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./curriculum.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="back-btn" href="/" aria-label="Back" onclick="event.preventDefault();history.length>1?history.back():location.href='/'">‹</a>
+      <a class="brand" href="/" title="Home">
+        <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
+        <span class="brand-name">Luana Group App</span>
+      </a>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <p class="brand-tag">🗓️ Curriculum overview</p>
+  </header>
+
+  <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
+
+  <p id="progHint" class="prog-hint"></p>
+
+  <main id="months" class="month-list" aria-live="polite"></main>
+
+  <div id="loading" class="loading">Loading…</div>
+
+  <!-- Edit theme -->
+  <div id="modal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="formTitle" class="form-heading">Edit theme</p>
+      <label class="field-label">Theme</label>
+      <input id="fTitle" type="text" placeholder="e.g. Nature, Animals, Superheroes &amp; Princesses" maxlength="200" />
+      <label class="field-label">Song of the month</label>
+      <input id="fSong" type="text" placeholder="e.g. How Far I'll Go (from Moana)" maxlength="500" />
+      <label class="field-label">Vocab</label>
+      <textarea id="fVocab" rows="3" placeholder="Theme vocabulary — one per line or comma separated"></textarea>
+      <label class="field-label">Activities</label>
+      <textarea id="fActivities" rows="4" placeholder="Theme / weekly activities — one per line"></textarea>
+      <label class="field-label">Phonics</label>
+      <textarea id="fPhonics" rows="2" placeholder="Phonics focus for the month"></textarea>
+      <div class="form-actions">
+        <span id="formMsg" class="form-msg"></span>
+        <button id="cancelBtn" class="btn-ghost">Cancel</button>
+        <button id="saveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="./curriculum.js"></script>
+</body>
+</html>

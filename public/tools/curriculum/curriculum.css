@@ -1,0 +1,67 @@
+/* Curriculum overview — program tabs + month cards. */
+
+/* Program tabs (same look as the lesson library). */
+.tabs{display:flex;flex-wrap:wrap;gap:7px;padding:8px 0 4px;}
+.tab{border:0.5px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:999px;padding:8px 15px;font-size:13.5px;transition:border-color .12s,background .12s;}
+.tab:hover{border-color:var(--teal-mid);}
+.tab.active{font-weight:600;border-color:var(--teal-mid);background:var(--teal-soft);color:var(--teal-mid);}
+
+.prog-hint{margin:8px 0 4px;color:var(--muted);font-size:12.5px;}
+
+/* Month cards */
+.month-list{display:flex;flex-direction:column;gap:12px;padding:8px 0 44px;}
+.month-card{background:var(--card);border:0.5px solid var(--line);border-radius:var(--radius);
+  padding:14px 15px;transition:border-color .12s,transform .06s;cursor:pointer;}
+.month-card:hover{border-color:var(--teal-mid);}
+.month-card:active{transform:scale(.995);}
+.month-card.is-current{border-color:var(--coral);box-shadow:0 0 0 3px var(--gold-soft);}
+.month-card.is-empty{border-style:dashed;}
+
+.cm-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.cm-month{font-family:'Fredoka',sans-serif;font-weight:500;font-size:18px;color:var(--teal);margin:0;}
+.cm-now{font-size:10px;font-weight:600;color:var(--coral-dark);background:var(--gold-soft);
+  padding:2px 8px;border-radius:999px;vertical-align:middle;margin-left:4px;}
+.cm-edit{border:0.5px solid var(--line);background:var(--card);color:var(--teal-mid);
+  border-radius:999px;padding:6px 13px;font-size:13px;font-weight:600;flex-shrink:0;}
+.cm-edit:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
+
+.cm-body{margin-top:8px;}
+.cm-none{color:var(--hint);font-size:13.5px;margin:2px 0 0;font-style:italic;}
+
+.cm-theme{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding-bottom:8px;border-bottom:0.5px solid var(--line);margin-bottom:2px;}
+.cm-theme-name{font-weight:600;font-size:17px;color:var(--ink);}
+.cm-lib{font-size:12px;color:var(--teal-mid);text-decoration:none;white-space:nowrap;}
+.cm-lib:hover{text-decoration:underline;}
+
+.cm-field{margin-top:10px;}
+.cm-field-label{display:block;font-size:11px;font-weight:600;color:var(--hint);
+  letter-spacing:.04em;text-transform:uppercase;margin-bottom:4px;}
+.cm-text{margin:0;font-size:14.5px;color:var(--ink);}
+
+.cm-chips{display:flex;flex-wrap:wrap;gap:6px;}
+.cm-chip{font-size:12.5px;color:var(--teal-mid);background:var(--teal-soft);
+  border-radius:999px;padding:3px 10px;}
+
+.cm-list{margin:0;padding-left:20px;}
+.cm-list li{font-size:14.5px;color:var(--ink);margin:1px 0;}
+
+/* Edit modal */
+.modal{position:fixed;inset:0;z-index:100;background:rgba(20,32,30,0.45);
+  display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto;}
+.modal-card{background:var(--card);border-radius:16px;border:0.5px solid var(--line);
+  width:100%;max-width:520px;padding:20px 18px;box-shadow:0 10px 40px -12px rgba(0,0,0,0.4);}
+.form-heading{margin:0 0 12px;font-family:'Fredoka',sans-serif;font-weight:500;font-size:18px;color:var(--teal);}
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px;}
+.modal-card input,.modal-card textarea{width:100%;border:0.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:10px 12px;background:#fff;color:var(--ink);resize:vertical;}
+.modal-card input:focus,.modal-card textarea:focus{outline:none;border-color:var(--teal-mid);
+  box-shadow:0 0 0 3px var(--teal-soft);}
+.form-actions{display:flex;align-items:center;gap:10px;margin-top:16px;}
+.form-msg{flex:1;font-size:13px;color:#A32D2D;}
+.btn-ghost{border:0.5px solid var(--line);background:var(--card);color:var(--muted);
+  height:44px;padding:0 18px;border-radius:var(--radius-sm);font-size:15px;}
+.btn-ghost:hover{background:var(--sand-2);}
+
+.loading{text-align:center;color:var(--hint);font-size:13px;padding:20px 0;}

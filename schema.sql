@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS lessons (
   notes       TEXT,
   link_url    TEXT,
   tags        TEXT,
+  vocab       TEXT,          -- theme vocabulary words (Curriculum overview)
+  activities  TEXT,          -- theme / weekly activities (Curriculum overview)
+  phonics     TEXT,          -- phonics focus for the month (Curriculum overview)
+  song        TEXT,          -- song of the month (Curriculum overview)
   created_at  INTEGER NOT NULL
 );
 
