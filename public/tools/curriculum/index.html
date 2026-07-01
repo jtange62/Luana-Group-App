@@ -59,6 +59,26 @@
       </div>
     </div>
   </div>
+
+  <!-- Edit a week within a theme -->
+  <div id="weekModal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="weekFormTitle" class="form-heading">Add week</p>
+      <label class="field-label">Focus / sub-theme</label>
+      <input id="wFocus" type="text" placeholder="e.g. Imagine my own Hero" maxlength="200" />
+      <label class="field-label">Activities</label>
+      <textarea id="wActivities" rows="3" placeholder="This week's activities — one per line"></textarea>
+      <label class="field-label">Phonics</label>
+      <textarea id="wPhonics" rows="2" placeholder="This week's letters / sounds"></textarea>
+      <label class="field-label">Notes</label>
+      <textarea id="wNotes" rows="2" placeholder="Reminders (optional)"></textarea>
+      <div class="form-actions">
+        <span id="weekFormMsg" class="form-msg"></span>
+        <button id="weekCancelBtn" class="btn-ghost">Cancel</button>
+        <button id="weekSaveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="/shared-auth.js"></script>

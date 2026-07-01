@@ -13,9 +13,12 @@
 
   var state = {
     lessons: [],
+    weeks: [],
     program: PROGRAMS[0],
-    editingId: null,   // lesson id when editing an existing theme
-    editingMonth: null // "1".."12" for the card being edited
+    editingId: null,    // lesson id when editing an existing theme
+    editingMonth: null, // "1".."12" for the card being edited
+    editingWeekId: null,// week id when editing an existing week
+    weekLessonId: null  // theme the week being added/edited belongs to
   };
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
@@ -26,13 +29,19 @@
   }
 
   // The theme for a program+month: the most recent matching lesson, if any.
-  // (loadThemes keeps state.lessons newest-first, matching the API order.)
+  // (loadAll keeps state.lessons newest-first, matching the API order.)
   function themeFor(program, month) {
     for (var i = 0; i < state.lessons.length; i++) {
       var l = state.lessons[i];
       if (l.program === program && String(l.month || "") === String(month)) return l;
     }
     return null;
+  }
+
+  // Weeks belonging to a theme, ordered by week number.
+  function weeksFor(lessonId) {
+    return state.weeks.filter(function (w) { return w.lesson_id === lessonId; })
+      .sort(function (a, b) { return a.week_no - b.week_no; });
   }
 
   // ---------- Render ----------
@@ -87,6 +96,7 @@
           parts.push(fieldBlock("🎨", "Activities", '<ul class="cm-list">' + actHtml + "</ul>"));
         }
         if (l.phonics) parts.push(fieldBlock("🔠", "Phonics", '<p class="cm-text">' + esc(l.phonics) + "</p>"));
+        parts.push(weeksSection(l));
         bodyHtml = parts.join("");
       }
 
@@ -94,9 +104,120 @@
       (function (month, lesson) {
         card.querySelector(".cm-edit").onclick = function (e) { e.stopPropagation(); openEdit(month, lesson); };
         card.onclick = function () { openEdit(month, lesson); };
+        wireWeeks(card, lesson);
       })(m, l);
       wrap.appendChild(card);
     }
+  }
+
+  // ---------- Weeks ----------
+  function weekRowHtml(w) {
+    var parts = [];
+    if (w.activities) {
+      var actHtml = items(w.activities).map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("");
+      parts.push(fieldBlock("🎨", "Activities", '<ul class="cm-list">' + actHtml + "</ul>"));
+    }
+    if (w.phonics) parts.push(fieldBlock("🔠", "Phonics", '<p class="cm-text">' + esc(w.phonics) + "</p>"));
+    if (w.notes) parts.push(fieldBlock("📝", "Notes", '<p class="cm-text">' + esc(w.notes) + "</p>"));
+    return '<div class="cm-week" data-week="' + esc(w.id) + '">' +
+      '<div class="cm-week-top">' +
+        '<span class="cm-week-no">Week ' + w.week_no + "</span>" +
+        (w.focus ? '<span class="cm-week-focus">' + esc(w.focus) + "</span>" : "") +
+        '<span class="cm-week-actions">' +
+          '<button class="cm-week-edit" data-week="' + esc(w.id) + '" title="Edit">✎</button>' +
+          '<button class="cm-week-del" data-week="' + esc(w.id) + '" title="Delete">✕</button>' +
+        "</span>" +
+      "</div>" +
+      (parts.length ? '<div class="cm-week-body">' + parts.join("") + "</div>" : "") +
+      "</div>";
+  }
+
+  function weeksSection(lesson) {
+    var wks = weeksFor(lesson.id);
+    var rows = wks.map(weekRowHtml).join("");
+    return '<div class="cm-weeks">' +
+      '<div class="cm-weeks-head">' +
+        '<span class="cm-field-label">🗓️ Weekly plan</span>' +
+        '<button class="cm-week-add">＋ Week</button>' +
+      "</div>" +
+      (rows || '<p class="cm-week-none">No weeks yet — break the month into weeks.</p>') +
+      "</div>";
+  }
+
+  function wireWeeks(card, lesson) {
+    var weeksEl = card.querySelector(".cm-weeks");
+    if (!weeksEl) return;
+    // Clicks inside the weeks area shouldn't open the theme editor.
+    weeksEl.onclick = function (e) { e.stopPropagation(); };
+
+    var addBtn = weeksEl.querySelector(".cm-week-add");
+    if (addBtn) addBtn.onclick = function () { openWeekEdit(lesson.id, null); };
+
+    weeksEl.querySelectorAll(".cm-week-edit").forEach(function (btn) {
+      btn.onclick = function () {
+        var w = weeksFor(lesson.id).filter(function (x) { return x.id === btn.getAttribute("data-week"); })[0];
+        if (w) openWeekEdit(lesson.id, w);
+      };
+    });
+    weeksEl.querySelectorAll(".cm-week-del").forEach(function (btn) {
+      btn.onclick = function () { deleteWeek(btn.getAttribute("data-week")); };
+    });
+  }
+
+  function openWeekEdit(lessonId, week) {
+    state.weekLessonId = lessonId;
+    state.editingWeekId = week ? week.id : null;
+    $("weekFormTitle").textContent = week ? ("Edit Week " + week.week_no) : "Add week";
+    $("wFocus").value = week ? (week.focus || "") : "";
+    $("wActivities").value = week ? (week.activities || "") : "";
+    $("wPhonics").value = week ? (week.phonics || "") : "";
+    $("wNotes").value = week ? (week.notes || "") : "";
+    $("weekFormMsg").textContent = "";
+    $("weekSaveBtn").disabled = false;
+    $("weekModal").hidden = false;
+    $("wFocus").focus();
+  }
+
+  function closeWeekModal() {
+    $("weekModal").hidden = true;
+    state.editingWeekId = null; state.weekLessonId = null;
+  }
+
+  function saveWeek() {
+    var msg = $("weekFormMsg");
+    msg.textContent = "";
+    var fields = {
+      focus: $("wFocus").value.trim(),
+      activities: $("wActivities").value.trim(),
+      phonics: $("wPhonics").value.trim(),
+      notes: $("wNotes").value.trim()
+    };
+    if (!fields.focus && !fields.activities && !fields.phonics && !fields.notes) {
+      msg.textContent = "Add a focus or some detail first."; return;
+    }
+    $("weekSaveBtn").disabled = true;
+
+    var payload, method;
+    if (state.editingWeekId) {
+      method = "PATCH";
+      payload = { id: state.editingWeekId, focus: fields.focus, activities: fields.activities, phonics: fields.phonics, notes: fields.notes };
+    } else {
+      method = "POST";
+      payload = { lesson_id: state.weekLessonId, author: me, focus: fields.focus, activities: fields.activities, phonics: fields.phonics, notes: fields.notes };
+    }
+    LuanaAuth.api("curriculum-week", { method: method, body: JSON.stringify(payload) })
+      .then(function (res) {
+        if (res && res.error) throw new Error(res.error);
+        closeWeekModal(); return loadWeeks();
+      })
+      .catch(function () { msg.textContent = "Couldn't save. Try again."; $("weekSaveBtn").disabled = false; });
+  }
+
+  function deleteWeek(id) {
+    if (!id || !confirm("Delete this week?")) return;
+    LuanaAuth.api("curriculum-week", { method: "DELETE", body: JSON.stringify({ id: id }) })
+      .then(function () { return loadWeeks(); })
+      .catch(function () {});
   }
 
   // ---------- Edit ----------
@@ -140,7 +261,7 @@
       }) })
         .then(function (res) {
           if (res && res.error) throw new Error(res.error);
-          closeModal(); return loadThemes();
+          closeModal(); return loadAll();
         })
         .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });
       return;
@@ -165,27 +286,40 @@
     }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || "Couldn't save."; $("saveBtn").disabled = false; return; }
-        closeModal(); return loadThemes();
+        closeModal(); return loadAll();
       })
       .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
   }
 
   // ---------- Data ----------
-  function loadThemes() {
+  function fetchThemes() {
+    return LuanaAuth.api("lessons").then(function (res) { state.lessons = res.lessons || []; });
+  }
+  function fetchWeeks() {
+    return LuanaAuth.api("curriculum-weeks").then(function (res) { state.weeks = res.weeks || []; });
+  }
+  // Full refresh (themes + weeks) — used at startup and after a theme change.
+  function loadAll() {
     $("loading").style.display = "block";
-    return LuanaAuth.api("lessons").then(function (res) {
-      $("loading").style.display = "none";
-      state.lessons = res.lessons || [];
-      render();
-    }).catch(function () { $("loading").style.display = "none"; });
+    return Promise.all([fetchThemes(), fetchWeeks()])
+      .then(function () { render(); })
+      .catch(function () {})
+      .then(function () { $("loading").style.display = "none"; });
+  }
+  // Weeks-only refresh — after adding/editing/deleting a week.
+  function loadWeeks() {
+    return fetchWeeks().then(render).catch(function () {});
   }
 
   // ---------- Wire up ----------
   $("cancelBtn").onclick = closeModal;
   $("saveBtn").onclick = save;
   $("modal").onclick = function (e) { if (e.target === $("modal")) closeModal(); };
+  $("weekCancelBtn").onclick = closeWeekModal;
+  $("weekSaveBtn").onclick = saveWeek;
+  $("weekModal").onclick = function (e) { if (e.target === $("weekModal")) closeWeekModal(); };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   renderProgramTabs();
-  loadThemes();
+  loadAll();
 })();

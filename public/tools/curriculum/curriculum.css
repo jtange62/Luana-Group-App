@@ -47,6 +47,28 @@
 .cm-list{margin:0;padding-left:20px;}
 .cm-list li{font-size:14.5px;color:var(--ink);margin:1px 0;}
 
+/* Weekly plan */
+.cm-weeks{margin-top:14px;padding-top:12px;border-top:0.5px solid var(--line);}
+.cm-weeks-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.cm-week-add{border:0.5px solid var(--line);background:var(--card);color:var(--teal-mid);
+  border-radius:999px;padding:5px 12px;font-size:12.5px;font-weight:600;}
+.cm-week-add:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
+.cm-week-none{color:var(--hint);font-size:13px;margin:0;font-style:italic;}
+
+.cm-week{background:var(--sand-2);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:8px;}
+.cm-week:last-child{margin-bottom:0;}
+.cm-week-top{display:flex;align-items:baseline;gap:8px;}
+.cm-week-no{font-size:11px;font-weight:700;color:var(--coral-dark);background:var(--gold-soft);
+  padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.cm-week-focus{font-weight:600;font-size:14.5px;color:var(--ink);flex:1;min-width:0;}
+.cm-week-actions{display:flex;gap:4px;flex-shrink:0;}
+.cm-week-edit,.cm-week-del{border:none;background:transparent;color:var(--muted);
+  font-size:13px;padding:2px 5px;border-radius:6px;line-height:1;}
+.cm-week-edit:hover,.cm-week-del:hover{background:rgba(0,0,0,0.06);color:var(--ink);}
+.cm-week-body{margin-top:6px;}
+.cm-week-body .cm-field{margin-top:8px;}
+.cm-week-body .cm-list li,.cm-week-body .cm-text{font-size:13.5px;}
+
 /* Edit modal */
 .modal{position:fixed;inset:0;z-index:100;background:rgba(20,32,30,0.45);
   display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto;}

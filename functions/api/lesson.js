@@ -126,6 +126,7 @@ export async function onRequestDelete({ request, env }) {
     try { await env.FILES.delete(f.id); } catch { /* ignore */ }
   }
   await env.DB.prepare("DELETE FROM lesson_files WHERE lesson_id = ?").bind(id).run();
+  await env.DB.prepare("DELETE FROM curriculum_weeks WHERE lesson_id = ?").bind(id).run();
   await env.DB.prepare("DELETE FROM lessons WHERE id = ?").bind(id).run();
 
   return json({ ok: true });
