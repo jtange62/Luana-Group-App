@@ -293,7 +293,7 @@
 
   function scheduledFor(wd) {
     return state.students.filter(function (s) {
-      return s.program === state.attProgram && (!s.days || daysArr(s.days).indexOf(wd) !== -1);
+      return s.program === state.attProgram && daysArr(s.days).indexOf(wd) !== -1;
     });
   }
 
@@ -343,7 +343,7 @@
 
     var dayHas = {};
     state.students.forEach(function (s) {
-      (s.days ? daysArr(s.days) : [0, 1, 2, 3, 4, 5, 6]).forEach(function (d) { dayHas[d] = true; });
+      daysArr(s.days).forEach(function (d) { dayHas[d] = true; });
     });
     var days = WEEKDAY_CHIPS.filter(function (wd) { return dayHas[wd[1]]; });
     if (!days.length) days = WEEKDAY_CHIPS.slice(0, 5);
@@ -366,7 +366,7 @@
         var dayTrials = (state.weekTrials[date] || []).filter(function (t) { return t.program === p; });
 
         var scheduled = state.students.filter(function (s) {
-          return s.program === p && s.days !== "x" && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
+          return s.program === p && s.days !== "x" && daysArr(s.days).indexOf(wd[1]) !== -1;
         });
         var scheduledIds = scheduled.map(function (s) { return s.id; });
         var makeups = state.students.filter(function (s) {
@@ -401,7 +401,7 @@
       var date = fmtYMD(addDays(ws, wd[1]));
       var dayTrialCount = (state.weekTrials[date] || []).length;
       var n = state.students.filter(function (s) {
-        return s.days !== "x" && (!s.days || daysArr(s.days).indexOf(wd[1]) !== -1);
+        return s.days !== "x" && daysArr(s.days).indexOf(wd[1]) !== -1;
       }).length;
       grid.appendChild(cell("ov-total", String(n + dayTrialCount)));
     });

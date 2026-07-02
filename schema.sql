@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS students (
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   program     TEXT NOT NULL,   -- Preschool|Kinder|After School|Summer School
-  days        TEXT,            -- weekdays they attend, e.g. "3,5" (0=Sun..6=Sat); empty = every day
+  days        TEXT,            -- weekdays they attend, e.g. "3,5" (0=Sun..6=Sat); empty = none; "x" = one-off trial
   active      INTEGER DEFAULT 1,
   created_at  INTEGER NOT NULL
 );
