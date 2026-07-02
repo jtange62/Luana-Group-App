@@ -53,15 +53,18 @@ export async function onRequestPost({ request, env }) {
     "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
   ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, now).run();
 
+  // Upload sequentially (one file buffered at a time), insert rows in one batch.
+  const inserts = [];
   for (const f of files) {
     const fileId = crypto.randomUUID();
     await env.FILES.put(fileId, await f.arrayBuffer(), {
       httpMetadata: { contentType: f.type || "application/octet-stream" },
     });
-    await env.DB.prepare(
+    inserts.push(env.DB.prepare(
       "INSERT INTO lesson_files (id, lesson_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
-    ).bind(fileId, lessonId, clean(f.name, 255) || "file", f.size, f.type || null, now).run();
+    ).bind(fileId, lessonId, clean(f.name, 255) || "file", f.size, f.type || null, now));
   }
+  if (inserts.length) await env.DB.batch(inserts);
 
   return json({ ok: true, id: lessonId });
 }
@@ -122,12 +125,12 @@ export async function onRequestDelete({ request, env }) {
   if (lesson.author !== author) return json({ error: "forbidden" }, 403);
 
   const filesRes = await env.DB.prepare("SELECT id FROM lesson_files WHERE lesson_id = ?").bind(id).all();
-  for (const f of (filesRes.results || [])) {
-    try { await env.FILES.delete(f.id); } catch { /* ignore */ }
-  }
-  await env.DB.prepare("DELETE FROM lesson_files WHERE lesson_id = ?").bind(id).run();
-  await env.DB.prepare("DELETE FROM curriculum_weeks WHERE lesson_id = ?").bind(id).run();
-  await env.DB.prepare("DELETE FROM lessons WHERE id = ?").bind(id).run();
+  await Promise.all((filesRes.results || []).map((f) => env.FILES.delete(f.id).catch(() => { /* ignore */ })));
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM lesson_files WHERE lesson_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM curriculum_weeks WHERE lesson_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM lessons WHERE id = ?").bind(id),
+  ]);
 
   return json({ ok: true });
 }

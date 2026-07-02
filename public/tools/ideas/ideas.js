@@ -59,20 +59,28 @@
       .catch(function () { alert("Couldn't open that file. Try again."); });
   }
 
+  // Blob URLs by file id, so the 30s feed refresh reuses already-downloaded
+  // images instead of re-fetching every photo on each poll.
+  var thumbCache = {};
+  function applyThumb(btn, url) {
+    btn.style.backgroundImage = "url('" + url + "')";
+    btn.classList.add("loaded");
+    btn._src = url;
+    btn.onclick = function () {
+      var grid = btn.closest(".photo-grid");
+      var all = grid ? Array.prototype.slice.call(grid.querySelectorAll(".photo")) : [btn];
+      openLightbox(all, btn);
+    };
+  }
   function loadThumb(btn, fileId) {
+    if (thumbCache[fileId]) { applyThumb(btn, thumbCache[fileId]); return; }
     var t = LuanaAuth.token();
     fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
       .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
       .then(function (blob) {
         var url = URL.createObjectURL(blob);
-        btn.style.backgroundImage = "url('" + url + "')";
-        btn.classList.add("loaded");
-        btn._src = url;
-        btn.onclick = function () {
-          var grid = btn.closest(".photo-grid");
-          var all = grid ? Array.prototype.slice.call(grid.querySelectorAll(".photo")) : [btn];
-          openLightbox(all, btn);
-        };
+        thumbCache[fileId] = url;
+        applyThumb(btn, url);
       })
       .catch(function () { btn.textContent = "🖼️"; });
   }
@@ -301,7 +309,15 @@
   $("postBtn").onclick = post;
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
-  setInterval(function () { if (LuanaAuth.isLoggedIn() && !document.hidden) loadPosts(); }, 30000);
+  setInterval(function () {
+    if (!LuanaAuth.isLoggedIn() || document.hidden) return;
+    // Don't re-render (and wipe) a reply or idea someone is mid-typing,
+    // or staged file attachments that haven't been posted yet.
+    var ae = document.activeElement;
+    var typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") && ae.value;
+    if (typing || chosen.length) return;
+    loadPosts();
+  }, 30000);
 
   // ---------- Lightbox ----------
   var lbUrls = [], lbIdx = 0, lbTx = 0, lbTy = 0, lbDir = null;

@@ -35,15 +35,18 @@ export async function onRequestPost({ request, env }) {
     "INSERT INTO submissions (id, author, type, title, notes, status, created_at) VALUES (?,?,?,?,?,?,?)"
   ).bind(subId, author, type, title, notes, "new", now).run();
 
+  // Upload sequentially (one file buffered at a time), insert rows in one batch.
+  const inserts = [];
   for (const f of files) {
     const fileId = crypto.randomUUID();
     await env.FILES.put(fileId, await f.arrayBuffer(), {
       httpMetadata: { contentType: f.type || "application/octet-stream" },
     });
-    await env.DB.prepare(
+    inserts.push(env.DB.prepare(
       "INSERT INTO submission_files (id, submission_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
-    ).bind(fileId, subId, clean(f.name, 255) || "file", f.size, f.type || null, now).run();
+    ).bind(fileId, subId, clean(f.name, 255) || "file", f.size, f.type || null, now));
   }
+  if (inserts.length) await env.DB.batch(inserts);
 
   return json({ ok: true, id: subId });
 }
@@ -70,11 +73,11 @@ export async function onRequestDelete({ request, env }) {
   if (!body.id) return json({ error: "missing id" }, 400);
 
   const filesRes = await env.DB.prepare("SELECT id FROM submission_files WHERE submission_id = ?").bind(body.id).all();
-  for (const f of (filesRes.results || [])) {
-    try { await env.FILES.delete(f.id); } catch { /* ignore */ }
-  }
-  await env.DB.prepare("DELETE FROM submission_files WHERE submission_id = ?").bind(body.id).run();
-  await env.DB.prepare("DELETE FROM submissions WHERE id = ?").bind(body.id).run();
+  await Promise.all((filesRes.results || []).map((f) => env.FILES.delete(f.id).catch(() => { /* ignore */ })));
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM submission_files WHERE submission_id = ?").bind(body.id),
+    env.DB.prepare("DELETE FROM submissions WHERE id = ?").bind(body.id),
+  ]);
 
   return json({ ok: true });
 }

@@ -39,15 +39,19 @@ export async function onRequestPost({ request, env }) {
     link.url, link.title, link.desc, link.image, link.domain
   ).run();
 
+  // Upload sequentially (keeps one file buffered at a time) but write all the
+  // rows in a single D1 batch instead of one round trip per file.
+  const inserts = [];
   for (const f of files) {
     const fileId = crypto.randomUUID();
     await env.FILES.put(fileId, await f.arrayBuffer(), {
       httpMetadata: { contentType: f.type || "application/octet-stream" },
     });
-    await env.DB.prepare(
+    inserts.push(env.DB.prepare(
       "INSERT INTO post_files (id, post_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
-    ).bind(fileId, id, clean(f.name, 255) || "file", f.size, f.type || null, now).run();
+    ).bind(fileId, id, clean(f.name, 255) || "file", f.size, f.type || null, now));
   }
+  if (inserts.length) await env.DB.batch(inserts);
 
   return json({ ok: true, id });
 }
@@ -86,12 +90,12 @@ export async function onRequestDelete({ request, env }) {
   if (post.author !== author) return json({ error: "forbidden" }, 403);
 
   const filesRes = await env.DB.prepare("SELECT id FROM post_files WHERE post_id = ?").bind(id).all();
-  for (const f of (filesRes.results || [])) {
-    try { await env.FILES.delete(f.id); } catch { /* ignore */ }
-  }
-  await env.DB.prepare("DELETE FROM post_files WHERE post_id = ?").bind(id).run();
-  await env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id).run();
-  await env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id).run();
+  await Promise.all((filesRes.results || []).map((f) => env.FILES.delete(f.id).catch(() => { /* ignore */ })));
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM post_files WHERE post_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id),
+  ]);
 
   return json({ ok: true });
 }

@@ -52,15 +52,17 @@ export async function onRequestPost({ request, env }) {
   }
 
   const now = Date.now();
+  const inserts = [];
   for (const f of files) {
     const fileId = crypto.randomUUID();
     await env.FILES.put(fileId, await f.arrayBuffer(), {
       httpMetadata: { contentType: f.type || "application/octet-stream" },
     });
-    await env.DB.prepare(
+    inserts.push(env.DB.prepare(
       "INSERT INTO post_files (id, post_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
-    ).bind(fileId, postId, clean(f.name, 255) || "file", f.size, f.type || null, now).run();
+    ).bind(fileId, postId, clean(f.name, 255) || "file", f.size, f.type || null, now));
   }
+  if (inserts.length) await env.DB.batch(inserts);
 
   return json({ ok: true });
 }
