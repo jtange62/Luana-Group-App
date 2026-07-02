@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS curriculum_weeks (
   focus       TEXT,             -- sub-theme / focus title for the week
   activities  TEXT,             -- that week's activities
   phonics     TEXT,             -- that week's letters / sounds
+  questions   TEXT,             -- focus questions for the week (After School)
   notes       TEXT,             -- free-text reminders
   author      TEXT,
   created_at  INTEGER NOT NULL

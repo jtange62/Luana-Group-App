@@ -23,12 +23,13 @@ export async function onRequestPost({ request, env }) {
   const id = crypto.randomUUID();
   const now = Date.now();
   await env.DB.prepare(
-    "INSERT INTO curriculum_weeks (id, lesson_id, week_no, focus, activities, phonics, notes, author, created_at) VALUES (?,?,?,?,?,?,?,?,?)"
+    "INSERT INTO curriculum_weeks (id, lesson_id, week_no, focus, activities, phonics, questions, notes, author, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
   ).bind(
     id, lessonId, weekNo,
     clean(body.focus, 200) || null,
     clean(body.activities, 4000) || null,
     clean(body.phonics, 2000) || null,
+    clean(body.questions, 4000) || null,
     clean(body.notes, 4000) || null,
     clean(body.author, 60) || "anonymous",
     now
@@ -57,6 +58,7 @@ export async function onRequestPatch({ request, env }) {
   maybe("focus", "focus", clean(body.focus, 200) || null);
   maybe("activities", "activities", clean(body.activities, 4000) || null);
   maybe("phonics", "phonics", clean(body.phonics, 2000) || null);
+  maybe("questions", "questions", clean(body.questions, 4000) || null);
   maybe("notes", "notes", clean(body.notes, 4000) || null);
   if (!sets.length) return json({ ok: true });
 

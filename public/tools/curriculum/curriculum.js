@@ -5,6 +5,9 @@
   if (!LuanaAuth.requireLogin()) return;
 
   var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  // Weekly "focus questions" are an After School–only field.
+  var QUESTIONS_PROGRAM = "After School";
+  function questionsOn() { return state.program === QUESTIONS_PROGRAM; }
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
@@ -118,6 +121,10 @@
       parts.push(fieldBlock("🎨", "Activities", '<ul class="cm-list">' + actHtml + "</ul>"));
     }
     if (w.phonics) parts.push(fieldBlock("🔠", "Phonics", '<p class="cm-text">' + esc(w.phonics) + "</p>"));
+    if (questionsOn() && w.questions) {
+      var qHtml = items(w.questions).map(function (q) { return "<li>" + esc(q) + "</li>"; }).join("");
+      parts.push(fieldBlock("❓", "Questions", '<ul class="cm-list">' + qHtml + "</ul>"));
+    }
     if (w.notes) parts.push(fieldBlock("📝", "Notes", '<p class="cm-text">' + esc(w.notes) + "</p>"));
     return '<div class="cm-week" data-week="' + esc(w.id) + '">' +
       '<div class="cm-week-top">' +
@@ -171,6 +178,8 @@
     $("wFocus").value = week ? (week.focus || "") : "";
     $("wActivities").value = week ? (week.activities || "") : "";
     $("wPhonics").value = week ? (week.phonics || "") : "";
+    $("wQuestions").value = week ? (week.questions || "") : "";
+    $("wQuestionsField").hidden = !questionsOn();
     $("wNotes").value = week ? (week.notes || "") : "";
     $("weekFormMsg").textContent = "";
     $("weekSaveBtn").disabled = false;
@@ -190,9 +199,10 @@
       focus: $("wFocus").value.trim(),
       activities: $("wActivities").value.trim(),
       phonics: $("wPhonics").value.trim(),
+      questions: questionsOn() ? $("wQuestions").value.trim() : "",
       notes: $("wNotes").value.trim()
     };
-    if (!fields.focus && !fields.activities && !fields.phonics && !fields.notes) {
+    if (!fields.focus && !fields.activities && !fields.phonics && !fields.questions && !fields.notes) {
       msg.textContent = "Add a focus or some detail first."; return;
     }
     $("weekSaveBtn").disabled = true;
@@ -205,6 +215,7 @@
       method = "POST";
       payload = { lesson_id: state.weekLessonId, author: me, focus: fields.focus, activities: fields.activities, phonics: fields.phonics, notes: fields.notes };
     }
+    if (questionsOn()) payload.questions = fields.questions;
     LuanaAuth.api("curriculum-week", { method: method, body: JSON.stringify(payload) })
       .then(function (res) {
         if (res && res.error) throw new Error(res.error);
