@@ -16,17 +16,19 @@
     name: function () { return get(NAME_KEY) || "anonymous"; },
     isLoggedIn: function () { return !!get(TOKEN_KEY); },
 
-    // Attempt login. Resolves true on success, false on wrong password.
+    // Attempt login. Resolves { ok: true } on success, or
+    // { ok: false, error: "..." } with the server's message (wrong password,
+    // too many attempts, ...) on failure.
     login: function (password, name) {
       return fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password: password })
       }).then(function (r) { return r.json(); }).then(function (res) {
-        if (!res.token) return false;
+        if (!res.token) return { ok: false, error: res.error || "That password didn't work." };
         set(TOKEN_KEY, res.token);
         set(NAME_KEY, name);
-        return true;
+        return { ok: true };
       });
     },
 

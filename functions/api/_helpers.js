@@ -45,6 +45,18 @@ async function hmac(secret, message) {
   return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Constant-time string comparison for secrets (e.g. the staff password).
+// Both sides are hashed first so neither length nor prefix timing leaks.
+export async function safeEqual(a, b) {
+  const [ha, hb] = await Promise.all([sha256hex(a), sha256hex(b)]);
+  return timingSafeEqual(ha, hb);
+}
+
+async function sha256hex(s) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(s)));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function timingSafeEqual(a, b) {
   if (a.length !== b.length) return false;
   let out = 0;

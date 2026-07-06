@@ -21,7 +21,8 @@
   function monthName(m) { var n = parseInt(m, 10); return n >= 1 && n <= 12 ? MONTHS[n - 1] : ""; }
   function monthShort(m) { var name = monthName(m); return name ? name.slice(0, 3) : ""; }
 
-  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  // Escapes quotes too — esc() output is also used inside HTML attributes.
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
   function timeAgo(ts) {
     var m = Math.round((Date.now() - ts) / 60000);

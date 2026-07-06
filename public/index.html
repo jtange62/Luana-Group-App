@@ -131,9 +131,9 @@
     err.hidden = true;
     if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
     $("enterBtn").disabled = true;
-    LuanaAuth.login(pw, name).then(function (ok) {
+    LuanaAuth.login(pw, name).then(function (res) {
       $("enterBtn").disabled = false;
-      if (!ok) { err.textContent = "That password didn't work."; err.hidden = false; return; }
+      if (!res.ok) { err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error; err.hidden = false; return; }
       showHub();
     }).catch(function () {
       $("enterBtn").disabled = false;

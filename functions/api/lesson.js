@@ -76,7 +76,7 @@ export async function onRequestPatch({ request, env }) {
   let body;
   try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
 
-  const { id, author } = body;
+  const { id } = body;
   if (!id) return json({ error: "missing id" }, 400);
   const title = clean(body.title, 200);
   if (!title) return json({ error: "title required" }, 400);

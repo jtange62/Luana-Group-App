@@ -11,7 +11,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var chosen = []; // { file, url } for the compose preview cluster
 
-  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  // Escapes quotes too — esc() output is also used inside HTML attributes.
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
   function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
 
   function timeAgo(ts) {

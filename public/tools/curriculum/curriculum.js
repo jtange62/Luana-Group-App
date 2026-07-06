@@ -24,7 +24,8 @@
     weekLessonId: null  // theme the week being added/edited belongs to
   };
 
-  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  // Escapes quotes too — esc() output is also used inside HTML attributes.
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
   // Split a free-text field into items on newlines or commas.
   function items(text) {

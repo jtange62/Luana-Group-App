@@ -1,5 +1,7 @@
--- Luana Idea Board — database schema
--- Run this once against your D1 database (see SETUP.md).
+-- Luana Group App — database schema
+-- Canonical schema for a fresh install: run this once against your D1 database
+-- (see SETUP.md). It already includes everything in migrations/, which only
+-- matter for upgrading a database that predates them.
 
 CREATE TABLE IF NOT EXISTS posts (
   id          TEXT PRIMARY KEY,
@@ -103,8 +105,32 @@ CREATE TABLE IF NOT EXISTS students (
   program     TEXT NOT NULL,   -- Preschool|Kinder|After School|Summer School
   days        TEXT,            -- weekdays they attend, e.g. "3,5" (0=Sun..6=Sat); empty = none; "x" = one-off trial
   active      INTEGER DEFAULT 1,
-  created_at  INTEGER NOT NULL
+  created_at  INTEGER NOT NULL,
+  -- Profile (migration 004). Age is computed from birthday, not stored.
+  birthday    TEXT,            -- "YYYY-MM-DD"
+  guardian    TEXT,            -- parent / guardian name
+  phone       TEXT,
+  email       TEXT,
+  allergies   TEXT,            -- allergies / medical notes
+  emergency   TEXT,            -- emergency contact
+  notes       TEXT,
+  enrolled_at TEXT,            -- "YYYY-MM-DD" start date
+  -- Photo consent flag (migration 005): 1 = OK to post pictures, 0 = do not post.
+  photo_ok    INTEGER DEFAULT 0,
+  -- Summer school enrollment (migration 006). Only used when program = 'Summer School'.
+  ss_weeks    TEXT,            -- comma-separated: "1", "1,2", "1,2,3"
+  ss_type     TEXT             -- "internal" or "external"
 );
+
+-- One-time trial visits (migration 003). Not linked to the students roster.
+CREATE TABLE IF NOT EXISTS trials (
+  id         TEXT PRIMARY KEY,
+  name       TEXT NOT NULL,
+  program    TEXT NOT NULL,
+  date       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_trials_date ON trials (date);
 
 CREATE TABLE IF NOT EXISTS staff (
   id          TEXT PRIMARY KEY,
@@ -118,7 +144,7 @@ CREATE TABLE IF NOT EXISTS attendance (
   id          TEXT PRIMARY KEY,
   student_id  TEXT NOT NULL,
   date        TEXT NOT NULL,   -- "YYYY-MM-DD"
-  status      TEXT NOT NULL,   -- present|absent|late
+  status      TEXT NOT NULL,   -- present|absent|late|trial|makeup|other
   marked_by   TEXT,
   created_at  INTEGER NOT NULL,
   UNIQUE (student_id, date)
@@ -144,6 +170,13 @@ CREATE TABLE IF NOT EXISTS submission_files (
   type          TEXT,
   created_at    INTEGER NOT NULL
 );
+
+-- Failed login attempts, for rate limiting the shared password (migration 011).
+CREATE TABLE IF NOT EXISTS login_attempts (
+  ip          TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_attempts ON login_attempts (ip, created_at);
 
 CREATE INDEX IF NOT EXISTS idx_events_start ON events (start_date);
 CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions (status, created_at DESC);

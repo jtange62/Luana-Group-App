@@ -16,7 +16,8 @@
   var $ = function (id) { return document.getElementById(id); };
 
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
-  function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  // Escapes quotes too — esc() output is also used inside HTML attributes.
+  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
   function timeAgo(ts) {
     var m = Math.round((Date.now() - ts) / 60000);
