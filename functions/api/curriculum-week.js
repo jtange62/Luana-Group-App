@@ -67,8 +67,8 @@ export async function onRequestPatch({ request, env }) {
   return json({ ok: true });
 }
 
-// Delete a week. Weeks are lightweight sub-items of a shared theme, so any
-// signed-in teacher may remove one.
+// Delete a week and its retro comments. Weeks are lightweight sub-items of a
+// shared theme, so any signed-in teacher may remove one.
 export async function onRequestDelete({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
@@ -78,6 +78,9 @@ export async function onRequestDelete({ request, env }) {
   const id = clean(body.id, 60);
   if (!id) return json({ error: "missing id" }, 400);
 
-  await env.DB.prepare("DELETE FROM curriculum_weeks WHERE id = ?").bind(id).run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM week_comments WHERE week_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM curriculum_weeks WHERE id = ?").bind(id),
+  ]);
   return json({ ok: true });
 }

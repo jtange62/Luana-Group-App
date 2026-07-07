@@ -69,6 +69,28 @@
 .cm-week-body .cm-field{margin-top:8px;}
 .cm-week-body .cm-list li,.cm-week-body .cm-text{font-size:13.5px;}
 
+/* Retro notes on a week (adapted from the ideas-board comments). */
+.cm-comments{margin-top:10px;padding-top:8px;border-top:0.5px solid var(--line);}
+.cm-comment{display:flex;align-items:baseline;gap:6px;font-size:13px;line-height:1.5;
+  padding-left:8px;border-left:2px solid var(--line);margin-bottom:6px;}
+.cm-comment b{font-weight:600;color:var(--ink);white-space:nowrap;}
+.cm-comment-text{color:var(--muted);flex:1;min-width:0;word-break:break-word;}
+.cm-comment-when{font-size:11px;color:var(--hint);white-space:nowrap;}
+.cm-comment-del{border:none;background:transparent;color:var(--muted);
+  font-size:12px;padding:1px 4px;border-radius:6px;line-height:1;flex-shrink:0;}
+.cm-comment-del:hover{background:rgba(0,0,0,0.06);color:var(--ink);}
+.cm-reply-toggle{background:none;border:none;color:var(--muted);font-size:12.5px;
+  padding:2px 0;display:flex;align-items:center;gap:5px;}
+.cm-reply-toggle:hover{color:var(--teal-mid);}
+.cm-reply-box{display:none;gap:7px;margin-top:8px;}
+.cm-reply-box.open{display:flex;}
+.cm-reply-box input{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);
+  padding:8px 11px;background:#fff;color:var(--ink);font-size:13.5px;}
+.cm-reply-box input:focus{outline:none;border-color:var(--teal-mid);box-shadow:0 0 0 3px var(--teal-soft);}
+.cm-reply-box button{border:0.5px solid var(--line);background:var(--card);color:var(--teal-mid);
+  border-radius:var(--radius-sm);padding:0 14px;font-size:13px;font-weight:600;}
+.cm-reply-box button:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
+
 /* Edit modal */
 .modal{position:fixed;inset:0;z-index:100;background:rgba(20,32,30,0.45);
   display:flex;align-items:flex-start;justify-content:center;padding:24px 14px;overflow-y:auto;}

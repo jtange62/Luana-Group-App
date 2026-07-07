@@ -58,6 +58,18 @@
   // Escapes quotes too — esc() output is also used inside HTML attributes.
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
 
+  // Copied from ideas.js — keep in sync.
+  function timeAgo(ts) {
+    var m = Math.round((Date.now() - ts) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return m + "m ago";
+    var h = Math.round(m / 60);
+    if (h < 24) return h + "h ago";
+    var d = Math.round(h / 24);
+    if (d < 7) return d + "d ago";
+    return new Date(ts).toLocaleDateString();
+  }
+
   // Split a free-text field into items on newlines or commas.
   function items(text) {
     return String(text || "").split(/[\n,]/).map(function (t) { return t.trim(); }).filter(Boolean);
@@ -175,6 +187,20 @@
       parts.push(fieldBlock("❓", "Questions", '<ul class="cm-list">' + qHtml + "</ul>"));
     }
     if (w.notes) parts.push(fieldBlock("📝", "Notes", '<p class="cm-text">' + esc(w.notes) + "</p>"));
+
+    // Retro notes: what worked / what didn't. Thread is always visible; the
+    // reply box opens on demand.
+    var cms = w.comments || [];
+    var commentsHtml = '<div class="cm-comments" data-week="' + esc(w.id) + '">' +
+      cms.map(function (c) {
+        return '<div class="cm-comment"><b>' + esc(c.author) + '</b> <span class="cm-comment-text">' + esc(c.text) + "</span>" +
+          '<span class="cm-comment-when">' + esc(timeAgo(Number(c.created_at))) + "</span>" +
+          '<button class="cm-comment-del" data-id="' + esc(c.id) + '" title="Delete">✕</button></div>';
+      }).join("") +
+      '<button class="cm-reply-toggle">💬 ' + (cms.length ? cms.length + (cms.length === 1 ? " note" : " notes") + " — add one" : "add a retro note") + "</button>" +
+      '<div class="cm-reply-box"><input type="text" maxlength="2000" placeholder="what worked / what didn\'t…" /><button>Send</button></div>' +
+      "</div>";
+
     return '<div class="cm-week" data-week="' + esc(w.id) + '">' +
       '<div class="cm-week-top">' +
         '<span class="cm-week-no">Week ' + w.week_no + "</span>" +
@@ -185,6 +211,7 @@
         "</span>" +
       "</div>" +
       (parts.length ? '<div class="cm-week-body">' + parts.join("") + "</div>" : "") +
+      commentsHtml +
       "</div>";
   }
 
@@ -217,6 +244,38 @@
     });
     weeksEl.querySelectorAll(".cm-week-del").forEach(function (btn) {
       btn.onclick = function () { deleteWeek(btn.getAttribute("data-week")); };
+    });
+
+    // Retro-note threads (one .cm-comments per week).
+    weeksEl.querySelectorAll(".cm-reply-toggle").forEach(function (btn) {
+      btn.onclick = function () {
+        var box = btn.parentElement.querySelector(".cm-reply-box");
+        box.classList.toggle("open");
+        if (box.classList.contains("open")) box.querySelector("input").focus();
+      };
+    });
+    weeksEl.querySelectorAll(".cm-reply-box button").forEach(function (btn) {
+      btn.onclick = function () {
+        var input = btn.parentElement.querySelector("input");
+        var txt = input.value.trim();
+        if (!txt) return;
+        input.disabled = true;
+        var weekId = btn.closest(".cm-comments").getAttribute("data-week");
+        LuanaAuth.api("week-comment", { method: "POST", body: JSON.stringify({ week_id: weekId, author: me, text: txt }) })
+          .then(function (res) {
+            if (res && res.error) throw new Error(res.error);
+            return loadWeeks();
+          })
+          .catch(function () { input.disabled = false; });
+      };
+    });
+    weeksEl.querySelectorAll(".cm-comment-del").forEach(function (btn) {
+      btn.onclick = function () {
+        if (!confirm("Delete this comment?")) return;
+        LuanaAuth.api("week-comment", { method: "DELETE", body: JSON.stringify({ id: btn.getAttribute("data-id") }) })
+          .then(function () { return loadWeeks(); })
+          .catch(function () {});
+      };
     });
   }
 

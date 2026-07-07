@@ -84,6 +84,16 @@ CREATE TABLE IF NOT EXISTS curriculum_weeks (
 );
 CREATE INDEX IF NOT EXISTS idx_curriculum_weeks_lesson ON curriculum_weeks (lesson_id, week_no);
 
+-- Teacher retro notes on a curriculum week (migration 013).
+CREATE TABLE IF NOT EXISTS week_comments (
+  id          TEXT PRIMARY KEY,
+  week_id     TEXT NOT NULL,     -- curriculum_weeks.id
+  author      TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  created_at  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_week_comments_week ON week_comments (week_id);
+
 CREATE TABLE IF NOT EXISTS post_files (
   id       TEXT PRIMARY KEY,
   post_id  TEXT NOT NULL,
