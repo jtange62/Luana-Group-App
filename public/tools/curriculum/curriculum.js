@@ -22,6 +22,7 @@
     editingMonth: null, // "1".."12" for the card being edited
     editingWeekId: null,// week id when editing an existing week
     weekLessonId: null, // theme the week being added/edited belongs to
+    copyLessonId: null, // theme being copied to other programs
     view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
     date: null,         // "YYYY-MM-DD" shown in the day view (set below)
     blocks: [],         // daily-rhythm template blocks for state.program
@@ -148,8 +149,10 @@
         var parts = [];
         parts.push('<div class="cm-theme">' +
           '<span class="cm-theme-name">' + esc(l.title) + "</span>" +
-          '<a class="cm-lib" href="/tools/library/?lesson=' + encodeURIComponent(l.id) + '" title="Open in Lesson library">📚 resources</a>' +
-          "</div>");
+          '<span class="cm-theme-links">' +
+            '<button class="cm-copy" title="Copy to other programs">⧉ copy</button>' +
+            '<a class="cm-lib" href="/tools/library/?lesson=' + encodeURIComponent(l.id) + '" title="Open in Lesson library">📚 resources</a>' +
+          "</span></div>");
         if (l.song) parts.push(fieldBlock("🎵", "Song", '<p class="cm-text">' + esc(l.song) + "</p>"));
         if (l.vocab) {
           var vocabHtml = items(l.vocab).map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("");
@@ -167,6 +170,8 @@
       card.innerHTML = head + '<div class="cm-body">' + bodyHtml + "</div>";
       (function (month, lesson) {
         card.querySelector(".cm-edit").onclick = function (e) { e.stopPropagation(); openEdit(month, lesson); };
+        var copyBtn = card.querySelector(".cm-copy");
+        if (copyBtn) copyBtn.onclick = function (e) { e.stopPropagation(); openCopy(lesson); };
         card.onclick = function () { openEdit(month, lesson); };
         wireWeeks(card, lesson);
       })(m, l);
@@ -337,6 +342,81 @@
     LuanaAuth.api("curriculum-week", { method: "DELETE", body: JSON.stringify({ id: id }) })
       .then(function () { return loadWeeks(); })
       .catch(function () {});
+  }
+
+  // ---------- Copy theme to other programs ----------
+  function openCopy(lesson) {
+    state.copyLessonId = lesson.id;
+    $("copyFormTitle").textContent = 'Copy "' + lesson.title + '" — ' + MONTHS[Number(lesson.month) - 1];
+    var wkCount = weeksFor(lesson.id).length;
+    $("copyHint").textContent = "Copies the theme" +
+      (wkCount ? " and its " + wkCount + "-week plan" : "") + " to:";
+    var wrap = $("copyTargets"); wrap.innerHTML = "";
+    PROGRAMS.filter(function (p) { return p !== lesson.program; }).forEach(function (p) {
+      var taken = !!themeFor(p, Number(lesson.month));
+      var row = document.createElement("label");
+      row.className = "copy-target" + (taken ? " taken" : "");
+      row.innerHTML = '<input type="checkbox" value="' + esc(p) + '"' + (taken ? " disabled" : "") + " /> " +
+        esc(p) + (taken ? ' <span class="copy-taken">already has a theme</span>' : "");
+      wrap.appendChild(row);
+    });
+    $("copyFormMsg").textContent = "";
+    $("copyGoBtn").disabled = false;
+    $("copyModal").hidden = false;
+  }
+
+  function closeCopyModal() { $("copyModal").hidden = true; state.copyLessonId = null; }
+
+  // Create a copy of the theme (and its weeks, in order) under each chosen
+  // program. Runs sequentially so week auto-numbering stays in order.
+  function doCopy() {
+    var lesson = state.lessons.filter(function (l) { return l.id === state.copyLessonId; })[0];
+    var msg = $("copyFormMsg");
+    if (!lesson) { closeCopyModal(); return; }
+    var targets = [];
+    $("copyTargets").querySelectorAll("input:checked").forEach(function (i) { targets.push(i.value); });
+    if (!targets.length) { msg.textContent = "Pick at least one program."; return; }
+    $("copyGoBtn").disabled = true;
+    msg.textContent = "Copying…";
+
+    var wks = weeksFor(lesson.id);
+    var t = LuanaAuth.token();
+    var chain = Promise.resolve();
+    targets.forEach(function (p) {
+      chain = chain.then(function () {
+        // Lesson create is multipart (same as save()).
+        var fd = new FormData();
+        fd.append("title", lesson.title || "");
+        fd.append("author", me);
+        fd.append("program", p);
+        fd.append("month", lesson.month || "");
+        fd.append("song", lesson.song || "");
+        fd.append("vocab", lesson.vocab || "");
+        fd.append("activities", lesson.activities || "");
+        fd.append("phonics", lesson.phonics || "");
+        return fetch("/api/lesson", {
+          method: "POST",
+          headers: t ? { Authorization: "Bearer " + t } : {},
+          body: fd
+        }).then(function (r) { return r.json(); }).then(function (res) {
+          if (!res || !res.id) throw new Error("copy failed");
+          var wchain = Promise.resolve();
+          wks.forEach(function (w) {
+            wchain = wchain.then(function () {
+              return LuanaAuth.api("curriculum-week", { method: "POST", body: JSON.stringify({
+                lesson_id: res.id, author: me,
+                focus: w.focus || "", activities: w.activities || "",
+                phonics: w.phonics || "", questions: w.questions || "", notes: w.notes || ""
+              }) });
+            });
+          });
+          return wchain;
+        });
+      });
+    });
+
+    chain.then(function () { closeCopyModal(); return loadAll(); })
+      .catch(function () { msg.textContent = "Couldn't copy. Try again."; $("copyGoBtn").disabled = false; });
   }
 
   // ---------- Day view ----------
@@ -676,6 +756,10 @@
   $("weekCancelBtn").onclick = closeWeekModal;
   $("weekSaveBtn").onclick = saveWeek;
   $("weekModal").onclick = function (e) { if (e.target === $("weekModal")) closeWeekModal(); };
+
+  $("copyCancelBtn").onclick = closeCopyModal;
+  $("copyGoBtn").onclick = doCopy;
+  $("copyModal").onclick = function (e) { if (e.target === $("copyModal")) closeCopyModal(); };
 
   document.querySelectorAll("#viewToggle .vt-btn").forEach(function (b) {
     b.onclick = function () { switchView(b.getAttribute("data-view")); };

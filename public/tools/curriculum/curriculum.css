@@ -32,8 +32,21 @@
 .cm-theme{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;
   padding-bottom:8px;border-bottom:0.5px solid var(--line);margin-bottom:2px;}
 .cm-theme-name{font-weight:600;font-size:17px;color:var(--ink);}
+.cm-theme-links{display:flex;align-items:baseline;gap:12px;flex-shrink:0;}
 .cm-lib{font-size:12px;color:var(--teal-mid);text-decoration:none;white-space:nowrap;}
 .cm-lib:hover{text-decoration:underline;}
+.cm-copy{border:none;background:none;padding:0;font-size:12px;color:var(--teal-mid);white-space:nowrap;}
+.cm-copy:hover{text-decoration:underline;}
+
+/* Copy-theme modal */
+.copy-hint{margin:0 0 4px;font-size:13px;color:var(--muted);}
+.copy-target{display:flex;align-items:center;gap:9px;padding:10px 2px;font-size:14.5px;
+  color:var(--ink);border-bottom:0.5px solid var(--line);cursor:pointer;}
+.copy-target:last-child{border-bottom:none;}
+/* Beats .modal-card input{width:100%} (that rule is later in the file). */
+.copy-target input[type=checkbox]{width:16px;height:16px;flex-shrink:0;accent-color:var(--teal-mid);}
+.copy-target.taken{color:var(--hint);cursor:default;}
+.copy-taken{font-size:11.5px;color:var(--hint);font-style:italic;}
 
 .cm-field{margin-top:10px;}
 .cm-field-label{display:block;font-size:11px;font-weight:600;color:var(--hint);
