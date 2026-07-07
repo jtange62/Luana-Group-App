@@ -42,6 +42,32 @@ Rate limit caution: `/api/login` returns 429 after 5 *failed* attempts from one 
 (`login_attempts` table). Successful logins don't count, so always send the correct password from
 `.dev.vars` rather than guessing.
 
+## Driving the UI headlessly
+
+Playwright is available via npx (no repo dependency; the repo has no package.json — keep it
+that way). Install `playwright-core` in the session scratchpad and launch the system Chrome:
+
+```js
+const { chromium } = require("playwright-core");
+const browser = await chromium.launch({
+  executablePath: "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  headless: true,
+});
+const page = await browser.newPage({ viewport: { width: 480, height: 900 } });
+await page.addInitScript(([t]) => {
+  localStorage.setItem("luana_token", t);
+  localStorage.setItem("luana_name", "ui-tester");
+}, [tokenFromApiLogin]);
+```
+
+Gotchas: modals toggle the `hidden` attribute, so wait for close with
+`waitForSelector("#modal[hidden]", { state: "attached" })` (default waits for visible and
+times out); native `confirm()` dialogs need `page.once("dialog", d => d.accept())`;
+`<input type=date>` needs `page.fill` + `page.dispatchEvent(sel, "change")`.
+
+Clean up any rows you seed (the local D1 persists between runs):
+`npx wrangler d1 execute luana-board --local --command "DELETE FROM ... WHERE author='tester'"`.
+
 ## Never test against production
 
 The deployed site (main branch auto-deploys) uses the real staff password and real data. All

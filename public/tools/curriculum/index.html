@@ -32,9 +32,28 @@
 
   <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
 
+  <div id="viewToggle" class="view-toggle" role="tablist" aria-label="View">
+    <button class="vt-btn active" data-view="plan">🗓️ Plan</button>
+    <button class="vt-btn" data-view="day">☀️ Day</button>
+  </div>
+
   <p id="progHint" class="prog-hint"></p>
 
   <main id="months" class="month-list" aria-live="polite"></main>
+
+  <!-- Day view: the program's daily rhythm assembled for one date. -->
+  <section id="dayView" aria-live="polite" hidden>
+    <div class="day-nav">
+      <button id="dayPrev" class="day-nav-btn" aria-label="Previous day">‹</button>
+      <input id="dayDate" type="date" />
+      <button id="dayNext" class="day-nav-btn" aria-label="Next day">›</button>
+      <button id="dayToday" class="btn-ghost btn-sm">Today</button>
+      <button id="rhythmEditBtn" class="cm-edit">✎ Edit rhythm</button>
+    </div>
+    <p id="dayContext" class="prog-hint"></p>
+    <div id="dayEvents"></div>
+    <div id="dayBlocks"></div>
+  </section>
 
   <div id="loading" class="loading">Loading…</div>
 
@@ -80,6 +99,56 @@
         <span id="weekFormMsg" class="form-msg"></span>
         <button id="weekCancelBtn" class="btn-ghost">Cancel</button>
         <button id="weekSaveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- Add / edit a time block in the daily rhythm -->
+  <div id="blockModal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="blockFormTitle" class="form-heading">Add block</p>
+      <label class="field-label">Label</label>
+      <input id="bLabel" type="text" placeholder="e.g. Circle Time" maxlength="200" />
+      <div class="time-row">
+        <div>
+          <label class="field-label">Starts</label>
+          <input id="bStart" type="time" />
+        </div>
+        <div>
+          <label class="field-label">Ends (optional)</label>
+          <input id="bEnd" type="time" />
+        </div>
+      </div>
+      <label class="field-label">Fills with…</label>
+      <select id="bSource">
+        <option value="">Nothing — just the label</option>
+        <option value="week_focus">Week focus</option>
+        <option value="week_activities">Week activities</option>
+        <option value="week_phonics">Week phonics</option>
+        <option value="week_questions">Week questions</option>
+        <option value="month_theme">Month theme</option>
+        <option value="month_song">Song of the month</option>
+        <option value="month_vocab">Month vocab</option>
+        <option value="month_activities">Month activities</option>
+        <option value="month_phonics">Month phonics</option>
+      </select>
+      <div class="form-actions">
+        <span id="blockFormMsg" class="form-msg"></span>
+        <button id="blockCancelBtn" class="btn-ghost">Cancel</button>
+        <button id="blockSaveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- One-off note on a block for the selected date -->
+  <div id="noteModal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="noteFormTitle" class="form-heading">Note</p>
+      <textarea id="nText" rows="3" placeholder="e.g. bring shells for beach week"></textarea>
+      <div class="form-actions">
+        <span id="noteFormMsg" class="form-msg"></span>
+        <button id="noteRemoveBtn" class="btn-ghost" hidden>Remove</button>
+        <button id="noteCancelBtn" class="btn-ghost">Cancel</button>
+        <button id="noteSaveBtn" class="btn-primary btn-sm">Save</button>
       </div>
     </div>
   </div>
