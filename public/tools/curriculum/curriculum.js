@@ -780,5 +780,19 @@
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   renderProgramTabs();
-  loadAll();
+  // On first load, jump to the current month — teachers land mid-year and
+  // shouldn't scroll past months of cards every visit. Explicitly load the web
+  // fonts first (fonts.ready can resolve before they even start loading) so
+  // card heights — and therefore the target position — are final.
+  var fontsReady = document.fonts && document.fonts.load
+    ? Promise.all([document.fonts.load("500 18px Fredoka"), document.fonts.load("400 14px Inter")]).catch(function () {})
+    : Promise.resolve();
+  Promise.all([loadAll(), fontsReady]).then(function () {
+    if (state.view !== "plan") return;
+    var cur = document.querySelector(".month-card.is-current");
+    if (!cur) return;
+    var bar = document.querySelector(".topbar");
+    var y = cur.getBoundingClientRect().top + window.pageYOffset - ((bar ? bar.offsetHeight : 0) + 10);
+    if (y > 0) window.scrollTo({ top: y, behavior: "smooth" });
+  });
 })();
