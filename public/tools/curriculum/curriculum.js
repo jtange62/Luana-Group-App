@@ -29,6 +29,8 @@
     copyLessonId: null, // theme being copied to other programs
     dayThemeWeekId: null, // week whose daily sub-theme is being edited
     editingDayDate: null, // original date of the day row being edited
+    openDays: {},       // week ids with the daily-themes section expanded
+    openVocab: {},      // lesson ids with the vocab chips expanded
     view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
     date: null,         // "YYYY-MM-DD" shown in the day view (set below)
     blocks: [],         // daily-rhythm template blocks for state.program
@@ -180,8 +182,14 @@
           "</span></div>");
         if (l.song) parts.push(fieldBlock("🎵", "Song", '<p class="cm-text">' + esc(l.song) + "</p>"));
         if (l.vocab) {
-          var vocabHtml = items(l.vocab).map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("");
-          parts.push(fieldBlock("🔤", "Vocab", '<div class="cm-chips">' + vocabHtml + "</div>"));
+          // Vocab lists get long — collapsed to a count until tapped.
+          var vocabItems = items(l.vocab);
+          var vocabOpen = !!state.openVocab[l.id];
+          var vocabHtml = vocabItems.map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("");
+          parts.push('<div class="cm-field">' +
+            '<button class="cm-toggle" data-toggle="vocab">🔤 Vocab (' + vocabItems.length + ') <span class="cm-toggle-arrow">' + (vocabOpen ? "▾" : "▸") + "</span></button>" +
+            (vocabOpen ? '<div class="cm-chips">' + vocabHtml + "</div>" : "") +
+            "</div>");
         }
         if (l.activities) {
           var actHtml = items(l.activities).map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("");
@@ -197,6 +205,12 @@
         card.querySelector(".cm-edit").onclick = function (e) { e.stopPropagation(); openEdit(month, lesson); };
         var copyBtn = card.querySelector(".cm-copy");
         if (copyBtn) copyBtn.onclick = function (e) { e.stopPropagation(); openCopy(lesson); };
+        var vocabToggle = card.querySelector('.cm-toggle[data-toggle="vocab"]');
+        if (vocabToggle) vocabToggle.onclick = function (e) {
+          e.stopPropagation();
+          state.openVocab[lesson.id] = !state.openVocab[lesson.id];
+          render();
+        };
         card.onclick = function () { openEdit(month, lesson); };
         wireWeeks(card, lesson);
       })(m, l);
@@ -250,12 +264,14 @@
             '<button class="cm-day-del" data-date="' + esc(dr.date) + '" title="Delete">✕</button>' +
           "</span></div>";
       }).join("");
+      // Collapsed to a count until tapped — five rows per week adds up fast.
+      var daysOpen = !!state.openDays[w.id];
       daysHtml = '<div class="cm-days">' +
         '<div class="cm-days-head">' +
-          '<span class="cm-field-label">🌞 Daily themes</span>' +
+          '<button class="cm-days-toggle cm-toggle">🌞 Daily themes (' + (w.days || []).length + ') <span class="cm-toggle-arrow">' + (daysOpen ? "▾" : "▸") + "</span></button>" +
           '<button class="cm-day-add">＋ Day</button>' +
         "</div>" +
-        (dayRows || '<p class="cm-week-none">No day themes yet — add one per teaching day.</p>') +
+        (daysOpen ? (dayRows || '<p class="cm-week-none">No day themes yet — add one per teaching day.</p>') : "") +
         "</div>";
     }
 
@@ -311,6 +327,14 @@
       var id = el.closest(".cm-week").getAttribute("data-week");
       return weeksFor(lesson.id).filter(function (x) { return x.id === id; })[0];
     }
+    weeksEl.querySelectorAll(".cm-days-toggle").forEach(function (btn) {
+      btn.onclick = function () {
+        var w = weekOf(btn);
+        if (!w) return;
+        state.openDays[w.id] = !state.openDays[w.id];
+        render();
+      };
+    });
     weeksEl.querySelectorAll(".cm-day-add").forEach(function (btn) {
       btn.onclick = function () { var w = weekOf(btn); if (w) openDayTheme(w, null); };
     });
@@ -439,6 +463,7 @@
   function openDayTheme(week, day) {
     state.dayThemeWeekId = week.id;
     state.editingDayDate = day ? day.date : null;
+    state.openDays[week.id] = true; // show the result after saving
     $("dayThemeFormTitle").textContent = (day ? "Edit day theme" : "Add day theme") + " — Week " + week.week_no;
     $("dtDate").value = day ? day.date : nextDayDate(week);
     $("dtTheme").value = day ? (day.subtheme || "") : "";

@@ -82,6 +82,13 @@
 .cm-week-body .cm-field{margin-top:8px;}
 .cm-week-body .cm-list li,.cm-week-body .cm-text{font-size:13.5px;}
 
+/* Collapsible field headers (vocab chips, daily themes). */
+.cm-toggle{border:none;background:none;padding:0;display:flex;align-items:center;gap:5px;
+  font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.04em;text-transform:uppercase;
+  margin-bottom:4px;}
+.cm-toggle:hover{color:var(--teal-mid);}
+.cm-toggle-arrow{font-size:10px;line-height:1;}
+
 /* Daily sub-themes within a week (Summer School). */
 .cm-week-dates{font-size:11px;font-weight:600;color:var(--teal-mid);background:var(--teal-soft);
   padding:2px 8px;border-radius:999px;white-space:nowrap;}
