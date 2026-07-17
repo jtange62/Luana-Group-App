@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS week_days (
   date        TEXT NOT NULL,     -- "YYYY-MM-DD"
   subtheme    TEXT,              -- e.g. "Pirates"
   vocab       TEXT,              -- target vocab, comma/newline separated
+  activities  TEXT,              -- that day's activities (migration 016)
   author      TEXT,
   created_at  INTEGER NOT NULL,
   UNIQUE (week_id, date)

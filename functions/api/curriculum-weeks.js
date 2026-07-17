@@ -32,7 +32,7 @@ export async function onRequestGet({ request, env }) {
   const daysByWeek = {};
   for (const d of daysRes.results || []) {
     (daysByWeek[d.week_id] = daysByWeek[d.week_id] || []).push({
-      id: d.id, date: d.date, subtheme: d.subtheme, vocab: d.vocab,
+      id: d.id, date: d.date, subtheme: d.subtheme, vocab: d.vocab, activities: d.activities,
     });
   }
   const weeks = (weeksRes.results || []).map((w) => ({

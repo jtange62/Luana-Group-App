@@ -19,16 +19,17 @@ export async function onRequestPost({ request, env }) {
   if (!date) return json({ error: "valid date required" }, 400);
   const subtheme = clean(body.subtheme, 500) || null;
   const vocab = clean(body.vocab, 2000) || null;
-  if (!subtheme && !vocab) return json({ error: "empty" }, 400);
+  const activities = clean(body.activities, 4000) || null;
+  if (!subtheme && !vocab && !activities) return json({ error: "empty" }, 400);
 
   const week = await env.DB.prepare("SELECT id FROM curriculum_weeks WHERE id = ?").bind(weekId).first();
   if (!week) return json({ error: "week not found" }, 404);
 
   await env.DB.prepare(
-    "INSERT INTO week_days (id, week_id, date, subtheme, vocab, author, created_at) VALUES (?,?,?,?,?,?,?) " +
-    "ON CONFLICT(week_id, date) DO UPDATE SET subtheme = excluded.subtheme, vocab = excluded.vocab, author = excluded.author"
+    "INSERT INTO week_days (id, week_id, date, subtheme, vocab, activities, author, created_at) VALUES (?,?,?,?,?,?,?,?) " +
+    "ON CONFLICT(week_id, date) DO UPDATE SET subtheme = excluded.subtheme, vocab = excluded.vocab, activities = excluded.activities, author = excluded.author"
   ).bind(
-    crypto.randomUUID(), weekId, date, subtheme, vocab,
+    crypto.randomUUID(), weekId, date, subtheme, vocab, activities,
     clean(body.author, 60) || "anonymous",
     Date.now()
   ).run();

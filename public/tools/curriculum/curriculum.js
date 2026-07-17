@@ -31,6 +31,7 @@
     editingDayDate: null, // original date of the day row being edited
     openDays: {},       // week ids with the daily-themes section expanded
     openVocab: {},      // lesson ids with the vocab chips expanded
+    openDayField: {},   // "weekId|date|kind" keys with a day sub-section expanded
     view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
     date: null,         // "YYYY-MM-DD" shown in the day view (set below)
     blocks: [],         // daily-rhythm template blocks for state.program
@@ -248,21 +249,40 @@
     // Daily sub-themes (Summer School): one row per day with theme + vocab.
     var daysHtml = "";
     if (dayThemesOn()) {
+      // A collapsible sub-section (activities / vocab) inside one day row.
+      function daySection(dr, kind, icon, label, inner, count) {
+        var key = w.id + "|" + dr.date + "|" + kind;
+        var open = !!state.openDayField[key];
+        return '<div class="cm-day-sec">' +
+          '<button class="cm-toggle cm-day-sec-toggle" data-key="' + esc(key) + '">' +
+            icon + " " + label + " (" + count + ') <span class="cm-toggle-arrow">' + (open ? "▾" : "▸") + "</span></button>" +
+          (open ? inner : "") +
+          "</div>";
+      }
       var dayRows = (w.days || []).map(function (dr) {
         var dd = parseYMD(dr.date);
-        var chips = dr.vocab
-          ? '<div class="cm-chips">' + items(dr.vocab).map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("") + "</div>"
-          : "";
+        var secs = "";
+        if (dr.activities) {
+          var acts = items(dr.activities);
+          secs += daySection(dr, "acts", "🎨", "Activities",
+            '<ul class="cm-list">' + acts.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>", acts.length);
+        }
+        if (dr.vocab) {
+          var words = items(dr.vocab);
+          secs += daySection(dr, "vocab", "🔤", "Vocab",
+            '<div class="cm-chips">' + words.map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("") + "</div>", words.length);
+        }
         return '<div class="cm-day">' +
-          '<span class="cm-day-date">' + WEEKDAYS[dd.getDay()] + " " + shortDate(dr.date) + "</span>" +
-          '<div class="cm-day-main">' +
+          '<div class="cm-day-top">' +
+            '<span class="cm-day-date">' + WEEKDAYS[dd.getDay()] + " " + shortDate(dr.date) + "</span>" +
             (dr.subtheme ? '<span class="cm-day-theme">' + esc(dr.subtheme) + "</span>" : "") +
-            chips +
+            '<span class="cm-week-actions">' +
+              '<button class="cm-day-edit" data-date="' + esc(dr.date) + '" title="Edit">✎</button>' +
+              '<button class="cm-day-del" data-date="' + esc(dr.date) + '" title="Delete">✕</button>' +
+            "</span>" +
           "</div>" +
-          '<span class="cm-week-actions">' +
-            '<button class="cm-day-edit" data-date="' + esc(dr.date) + '" title="Edit">✎</button>' +
-            '<button class="cm-day-del" data-date="' + esc(dr.date) + '" title="Delete">✕</button>' +
-          "</span></div>";
+          secs +
+        "</div>";
       }).join("");
       // Collapsed to a count until tapped — five rows per week adds up fast.
       var daysOpen = !!state.openDays[w.id];
@@ -332,6 +352,13 @@
         var w = weekOf(btn);
         if (!w) return;
         state.openDays[w.id] = !state.openDays[w.id];
+        render();
+      };
+    });
+    weeksEl.querySelectorAll(".cm-day-sec-toggle").forEach(function (btn) {
+      btn.onclick = function () {
+        var key = btn.getAttribute("data-key");
+        state.openDayField[key] = !state.openDayField[key];
         render();
       };
     });
@@ -467,6 +494,7 @@
     $("dayThemeFormTitle").textContent = (day ? "Edit day theme" : "Add day theme") + " — Week " + week.week_no;
     $("dtDate").value = day ? day.date : nextDayDate(week);
     $("dtTheme").value = day ? (day.subtheme || "") : "";
+    $("dtActivities").value = day ? (day.activities || "") : "";
     $("dtVocab").value = day ? (day.vocab || "") : "";
     $("dayThemeFormMsg").textContent = "";
     $("dayThemeSaveBtn").disabled = false;
@@ -485,8 +513,9 @@
     var weekId = state.dayThemeWeekId;
     var date = $("dtDate").value;
     var subtheme = $("dtTheme").value.trim();
+    var activities = $("dtActivities").value.trim();
     var vocab = $("dtVocab").value.trim();
-    if (!date || (!subtheme && !vocab)) { msg.textContent = "A date and a theme or vocab are required."; return; }
+    if (!date || (!subtheme && !vocab && !activities)) { msg.textContent = "A date and some content are required."; return; }
     $("dayThemeSaveBtn").disabled = true;
 
     // week+date is the row's key — moving a row to a new date removes the old one.
@@ -494,7 +523,7 @@
       ? LuanaAuth.api("week-day", { method: "DELETE", body: JSON.stringify({ week_id: weekId, date: state.editingDayDate }) })
       : Promise.resolve();
     pre.then(function () {
-      return LuanaAuth.api("week-day", { method: "POST", body: JSON.stringify({ week_id: weekId, date: date, subtheme: subtheme, vocab: vocab, author: me }) });
+      return LuanaAuth.api("week-day", { method: "POST", body: JSON.stringify({ week_id: weekId, date: date, subtheme: subtheme, vocab: vocab, activities: activities, author: me }) });
     })
       .then(function (res) {
         if (res && res.error) throw new Error(res.error);
@@ -598,7 +627,8 @@
     month_activities: { icon: "🎨", label: "Activities", name: "month activities", kind: "list", from: "theme", field: "activities" },
     month_phonics:    { icon: "🔠", label: "Phonics", name: "month phonics", kind: "text", from: "theme", field: "phonics" },
     day_subtheme:     { icon: "🌞", label: "Day theme", name: "day theme", kind: "text", from: "day", field: "subtheme" },
-    day_vocab:        { icon: "🔤", label: "Target vocab", name: "day's target vocab", kind: "chips", from: "day", field: "vocab" }
+    day_vocab:        { icon: "🔤", label: "Target vocab", name: "day's target vocab", kind: "chips", from: "day", field: "vocab" },
+    day_activities:   { icon: "🎨", label: "Activities", name: "day's activities", kind: "list", from: "day", field: "activities" }
   };
 
   // The auto-filled content of a block for the shown date.
@@ -764,7 +794,7 @@
     // are Summer School–only. Hide elsewhere unless this block already uses one.
     var qOpt = $("bSource").querySelector('option[value="week_questions"]');
     qOpt.hidden = !questionsOn() && !(block && block.source === "week_questions");
-    ["day_subtheme", "day_vocab"].forEach(function (v) {
+    ["day_subtheme", "day_vocab", "day_activities"].forEach(function (v) {
       var opt = $("bSource").querySelector('option[value="' + v + '"]');
       opt.hidden = !dayThemesOn() && !(block && block.source === v);
     });
@@ -977,19 +1007,5 @@
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   renderProgramTabs();
-  // On first load, jump to the current month — teachers land mid-year and
-  // shouldn't scroll past months of cards every visit. Explicitly load the web
-  // fonts first (fonts.ready can resolve before they even start loading) so
-  // card heights — and therefore the target position — are final.
-  var fontsReady = document.fonts && document.fonts.load
-    ? Promise.all([document.fonts.load("500 18px Fredoka"), document.fonts.load("400 14px Inter")]).catch(function () {})
-    : Promise.resolve();
-  Promise.all([loadAll(), fontsReady]).then(function () {
-    if (state.view !== "plan") return;
-    var cur = document.querySelector(".month-card.is-current");
-    if (!cur) return;
-    var bar = document.querySelector(".topbar");
-    var y = cur.getBoundingClientRect().top + window.pageYOffset - ((bar ? bar.offsetHeight : 0) + 10);
-    if (y > 0) window.scrollTo({ top: y, behavior: "smooth" });
-  });
+  loadAll();
 })();

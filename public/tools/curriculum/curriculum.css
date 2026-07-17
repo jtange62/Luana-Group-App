@@ -97,12 +97,16 @@
 .cm-day-add{border:0.5px solid var(--line);background:var(--card);color:var(--teal-mid);
   border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;}
 .cm-day-add:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
-.cm-day{display:flex;align-items:baseline;gap:8px;background:var(--card);
-  border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:7px 10px;margin-bottom:6px;}
+.cm-day{background:var(--card);border:0.5px solid var(--line);
+  border-radius:var(--radius-sm);padding:7px 10px;margin-bottom:6px;}
 .cm-day:last-child{margin-bottom:0;}
+.cm-day-top{display:flex;align-items:baseline;gap:8px;}
 .cm-day-date{font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;flex-shrink:0;}
-.cm-day-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
-.cm-day-theme{font-weight:600;font-size:13.5px;color:var(--ink);}
+.cm-day-theme{font-weight:600;font-size:13.5px;color:var(--ink);flex:1;min-width:0;}
+.cm-day-top .cm-week-actions{margin-left:auto;}
+.cm-day-sec{margin-top:6px;}
+.cm-day-sec .cm-toggle{margin-bottom:3px;}
+.cm-day-sec .cm-list li{font-size:13px;}
 .cm-day-edit,.cm-day-del{border:none;background:transparent;color:var(--muted);
   font-size:12px;padding:2px 5px;border-radius:6px;line-height:1;}
 .cm-day-edit:hover,.cm-day-del:hover{background:rgba(0,0,0,0.06);color:var(--ink);}
