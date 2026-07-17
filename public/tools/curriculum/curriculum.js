@@ -473,16 +473,25 @@
   }
 
   function blockRowHtml(block, theme, week) {
-    var note = noteFor(block.id);
+    var entry = noteFor(block.id);
     var actions = state.rhythmEdit
       ? '<span class="cm-week-actions">' +
           '<button class="db-edit" data-block="' + esc(block.id) + '" title="Edit">✎</button>' +
           '<button class="db-del" data-block="' + esc(block.id) + '" title="Delete">✕</button>' +
         "</span>"
       : "";
-    var noteBtn = note
-      ? '<button class="db-note has-note" data-block="' + esc(block.id) + '">📌 ' + esc(note.text) + "</button>"
-      : '<button class="db-note" data-block="' + esc(block.id) + '">＋ Add note for this day</button>';
+
+    // The day entry: today's plan, what actually happened, reminder note.
+    var dayHtml = "";
+    if (entry) {
+      if (entry.planned) dayHtml += fieldBlock("🎯", "Today's plan", '<p class="cm-text">' + esc(entry.planned) + "</p>");
+      if (entry.actual) dayHtml += '<div class="db-did">' + fieldBlock("✅", "What we did", '<p class="cm-text">' + esc(entry.actual) + "</p>") + "</div>";
+      if (entry.text) dayHtml += '<div class="db-note-pill">📌 ' + esc(entry.text) + "</div>";
+    }
+    var editBtn = entry
+      ? '<button class="db-note has-entry" data-block="' + esc(block.id) + '">✎ Edit today</button>'
+      : '<button class="db-note" data-block="' + esc(block.id) + '">＋ Plan / record today</button>';
+
     return '<div class="day-block">' +
       '<div class="db-time">' + esc(block.start_time) +
         (block.end_time ? '<span class="db-time-end">–' + esc(block.end_time) + "</span>" : "") +
@@ -490,7 +499,8 @@
       '<div class="db-main">' +
         '<div class="db-top"><span class="db-label">' + esc(block.label) + "</span>" + actions + "</div>" +
         blockContent(block, theme, week) +
-        noteBtn +
+        dayHtml +
+        editBtn +
       "</div></div>";
   }
 
@@ -622,29 +632,35 @@
 
   function openNoteEdit(block) {
     state.noteBlockId = block.id;
-    var note = noteFor(block.id);
-    $("noteFormTitle").textContent = "Note — " + block.label + " · " + prettyDate(state.date);
-    $("nText").value = note ? note.text : "";
-    $("noteRemoveBtn").hidden = !note;
+    var entry = noteFor(block.id);
+    $("noteFormTitle").textContent = block.label + " · " + prettyDate(state.date);
+    $("nPlanned").value = entry ? (entry.planned || "") : "";
+    $("nActual").value = entry ? (entry.actual || "") : "";
+    $("nText").value = entry ? (entry.text || "") : "";
+    $("noteRemoveBtn").hidden = !entry;
     $("noteFormMsg").textContent = "";
     $("noteSaveBtn").disabled = false;
     $("noteModal").hidden = false;
-    $("nText").focus();
+    $("nPlanned").focus();
   }
 
   function closeNoteModal() { $("noteModal").hidden = true; state.noteBlockId = null; }
 
-  // Saving an emptied note deletes it; saving text upserts it (one per block+date).
+  // Saving a fully-emptied entry deletes it; otherwise the whole entry
+  // (plan / actual / note) is upserted — one per block+date.
   function saveNote() {
     var blockId = state.noteBlockId;
+    var planned = $("nPlanned").value.trim();
+    var actual = $("nActual").value.trim();
     var text = $("nText").value.trim();
-    if (!text && !noteFor(blockId)) { closeNoteModal(); return; }
+    var hasAny = !!(planned || actual || text);
+    if (!hasAny && !noteFor(blockId)) { closeNoteModal(); return; }
     var msg = $("noteFormMsg");
     msg.textContent = "";
     $("noteSaveBtn").disabled = true;
 
-    var req = text
-      ? LuanaAuth.api("day-note", { method: "POST", body: JSON.stringify({ block_id: blockId, date: state.date, text: text, author: me }) })
+    var req = hasAny
+      ? LuanaAuth.api("day-note", { method: "POST", body: JSON.stringify({ block_id: blockId, date: state.date, planned: planned, actual: actual, text: text, author: me }) })
       : LuanaAuth.api("day-note", { method: "DELETE", body: JSON.stringify({ block_id: blockId, date: state.date }) });
     req.then(function (res) {
         if (res && res.error) throw new Error(res.error);
@@ -653,7 +669,10 @@
       .catch(function () { msg.textContent = "Couldn't save. Try again."; $("noteSaveBtn").disabled = false; });
   }
 
-  function removeNote() { $("nText").value = ""; saveNote(); }
+  function removeNote() {
+    $("nPlanned").value = ""; $("nActual").value = ""; $("nText").value = "";
+    saveNote();
+  }
 
   // ---------- Edit ----------
   function openEdit(month, lesson) {

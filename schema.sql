@@ -196,12 +196,16 @@ CREATE TABLE IF NOT EXISTS schedule_blocks (
 );
 CREATE INDEX IF NOT EXISTS idx_schedule_blocks_program ON schedule_blocks (program, start_time);
 
--- One-off note a teacher pins to a block on a specific date (migration 012).
+-- Per-date entry a teacher pins to a block (migration 012): a reminder note,
+-- plus what's planned for that specific date and what was actually covered
+-- (migration 014) — lessons rarely go exactly as planned.
 CREATE TABLE IF NOT EXISTS day_block_notes (
   id          TEXT PRIMARY KEY,
   block_id    TEXT NOT NULL,
   date        TEXT NOT NULL,     -- "YYYY-MM-DD"
-  text        TEXT NOT NULL,
+  text        TEXT NOT NULL,     -- reminder note ("" when only planned/actual set)
+  planned     TEXT,              -- plan for this date (migration 014)
+  actual      TEXT,              -- what was actually done/covered (migration 014)
   author      TEXT,
   created_at  INTEGER NOT NULL,
   UNIQUE (block_id, date)

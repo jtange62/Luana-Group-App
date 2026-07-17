@@ -5,8 +5,10 @@ function cleanDate(raw) {
   return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
 }
 
-// Pin (or update) a one-off note on a block for a specific date. A block has
-// at most one note per date — UNIQUE(block_id, date) makes this an upsert.
+// Pin (or update) a block's entry for a specific date: a reminder note, the
+// plan for that day, and what was actually done. A block has at most one
+// entry per date — UNIQUE(block_id, date) makes this an upsert; the editor
+// always sends all three fields, so each save replaces the whole entry.
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
@@ -18,16 +20,20 @@ export async function onRequestPost({ request, env }) {
   const date = cleanDate(body.date);
   if (!date) return json({ error: "valid date required" }, 400);
   const text = clean(body.text, 2000);
-  if (!text) return json({ error: "note text required" }, 400);
+  const planned = clean(body.planned, 2000) || null;
+  const actual = clean(body.actual, 2000) || null;
+  if (!text && !planned && !actual) return json({ error: "empty" }, 400);
 
   const block = await env.DB.prepare("SELECT id FROM schedule_blocks WHERE id = ?").bind(blockId).first();
   if (!block) return json({ error: "block not found" }, 404);
 
   await env.DB.prepare(
-    "INSERT INTO day_block_notes (id, block_id, date, text, author, created_at) VALUES (?,?,?,?,?,?) " +
-    "ON CONFLICT(block_id, date) DO UPDATE SET text = excluded.text, author = excluded.author"
+    "INSERT INTO day_block_notes (id, block_id, date, text, planned, actual, author, created_at) VALUES (?,?,?,?,?,?,?,?) " +
+    "ON CONFLICT(block_id, date) DO UPDATE SET text = excluded.text, planned = excluded.planned, actual = excluded.actual, author = excluded.author"
   ).bind(
-    crypto.randomUUID(), blockId, date, text,
+    crypto.randomUUID(), blockId, date,
+    text || "", // column is NOT NULL; "" when only planned/actual are set
+    planned, actual,
     clean(body.author, 60) || "anonymous",
     Date.now()
   ).run();

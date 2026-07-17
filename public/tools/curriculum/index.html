@@ -153,11 +153,17 @@
     </div>
   </div>
 
-  <!-- One-off note on a block for the selected date -->
+  <!-- A block's entry for the selected date: today's plan, what actually
+       happened, and a reminder note -->
   <div id="noteModal" class="modal" hidden>
     <div class="modal-card">
-      <p id="noteFormTitle" class="form-heading">Note</p>
-      <textarea id="nText" rows="3" placeholder="e.g. bring shells for beach week"></textarea>
+      <p id="noteFormTitle" class="form-heading">Today</p>
+      <label class="field-label">Plan for today</label>
+      <textarea id="nPlanned" rows="2" placeholder="e.g. letters M m — trace and sound hunt"></textarea>
+      <label class="field-label">What we actually did</label>
+      <textarea id="nActual" rows="2" placeholder="what was really covered — letters, concepts, what worked"></textarea>
+      <label class="field-label">Reminder note</label>
+      <textarea id="nText" rows="2" placeholder="e.g. bring shells for beach week"></textarea>
       <div class="form-actions">
         <span id="noteFormMsg" class="form-msg"></span>
         <button id="noteRemoveBtn" class="btn-ghost" hidden>Remove</button>
