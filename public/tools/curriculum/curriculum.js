@@ -12,6 +12,11 @@
   // layer, along with date-anchored weeks.
   var DAY_THEMES_PROGRAM = "Summer School";
   function dayThemesOn() { return state.program === DAY_THEMES_PROGRAM; }
+  // Months a program runs in; unlisted programs run all year.
+  var PROGRAM_MONTHS = { "Summer School": [7, 8] };
+  function monthsFor(program) {
+    return PROGRAM_MONTHS[program] || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  }
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
@@ -154,13 +159,16 @@
   }
 
   function render() {
-    $("progHint").textContent = "Monthly plan for " + state.program +
-      " — tap a month to set its theme, song, vocab, activities and phonics.";
+    var months = monthsFor(state.program);
+    $("progHint").textContent = months.length === 12
+      ? "Monthly plan for " + state.program + " — tap a month to set its theme, song, vocab, activities and phonics."
+      : state.program + " runs in " + months.map(function (m) { return MONTHS[m - 1]; }).join(" and ") + " — tap a month to plan it.";
 
     var wrap = $("months"); wrap.innerHTML = "";
     var thisMonth = new Date().getMonth() + 1; // 1..12
 
-    for (var m = 1; m <= 12; m++) {
+    for (var i = 0; i < months.length; i++) {
+      var m = months[i];
       var l = themeFor(state.program, m);
       var card = document.createElement("article");
       card.className = "month-card" + (m === thisMonth ? " is-current" : "") + (l ? "" : " is-empty");
@@ -549,10 +557,15 @@
     var wrap = $("copyTargets"); wrap.innerHTML = "";
     PROGRAMS.filter(function (p) { return p !== lesson.program; }).forEach(function (p) {
       var taken = !!themeFor(p, Number(lesson.month));
+      // A month outside the target program's season would be invisible there.
+      var offSeason = monthsFor(p).indexOf(Number(lesson.month)) === -1;
+      var off = taken || offSeason;
       var row = document.createElement("label");
-      row.className = "copy-target" + (taken ? " taken" : "");
-      row.innerHTML = '<input type="checkbox" value="' + esc(p) + '"' + (taken ? " disabled" : "") + " /> " +
-        esc(p) + (taken ? ' <span class="copy-taken">already has a theme</span>' : "");
+      row.className = "copy-target" + (off ? " taken" : "");
+      row.innerHTML = '<input type="checkbox" value="' + esc(p) + '"' + (off ? " disabled" : "") + " /> " +
+        esc(p) +
+        (taken ? ' <span class="copy-taken">already has a theme</span>'
+          : offSeason ? ' <span class="copy-taken">not in season this month</span>' : "");
       wrap.appendChild(row);
     });
     $("copyFormMsg").textContent = "";
@@ -709,8 +722,10 @@
     var ctx = weekForDate(state.program, state.date);
     var dayTheme = dayThemeFor(ctx.week, state.date);
     if (!ctx.theme) {
-      $("dayContext").textContent = prettyDate(state.date) + " — no theme set for " +
-        MONTHS[parseYMD(state.date).getMonth()] + " yet. Switch to Plan to add one.";
+      var mNo = parseYMD(state.date).getMonth() + 1;
+      $("dayContext").textContent = monthsFor(state.program).indexOf(mNo) === -1
+        ? prettyDate(state.date) + " — outside the " + state.program + " season."
+        : prettyDate(state.date) + " — no theme set for " + MONTHS[mNo - 1] + " yet. Switch to Plan to add one.";
     } else {
       $("dayContext").textContent = prettyDate(state.date) + " — " + ctx.theme.title +
         (ctx.week ? " · Week " + ctx.week.week_no + (ctx.week.focus ? ": " + ctx.week.focus : "") : "") +
