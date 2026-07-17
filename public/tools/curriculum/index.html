@@ -85,6 +85,10 @@
       <p id="weekFormTitle" class="form-heading">Add week</p>
       <label class="field-label">Focus / sub-theme</label>
       <input id="wFocus" type="text" placeholder="e.g. Imagine my own Hero" maxlength="200" />
+      <div id="wStartField" hidden>
+        <label class="field-label">Week starts on</label>
+        <input id="wStart" type="date" />
+      </div>
       <label class="field-label">Activities</label>
       <textarea id="wActivities" rows="3" placeholder="This week's activities — one per line"></textarea>
       <label class="field-label">Phonics</label>
@@ -102,6 +106,24 @@
       </div>
     </div>
   </div>
+  <!-- Daily sub-theme within a week (Summer School) -->
+  <div id="dayThemeModal" class="modal" hidden>
+    <div class="modal-card">
+      <p id="dayThemeFormTitle" class="form-heading">Add day theme</p>
+      <label class="field-label">Date</label>
+      <input id="dtDate" type="date" />
+      <label class="field-label">Day theme</label>
+      <input id="dtTheme" type="text" placeholder="e.g. Pirates" maxlength="500" />
+      <label class="field-label">Target vocab</label>
+      <textarea id="dtVocab" rows="2" placeholder="target words — comma or one per line"></textarea>
+      <div class="form-actions">
+        <span id="dayThemeFormMsg" class="form-msg"></span>
+        <button id="dayThemeCancelBtn" class="btn-ghost">Cancel</button>
+        <button id="dayThemeSaveBtn" class="btn-primary btn-sm">Save</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Copy a month theme (and its weeks) to other programs -->
   <div id="copyModal" class="modal" hidden>
     <div class="modal-card">
@@ -144,6 +166,8 @@
         <option value="month_vocab">Month vocab</option>
         <option value="month_activities">Month activities</option>
         <option value="month_phonics">Month phonics</option>
+        <option value="day_subtheme">Day theme</option>
+        <option value="day_vocab">Day's target vocab</option>
       </select>
       <div class="form-actions">
         <span id="blockFormMsg" class="form-msg"></span>

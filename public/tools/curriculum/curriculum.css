@@ -82,6 +82,24 @@
 .cm-week-body .cm-field{margin-top:8px;}
 .cm-week-body .cm-list li,.cm-week-body .cm-text{font-size:13.5px;}
 
+/* Daily sub-themes within a week (Summer School). */
+.cm-week-dates{font-size:11px;font-weight:600;color:var(--teal-mid);background:var(--teal-soft);
+  padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.cm-days{margin-top:10px;padding-top:8px;border-top:0.5px solid var(--line);}
+.cm-days-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;}
+.cm-day-add{border:0.5px solid var(--line);background:var(--card);color:var(--teal-mid);
+  border-radius:999px;padding:4px 11px;font-size:12px;font-weight:600;}
+.cm-day-add:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
+.cm-day{display:flex;align-items:baseline;gap:8px;background:var(--card);
+  border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:7px 10px;margin-bottom:6px;}
+.cm-day:last-child{margin-bottom:0;}
+.cm-day-date{font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap;flex-shrink:0;}
+.cm-day-main{flex:1;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+.cm-day-theme{font-weight:600;font-size:13.5px;color:var(--ink);}
+.cm-day-edit,.cm-day-del{border:none;background:transparent;color:var(--muted);
+  font-size:12px;padding:2px 5px;border-radius:6px;line-height:1;}
+.cm-day-edit:hover,.cm-day-del:hover{background:rgba(0,0,0,0.06);color:var(--ink);}
+
 /* Retro notes on a week (adapted from the ideas-board comments). */
 .cm-comments{margin-top:10px;padding-top:8px;border-top:0.5px solid var(--line);}
 .cm-comment{display:flex;align-items:baseline;gap:6px;font-size:13px;line-height:1.5;

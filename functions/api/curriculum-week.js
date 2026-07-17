@@ -1,5 +1,10 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
+function cleanDate(raw) {
+  const v = clean(raw, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
 // Create a week within a month theme.
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
@@ -23,7 +28,7 @@ export async function onRequestPost({ request, env }) {
   const id = crypto.randomUUID();
   const now = Date.now();
   await env.DB.prepare(
-    "INSERT INTO curriculum_weeks (id, lesson_id, week_no, focus, activities, phonics, questions, notes, author, created_at) VALUES (?,?,?,?,?,?,?,?,?,?)"
+    "INSERT INTO curriculum_weeks (id, lesson_id, week_no, focus, activities, phonics, questions, notes, start_date, author, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)"
   ).bind(
     id, lessonId, weekNo,
     clean(body.focus, 200) || null,
@@ -31,6 +36,7 @@ export async function onRequestPost({ request, env }) {
     clean(body.phonics, 2000) || null,
     clean(body.questions, 4000) || null,
     clean(body.notes, 4000) || null,
+    cleanDate(body.start_date),
     clean(body.author, 60) || "anonymous",
     now
   ).run();
@@ -60,6 +66,7 @@ export async function onRequestPatch({ request, env }) {
   maybe("phonics", "phonics", clean(body.phonics, 2000) || null);
   maybe("questions", "questions", clean(body.questions, 4000) || null);
   maybe("notes", "notes", clean(body.notes, 4000) || null);
+  maybe("start_date", "start_date", cleanDate(body.start_date));
   if (!sets.length) return json({ ok: true });
 
   vals.push(id);
@@ -80,6 +87,7 @@ export async function onRequestDelete({ request, env }) {
 
   await env.DB.batch([
     env.DB.prepare("DELETE FROM week_comments WHERE week_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM week_days WHERE week_id = ?").bind(id),
     env.DB.prepare("DELETE FROM curriculum_weeks WHERE id = ?").bind(id),
   ]);
   return json({ ok: true });

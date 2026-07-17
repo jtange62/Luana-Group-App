@@ -8,6 +8,10 @@
   // Weekly "focus questions" are an After School–only field.
   var QUESTIONS_PROGRAM = "After School";
   function questionsOn() { return state.program === QUESTIONS_PROGRAM; }
+  // Daily sub-themes (day theme + target vocab) are a Summer School–only
+  // layer, along with date-anchored weeks.
+  var DAY_THEMES_PROGRAM = "Summer School";
+  function dayThemesOn() { return state.program === DAY_THEMES_PROGRAM; }
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
@@ -23,6 +27,8 @@
     editingWeekId: null,// week id when editing an existing week
     weekLessonId: null, // theme the week being added/edited belongs to
     copyLessonId: null, // theme being copied to other programs
+    dayThemeWeekId: null, // week whose daily sub-theme is being edited
+    editingDayDate: null, // original date of the day row being edited
     view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
     date: null,         // "YYYY-MM-DD" shown in the day view (set below)
     blocks: [],         // daily-rhythm template blocks for state.program
@@ -40,6 +46,7 @@
   function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
+  function shortDate(ymd) { var d = parseYMD(ymd); return MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate(); }
 
   // Recurrence check (copied from calendar.js — keep in sync).
   function occursOn(ev, d) {
@@ -92,17 +99,35 @@
       .sort(function (a, b) { return a.week_no - b.week_no; });
   }
 
-  // The theme + week covering a date. Week rule: ceil(dayOfMonth / 7)
-  // (days 1–7 → week 1, 8–14 → 2, …), then the week with the largest
-  // week_no <= that (clamps past the last defined week, tolerates gaps).
+  // The theme + week covering a date. Date-anchored weeks win: a week with a
+  // start_date covers start_date..start_date+6 under its own theme, letting a
+  // program span month boundaries (Summer School). Otherwise fall back to
+  // ceil(dayOfMonth / 7) (days 1–7 → week 1, 8–14 → 2, …), picking the week
+  // with the largest week_no <= that (clamps past the last defined week).
   function weekForDate(program, ymd) {
     var d = parseYMD(ymd);
+
+    for (var i = 0; i < state.weeks.length; i++) {
+      var w = state.weeks[i];
+      if (!w.start_date) continue;
+      var start = parseYMD(w.start_date);
+      if (d < start || d > addDays(start, 6)) continue;
+      var lesson = state.lessons.filter(function (l) { return l.id === w.lesson_id; })[0];
+      if (lesson && lesson.program === program) return { theme: lesson, week: w };
+    }
+
     var theme = themeFor(program, d.getMonth() + 1);
     if (!theme) return { theme: null, week: null };
     var n = Math.ceil(d.getDate() / 7);
     var week = null;
-    weeksFor(theme.id).forEach(function (w) { if (w.week_no <= n) week = w; });
+    weeksFor(theme.id).forEach(function (w) { if (!w.start_date && w.week_no <= n) week = w; });
     return { theme: theme, week: week };
+  }
+
+  // The daily sub-theme (Summer School) covering a date within a week.
+  function dayThemeFor(week, ymd) {
+    if (!week) return null;
+    return (week.days || []).filter(function (d) { return d.date === ymd; })[0] || null;
   }
 
   // ---------- Render ----------
@@ -206,9 +231,38 @@
       '<div class="cm-reply-box"><input type="text" maxlength="2000" placeholder="what worked / what didn\'t…" /><button>Send</button></div>' +
       "</div>";
 
+    // Daily sub-themes (Summer School): one row per day with theme + vocab.
+    var daysHtml = "";
+    if (dayThemesOn()) {
+      var dayRows = (w.days || []).map(function (dr) {
+        var dd = parseYMD(dr.date);
+        var chips = dr.vocab
+          ? '<div class="cm-chips">' + items(dr.vocab).map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("") + "</div>"
+          : "";
+        return '<div class="cm-day">' +
+          '<span class="cm-day-date">' + WEEKDAYS[dd.getDay()] + " " + shortDate(dr.date) + "</span>" +
+          '<div class="cm-day-main">' +
+            (dr.subtheme ? '<span class="cm-day-theme">' + esc(dr.subtheme) + "</span>" : "") +
+            chips +
+          "</div>" +
+          '<span class="cm-week-actions">' +
+            '<button class="cm-day-edit" data-date="' + esc(dr.date) + '" title="Edit">✎</button>' +
+            '<button class="cm-day-del" data-date="' + esc(dr.date) + '" title="Delete">✕</button>' +
+          "</span></div>";
+      }).join("");
+      daysHtml = '<div class="cm-days">' +
+        '<div class="cm-days-head">' +
+          '<span class="cm-field-label">🌞 Daily themes</span>' +
+          '<button class="cm-day-add">＋ Day</button>' +
+        "</div>" +
+        (dayRows || '<p class="cm-week-none">No day themes yet — add one per teaching day.</p>') +
+        "</div>";
+    }
+
     return '<div class="cm-week" data-week="' + esc(w.id) + '">' +
       '<div class="cm-week-top">' +
         '<span class="cm-week-no">Week ' + w.week_no + "</span>" +
+        (w.start_date ? '<span class="cm-week-dates">' + shortDate(w.start_date) + " – " + shortDate(fmtYMD(addDays(parseYMD(w.start_date), 4))) + "</span>" : "") +
         (w.focus ? '<span class="cm-week-focus">' + esc(w.focus) + "</span>" : "") +
         '<span class="cm-week-actions">' +
           '<button class="cm-week-edit" data-week="' + esc(w.id) + '" title="Edit">✎</button>' +
@@ -216,6 +270,7 @@
         "</span>" +
       "</div>" +
       (parts.length ? '<div class="cm-week-body">' + parts.join("") + "</div>" : "") +
+      daysHtml +
       commentsHtml +
       "</div>";
   }
@@ -249,6 +304,29 @@
     });
     weeksEl.querySelectorAll(".cm-week-del").forEach(function (btn) {
       btn.onclick = function () { deleteWeek(btn.getAttribute("data-week")); };
+    });
+
+    // Daily sub-theme rows (Summer School).
+    function weekOf(el) {
+      var id = el.closest(".cm-week").getAttribute("data-week");
+      return weeksFor(lesson.id).filter(function (x) { return x.id === id; })[0];
+    }
+    weeksEl.querySelectorAll(".cm-day-add").forEach(function (btn) {
+      btn.onclick = function () { var w = weekOf(btn); if (w) openDayTheme(w, null); };
+    });
+    weeksEl.querySelectorAll(".cm-day-edit").forEach(function (btn) {
+      btn.onclick = function () {
+        var w = weekOf(btn);
+        if (!w) return;
+        var day = (w.days || []).filter(function (d) { return d.date === btn.getAttribute("data-date"); })[0];
+        if (day) openDayTheme(w, day);
+      };
+    });
+    weeksEl.querySelectorAll(".cm-day-del").forEach(function (btn) {
+      btn.onclick = function () {
+        var w = weekOf(btn);
+        if (w) deleteDayTheme(w.id, btn.getAttribute("data-date"));
+      };
     });
 
     // Retro-note threads (one .cm-comments per week).
@@ -289,6 +367,8 @@
     state.editingWeekId = week ? week.id : null;
     $("weekFormTitle").textContent = week ? ("Edit Week " + week.week_no) : "Add week";
     $("wFocus").value = week ? (week.focus || "") : "";
+    $("wStartField").hidden = !dayThemesOn();
+    $("wStart").value = week ? (week.start_date || "") : "";
     $("wActivities").value = week ? (week.activities || "") : "";
     $("wPhonics").value = week ? (week.phonics || "") : "";
     $("wQuestions").value = week ? (week.questions || "") : "";
@@ -329,6 +409,7 @@
       payload = { lesson_id: state.weekLessonId, author: me, focus: fields.focus, activities: fields.activities, phonics: fields.phonics, notes: fields.notes };
     }
     if (questionsOn()) payload.questions = fields.questions;
+    if (dayThemesOn()) payload.start_date = $("wStart").value || "";
     LuanaAuth.api("curriculum-week", { method: method, body: JSON.stringify(payload) })
       .then(function (res) {
         if (res && res.error) throw new Error(res.error);
@@ -340,6 +421,66 @@
   function deleteWeek(id) {
     if (!id || !confirm("Delete this week?")) return;
     LuanaAuth.api("curriculum-week", { method: "DELETE", body: JSON.stringify({ id: id }) })
+      .then(function () { return loadWeeks(); })
+      .catch(function () {});
+  }
+
+  // ---------- Daily sub-themes (Summer School) ----------
+  // Default date for a new day row: the weekday after the week's last one.
+  function nextDayDate(week) {
+    var days = week.days || [];
+    if (!days.length) return week.start_date || "";
+    var d = addDays(parseYMD(days[days.length - 1].date), 1);
+    if (d.getDay() === 6) d = addDays(d, 2); // skip Saturday
+    if (d.getDay() === 0) d = addDays(d, 1); // skip Sunday
+    return fmtYMD(d);
+  }
+
+  function openDayTheme(week, day) {
+    state.dayThemeWeekId = week.id;
+    state.editingDayDate = day ? day.date : null;
+    $("dayThemeFormTitle").textContent = (day ? "Edit day theme" : "Add day theme") + " — Week " + week.week_no;
+    $("dtDate").value = day ? day.date : nextDayDate(week);
+    $("dtTheme").value = day ? (day.subtheme || "") : "";
+    $("dtVocab").value = day ? (day.vocab || "") : "";
+    $("dayThemeFormMsg").textContent = "";
+    $("dayThemeSaveBtn").disabled = false;
+    $("dayThemeModal").hidden = false;
+    $("dtTheme").focus();
+  }
+
+  function closeDayThemeModal() {
+    $("dayThemeModal").hidden = true;
+    state.dayThemeWeekId = null; state.editingDayDate = null;
+  }
+
+  function saveDayTheme() {
+    var msg = $("dayThemeFormMsg");
+    msg.textContent = "";
+    var weekId = state.dayThemeWeekId;
+    var date = $("dtDate").value;
+    var subtheme = $("dtTheme").value.trim();
+    var vocab = $("dtVocab").value.trim();
+    if (!date || (!subtheme && !vocab)) { msg.textContent = "A date and a theme or vocab are required."; return; }
+    $("dayThemeSaveBtn").disabled = true;
+
+    // week+date is the row's key — moving a row to a new date removes the old one.
+    var pre = state.editingDayDate && state.editingDayDate !== date
+      ? LuanaAuth.api("week-day", { method: "DELETE", body: JSON.stringify({ week_id: weekId, date: state.editingDayDate }) })
+      : Promise.resolve();
+    pre.then(function () {
+      return LuanaAuth.api("week-day", { method: "POST", body: JSON.stringify({ week_id: weekId, date: date, subtheme: subtheme, vocab: vocab, author: me }) });
+    })
+      .then(function (res) {
+        if (res && res.error) throw new Error(res.error);
+        closeDayThemeModal(); return loadWeeks();
+      })
+      .catch(function () { msg.textContent = "Couldn't save. Try again."; $("dayThemeSaveBtn").disabled = false; });
+  }
+
+  function deleteDayTheme(weekId, date) {
+    if (!weekId || !date || !confirm("Remove this day theme?")) return;
+    LuanaAuth.api("week-day", { method: "DELETE", body: JSON.stringify({ week_id: weekId, date: date }) })
       .then(function () { return loadWeeks(); })
       .catch(function () {});
   }
@@ -430,14 +571,16 @@
     month_song:       { icon: "🎵", label: "Song", name: "song of the month", kind: "text", from: "theme", field: "song" },
     month_vocab:      { icon: "🔤", label: "Vocab", name: "month vocab", kind: "chips", from: "theme", field: "vocab" },
     month_activities: { icon: "🎨", label: "Activities", name: "month activities", kind: "list", from: "theme", field: "activities" },
-    month_phonics:    { icon: "🔠", label: "Phonics", name: "month phonics", kind: "text", from: "theme", field: "phonics" }
+    month_phonics:    { icon: "🔠", label: "Phonics", name: "month phonics", kind: "text", from: "theme", field: "phonics" },
+    day_subtheme:     { icon: "🌞", label: "Day theme", name: "day theme", kind: "text", from: "day", field: "subtheme" },
+    day_vocab:        { icon: "🔤", label: "Target vocab", name: "day's target vocab", kind: "chips", from: "day", field: "vocab" }
   };
 
   // The auto-filled content of a block for the shown date.
-  function blockContent(block, theme, week) {
+  function blockContent(block, theme, week, day) {
     var meta = SOURCE_META[block.source];
     if (!meta) return "";
-    var src = meta.from === "week" ? week : theme;
+    var src = meta.from === "week" ? week : meta.from === "day" ? day : theme;
     var val = src ? src[meta.field] : null;
     if (!val) return '<p class="cm-none">No ' + meta.name + " set for this date.</p>";
     var inner;
@@ -472,7 +615,7 @@
     });
   }
 
-  function blockRowHtml(block, theme, week) {
+  function blockRowHtml(block, theme, week, day) {
     var entry = noteFor(block.id);
     var actions = state.rhythmEdit
       ? '<span class="cm-week-actions">' +
@@ -498,7 +641,7 @@
       "</div>" +
       '<div class="db-main">' +
         '<div class="db-top"><span class="db-label">' + esc(block.label) + "</span>" + actions + "</div>" +
-        blockContent(block, theme, week) +
+        blockContent(block, theme, week, day) +
         dayHtml +
         editBtn +
       "</div></div>";
@@ -509,12 +652,14 @@
     $("rhythmEditBtn").classList.toggle("active", state.rhythmEdit);
 
     var ctx = weekForDate(state.program, state.date);
+    var dayTheme = dayThemeFor(ctx.week, state.date);
     if (!ctx.theme) {
       $("dayContext").textContent = prettyDate(state.date) + " — no theme set for " +
         MONTHS[parseYMD(state.date).getMonth()] + " yet. Switch to Plan to add one.";
     } else {
       $("dayContext").textContent = prettyDate(state.date) + " — " + ctx.theme.title +
-        (ctx.week ? " · Week " + ctx.week.week_no + (ctx.week.focus ? ": " + ctx.week.focus : "") : "");
+        (ctx.week ? " · Week " + ctx.week.week_no + (ctx.week.focus ? ": " + ctx.week.focus : "") : "") +
+        (dayTheme && dayTheme.subtheme ? " · 🌞 " + dayTheme.subtheme : "");
     }
 
     $("dayEvents").innerHTML = dayEventsFor(state.date).map(function (ev) {
@@ -534,7 +679,7 @@
       var sorted = state.blocks.slice().sort(function (a, b) {
         return a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : a.created_at - b.created_at;
       });
-      wrap.innerHTML = sorted.map(function (b) { return blockRowHtml(b, ctx.theme, ctx.week); }).join("") +
+      wrap.innerHTML = sorted.map(function (b) { return blockRowHtml(b, ctx.theme, ctx.week, dayTheme); }).join("") +
         (state.rhythmEdit ? '<button class="day-add-block">＋ Add block</button>' : "");
     }
 
@@ -590,10 +735,14 @@
     $("bLabel").value = block ? (block.label || "") : "";
     $("bStart").value = block ? (block.start_time || "") : "";
     $("bEnd").value = block ? (block.end_time || "") : "";
-    // Week questions is an After School–only field; hide the option elsewhere
-    // unless this block already uses it.
+    // Program-gated sources: week questions is After School–only, day themes
+    // are Summer School–only. Hide elsewhere unless this block already uses one.
     var qOpt = $("bSource").querySelector('option[value="week_questions"]');
     qOpt.hidden = !questionsOn() && !(block && block.source === "week_questions");
+    ["day_subtheme", "day_vocab"].forEach(function (v) {
+      var opt = $("bSource").querySelector('option[value="' + v + '"]');
+      opt.hidden = !dayThemesOn() && !(block && block.source === v);
+    });
     $("bSource").value = block && block.source ? block.source : "";
     $("blockFormMsg").textContent = "";
     $("blockSaveBtn").disabled = false;
@@ -775,6 +924,10 @@
   $("weekCancelBtn").onclick = closeWeekModal;
   $("weekSaveBtn").onclick = saveWeek;
   $("weekModal").onclick = function (e) { if (e.target === $("weekModal")) closeWeekModal(); };
+
+  $("dayThemeCancelBtn").onclick = closeDayThemeModal;
+  $("dayThemeSaveBtn").onclick = saveDayTheme;
+  $("dayThemeModal").onclick = function (e) { if (e.target === $("dayThemeModal")) closeDayThemeModal(); };
 
   $("copyCancelBtn").onclick = closeCopyModal;
   $("copyGoBtn").onclick = doCopy;

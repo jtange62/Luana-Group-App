@@ -79,6 +79,7 @@ CREATE TABLE IF NOT EXISTS curriculum_weeks (
   phonics     TEXT,             -- that week's letters / sounds
   questions   TEXT,             -- focus questions for the week (After School)
   notes       TEXT,             -- free-text reminders
+  start_date  TEXT,             -- "YYYY-MM-DD" anchor: week covers this date +6 (migration 015)
   author      TEXT,
   created_at  INTEGER NOT NULL
 );
@@ -93,6 +94,19 @@ CREATE TABLE IF NOT EXISTS week_comments (
   created_at  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_week_comments_week ON week_comments (week_id);
+
+-- Daily sub-theme within a week, e.g. Summer School day themes (migration 015).
+CREATE TABLE IF NOT EXISTS week_days (
+  id          TEXT PRIMARY KEY,
+  week_id     TEXT NOT NULL,     -- curriculum_weeks.id
+  date        TEXT NOT NULL,     -- "YYYY-MM-DD"
+  subtheme    TEXT,              -- e.g. "Pirates"
+  vocab       TEXT,              -- target vocab, comma/newline separated
+  author      TEXT,
+  created_at  INTEGER NOT NULL,
+  UNIQUE (week_id, date)
+);
+CREATE INDEX IF NOT EXISTS idx_week_days_week ON week_days (week_id, date);
 
 CREATE TABLE IF NOT EXISTS post_files (
   id       TEXT PRIMARY KEY,

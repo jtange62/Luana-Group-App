@@ -127,9 +127,10 @@ export async function onRequestDelete({ request, env }) {
   const filesRes = await env.DB.prepare("SELECT id FROM lesson_files WHERE lesson_id = ?").bind(id).all();
   await Promise.all((filesRes.results || []).map((f) => env.FILES.delete(f.id).catch(() => { /* ignore */ })));
   await env.DB.batch([
-    // Week comments first — the subselect reads curriculum_weeks, which the
-    // next statement deletes.
+    // Week comments/days first — their subselects read curriculum_weeks,
+    // which a later statement deletes.
     env.DB.prepare("DELETE FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id = ?)").bind(id),
+    env.DB.prepare("DELETE FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id = ?)").bind(id),
     env.DB.prepare("DELETE FROM lesson_files WHERE lesson_id = ?").bind(id),
     env.DB.prepare("DELETE FROM curriculum_weeks WHERE lesson_id = ?").bind(id),
     env.DB.prepare("DELETE FROM lessons WHERE id = ?").bind(id),

@@ -5,6 +5,7 @@ const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 const SOURCES = [
   "week_focus", "week_activities", "week_phonics", "week_questions",
   "month_theme", "month_song", "month_vocab", "month_activities", "month_phonics",
+  "day_subtheme", "day_vocab", // Summer School daily themes
 ];
 
 function cleanProgram(raw) {
