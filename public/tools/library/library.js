@@ -8,7 +8,7 @@
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 
-  var state = { lessons: [], query: "", program: "all", month: "all", editingId: null };
+  var state = { lessons: [], query: "", program: "all", month: "all", editingId: null, nextCursor: null, hasMore: false };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
@@ -68,27 +68,15 @@
       .catch(function () { btn.textContent = "🖼️"; });
   }
 
-  function matches(l, q) {
-    if (!q) return true;
-    var hay = [l.title, l.notes, l.tags].concat(
-      (l.files || []).map(function (f) { return f.filename; })
-    ).join(" ").toLowerCase();
-    return hay.indexOf(q) !== -1;
-  }
-
   function render() {
     var list = $("list");
     releaseThumbs(list);
     list.innerHTML = "";
-    var q = state.query.trim().toLowerCase();
-    var items = state.lessons.filter(function (l) {
-      if (state.program !== "all" && l.program !== state.program) return false;
-      if (state.month !== "all" && String(l.month || "") !== state.month) return false;
-      return matches(l, q);
-    });
+    var items = state.lessons;
 
-    $("empty").hidden = state.lessons.length > 0;
-    $("noMatch").hidden = !(state.lessons.length > 0 && items.length === 0);
+    var filtering = !!state.query.trim() || state.program !== "all" || state.month !== "all";
+    $("empty").hidden = filtering || state.lessons.length > 0;
+    $("noMatch").hidden = !filtering || items.length > 0;
 
     items.forEach(function (l) { list.appendChild(card(l)); });
 
@@ -435,13 +423,32 @@
       .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
   }
 
-  function loadLessons() {
+  function lessonPath(cursor) {
+    var params = ["limit=30"];
+    if (state.program !== "all") params.push("program=" + encodeURIComponent(state.program));
+    if (state.month !== "all") params.push("month=" + encodeURIComponent(state.month));
+    if (state.query.trim()) params.push("q=" + encodeURIComponent(state.query.trim()));
+    if (cursor) params.push("before=" + encodeURIComponent(cursor));
+    else if (highlightId) params.push("id=" + encodeURIComponent(highlightId));
+    return "lessons?" + params.join("&");
+  }
+
+  function loadLessons(reset) {
+    reset = reset !== false;
     $("loading").style.display = "block";
-    return LuanaAuth.api("lessons").then(function (res) {
+    return LuanaAuth.api(lessonPath(reset ? null : state.nextCursor)).then(function (res) {
       $("loading").style.display = "none";
-      state.lessons = res.lessons || [];
+      if (reset) state.lessons = res.lessons || [];
+      else state.lessons = state.lessons.concat(res.lessons || []);
+      state.nextCursor = res.next_cursor || null;
+      state.hasMore = !!res.has_more;
       render();
-    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load lessons."); });
+      $("loadMore").hidden = !state.hasMore;
+      $("loadMore").disabled = false;
+    }).catch(function (e) {
+      $("loading").style.display = "none"; $("loadMore").disabled = false;
+      LuanaUtils.reportError(e, "Couldn't load lessons.");
+    });
   }
 
   // ---------- Build filters & form controls ----------
@@ -452,7 +459,7 @@
       var active = state.program === p;
       b.className = "tab" + (active ? " active" : "");
       b.textContent = p === "all" ? "All" : p;
-      b.onclick = function () { state.program = p; renderProgramTabs(); render(); };
+      b.onclick = function () { state.program = p; highlightId = null; renderProgramTabs(); loadLessons(true); };
       nav.appendChild(b);
     });
   }
@@ -487,8 +494,13 @@
     addFiles(e.target.files);
     e.target.value = ""; // allow adding more in a second pick
   };
-  $("search").oninput = function (e) { state.query = e.target.value; render(); };
-  $("monthFilter").onchange = function (e) { state.month = e.target.value; render(); };
+  var searchTimer;
+  $("search").oninput = function (e) {
+    state.query = e.target.value; highlightId = null;
+    clearTimeout(searchTimer); searchTimer = setTimeout(function () { loadLessons(true); }, 250);
+  };
+  $("monthFilter").onchange = function (e) { state.month = e.target.value; highlightId = null; loadLessons(true); };
+  $("loadMore").onclick = function () { $("loadMore").disabled = true; loadLessons(false); };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   // ---------- Lightbox ----------

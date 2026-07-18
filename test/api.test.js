@@ -5,6 +5,7 @@ import { json, makeToken, verifyToken } from "../functions/api/_helpers.js";
 import { onRequestGet as getEvents } from "../functions/api/events.js";
 import { onRequestGet as getPosts } from "../functions/api/posts.js";
 import { onRequestGet as getSubmissions } from "../functions/api/submissions.js";
+import { onRequestGet as getLessons } from "../functions/api/lessons.js";
 
 const SESSION_SECRET = "test-only-session-secret-that-is-long-enough";
 
@@ -168,4 +169,34 @@ test("submissions reject unsupported status filters", async () => {
   const response = await getSubmissions({ request, env: { DB, SESSION_SECRET } });
   assert.equal(response.status, 400);
   assert.equal(DB.calls.length, 0);
+});
+
+test("lessons apply server-side filters, escaped search, and cursor pagination", async () => {
+  const rows = [
+    { id: "b", program: "Kinder", month: 7, created_at: 20 },
+    { id: "a", program: "Kinder", month: 7, created_at: 10 },
+  ];
+  const DB = batchedDatabase([rows, []]);
+  const request = await authorizedRequest("https://example.test/api/lessons?limit=1&program=Kinder&month=7&q=100%25&before=30%7Cc");
+  const response = await getLessons({ request, env: { DB, SESSION_SECRET } });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.lessons.map((lesson) => lesson.id), ["b"]);
+  assert.equal(body.has_more, true);
+  assert.equal(body.next_cursor, "20|b");
+  assert.deepEqual(DB.calls[0].bindings, [
+    "Kinder", "7", "%100\\%%", "%100\\%%", "%100\\%%", "%100\\%%", 30, 30, "c", 2,
+  ]);
+  assert.match(DB.calls[0].sql, /EXISTS \(SELECT 1 FROM lesson_files/);
+});
+
+test("lessons can fetch a directly linked lesson without pagination", async () => {
+  const DB = batchedDatabase([[{ id: "target", created_at: 1 }], []]);
+  const request = await authorizedRequest("https://example.test/api/lessons?id=target&limit=30");
+  const response = await getLessons({ request, env: { DB, SESSION_SECRET } });
+  const body = await response.json();
+  assert.equal(body.lessons[0].id, "target");
+  assert.equal(body.has_more, false);
+  assert.deepEqual(DB.calls[0].bindings, ["target", 1]);
 });
