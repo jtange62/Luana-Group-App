@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import { json, makeToken, verifyToken } from "../functions/api/_helpers.js";
 import { onRequestGet as getEvents } from "../functions/api/events.js";
 import { onRequestGet as getPosts } from "../functions/api/posts.js";
+import { onRequestGet as getSubmissions } from "../functions/api/submissions.js";
 
 const SESSION_SECRET = "test-only-session-secret-that-is-long-enough";
 
@@ -138,6 +139,33 @@ test("posts endpoint rejects malformed cursors before querying D1", async () => 
   const DB = batchedDatabase([]);
   const request = await authorizedRequest("https://example.test/api/posts?before=broken");
   const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
+  assert.equal(response.status, 400);
+  assert.equal(DB.calls.length, 0);
+});
+
+test("submissions paginate within the selected status and return global counts", async () => {
+  const rows = [
+    { id: "c", status: "new", created_at: 30 },
+    { id: "b", status: "new", created_at: 20 },
+    { id: "a", status: "new", created_at: 10 },
+  ];
+  const DB = batchedDatabase([rows, [], [{ status: "new", n: 7 }, { status: "done", n: 4 }]]);
+  const request = await authorizedRequest("https://example.test/api/submissions?status=new&limit=2");
+  const response = await getSubmissions({ request, env: { DB, SESSION_SECRET } });
+  const body = await response.json();
+
+  assert.deepEqual(body.submissions.map((submission) => submission.id), ["c", "b"]);
+  assert.deepEqual(body.counts, { new: 7, done: 4, all: 11 });
+  assert.equal(body.has_more, true);
+  assert.equal(body.next_cursor, "20|b");
+  assert.deepEqual(DB.calls[0].bindings, ["new", 3]);
+  assert.deepEqual(DB.calls[1].bindings, ["new", 3]);
+});
+
+test("submissions reject unsupported status filters", async () => {
+  const DB = batchedDatabase([]);
+  const request = await authorizedRequest("https://example.test/api/submissions?status=deleted");
+  const response = await getSubmissions({ request, env: { DB, SESSION_SECRET } });
   assert.equal(response.status, 400);
   assert.equal(DB.calls.length, 0);
 });

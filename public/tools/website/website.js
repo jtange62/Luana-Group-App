@@ -6,7 +6,7 @@
   var TYPES = ["Photo", "Newsletter", "Document", "Request", "Suggestion", "Other"];
   var FILTERS = [{ id: "new", label: "New" }, { id: "done", label: "Done" }, { id: "all", label: "All" }];
 
-  var state = { submissions: [], filter: "new" };
+  var state = { submissions: [], filter: "new", counts: { new: 0, done: 0, all: 0 }, nextCursor: null, hasMore: false };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var chosen = []; // { file, url } for the compose preview cluster
@@ -38,10 +38,9 @@
     FILTERS.forEach(function (f) {
       var b = document.createElement("button");
       b.className = "seg-btn" + (state.filter === f.id ? " active" : "");
-      var n = f.id === "all" ? state.submissions.length
-        : state.submissions.filter(function (s) { return s.status === f.id; }).length;
+      var n = state.counts[f.id] || 0;
       b.textContent = f.label + (n ? " " + n : "");
-      b.onclick = function () { state.filter = f.id; render(); };
+      b.onclick = function () { state.filter = f.id; load(true); };
       nav.appendChild(b);
     });
   }
@@ -51,11 +50,9 @@
     var list = $("list");
     releaseThumbs(list);
     list.innerHTML = "";
-    var items = state.submissions.filter(function (s) {
-      return state.filter === "all" ? true : s.status === state.filter;
-    });
-    $("empty").hidden = state.submissions.length > 0;
-    $("noMatch").hidden = !(state.submissions.length > 0 && items.length === 0);
+    var items = state.submissions;
+    $("empty").hidden = state.counts.all > 0;
+    $("noMatch").hidden = !(state.counts.all > 0 && items.length === 0);
     items.forEach(function (s) { list.appendChild(card(s)); });
   }
 
@@ -103,13 +100,13 @@
   function toggleDone(s) {
     var next = s.status === "done" ? "new" : "done";
     LuanaAuth.api("submission", { method: "PATCH", body: JSON.stringify({ id: s.id, status: next }) })
-      .then(function () { return load(); });
+      .then(function () { return load(true); });
   }
 
   function removeSub(s) {
     if (!confirm("Delete this submission and its files?")) return;
     LuanaAuth.api("submission", { method: "DELETE", body: JSON.stringify({ id: s.id }) })
-      .then(function () { return load(); });
+      .then(function () { return load(true); });
   }
 
   // ---------- Compose preview cluster ----------
@@ -195,18 +192,30 @@
         if (!res.ok) { msg.textContent = res.j.error || "Upload failed."; $("saveBtn").disabled = false; return; }
         closeForm();
         state.filter = "new";
-        return load();
+        return load(true);
       })
       .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
   }
 
-  function load() {
+  function load(reset) {
     $("loading").style.display = "block";
-    return LuanaAuth.api("submissions").then(function (res) {
+    var path = "submissions?limit=30&status=" + encodeURIComponent(state.filter);
+    if (!reset && state.nextCursor) path += "&before=" + encodeURIComponent(state.nextCursor);
+    return LuanaAuth.api(path).then(function (res) {
       $("loading").style.display = "none";
-      state.submissions = res.submissions || [];
+      if (reset) state.submissions = res.submissions || [];
+      else state.submissions = state.submissions.concat(res.submissions || []);
+      state.counts = res.counts || state.counts;
+      state.nextCursor = res.next_cursor || null;
+      state.hasMore = !!res.has_more;
       render();
-    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load submissions."); });
+      $("loadMore").hidden = !state.hasMore;
+      $("loadMore").disabled = false;
+    }).catch(function (e) {
+      $("loading").style.display = "none";
+      $("loadMore").disabled = false;
+      LuanaUtils.reportError(e, "Couldn't load submissions.");
+    });
   }
 
   // ---------- Wire up ----------
@@ -217,6 +226,7 @@
   };
   $("cancelBtn").onclick = closeForm;
   $("saveBtn").onclick = save;
+  $("loadMore").onclick = function () { $("loadMore").disabled = true; load(false); };
   $("fFiles").onchange = function (e) {
     addFiles(e.target.files);
     e.target.value = ""; // allow adding more in a second pick
@@ -258,5 +268,5 @@
     if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
   });
 
-  load();
+  load(true);
 })();
