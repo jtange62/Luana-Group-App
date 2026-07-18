@@ -1,0 +1,26 @@
+name: Production uptime
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  health:
+    if: ${{ secrets.HEALTH_CHECK_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Check production health
+        env:
+          HEALTH_CHECK_TOKEN: ${{ secrets.HEALTH_CHECK_TOKEN }}
+        run: |
+          test -n "$HEALTH_CHECK_TOKEN"
+          response="$(curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-delay 3 --max-time 20 \
+            -H "Authorization: Bearer $HEALTH_CHECK_TOKEN" \
+            https://luana-group-app.pages.dev/api/health)"
+          test "$response" = '{"status":"ok"}'
