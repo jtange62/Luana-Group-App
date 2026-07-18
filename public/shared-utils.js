@@ -60,4 +60,15 @@
     esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
     firstUrl: firstUrl, linkify: linkify, reportError: reportError
   };
+
+  if (!global.document) return;
+  document.querySelectorAll("a.back-btn").forEach(function (link) {
+    link.addEventListener("click", function (event) {
+      event.preventDefault();
+      var internalReferrer = false;
+      try { internalReferrer = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (e) {}
+      if (internalReferrer && history.length > 1) history.back();
+      else location.href = "/";
+    });
+  });
 })(typeof window !== "undefined" ? window : globalThis);

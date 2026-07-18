@@ -50,4 +50,16 @@ test("Cloudflare static responses define core security headers", async () => {
   assert.match(headers, /Permissions-Policy:/);
   assert.match(headers, /Content-Security-Policy:.*frame-ancestors 'none'/);
   assert.match(headers, /connect-src 'self'/);
+  assert.match(headers, /script-src 'self';/);
+  assert.doesNotMatch(headers, /script-src[^;]*unsafe-inline/);
+});
+
+test("HTML contains no inline executable scripts or event handlers", async () => {
+  const pages = ["index.html", ...["ideas", "library", "website", "calendar", "students", "curriculum"]
+    .map((tool) => `tools/${tool}/index.html`)];
+  for (const page of pages) {
+    const html = await readFile(new URL(`../public/${page}`, import.meta.url), "utf8");
+    assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, `${page} has an inline script`);
+    assert.doesNotMatch(html, /\son(?:click|change|input|submit|load|error)=/i, `${page} has an inline event handler`);
+  }
 });

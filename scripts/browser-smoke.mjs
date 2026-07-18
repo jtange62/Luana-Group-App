@@ -46,6 +46,17 @@ try {
   if (!token) throw new Error("Local login returned no token");
 
   browser = await chromium.launch({ executablePath: chromePath, headless: true });
+  const loginContext = await browser.newContext({ viewport: { width: 480, height: 900 } });
+  const loginPage = await loginContext.newPage();
+  await loginPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
+  await loginPage.fill("#pwInput", "test");
+  await loginPage.fill("#gateName", "browser-login");
+  await loginPage.click("#enterBtn");
+  await loginPage.waitForSelector("#hub", { state: "visible" });
+  if (!(await loginPage.evaluate(() => !!localStorage.getItem("luana_token")))) throw new Error("UI login stored no token");
+  console.log("✓ login");
+  await loginContext.close();
+
   const context = await browser.newContext({ viewport: { width: 480, height: 900 } });
   await context.addInitScript(({ authToken }) => {
     localStorage.setItem("luana_token", authToken);
@@ -72,6 +83,14 @@ try {
     console.log(`✓ ${tool}`);
     await page.close();
   }
+  const navigationPage = await context.newPage();
+  await navigationPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
+  await navigationPage.click('a[href="/tools/ideas/"]');
+  await navigationPage.waitForURL("**/tools/ideas/");
+  await navigationPage.click("a.back-btn");
+  await navigationPage.waitForURL(origin + "/");
+  console.log("✓ back navigation");
+  await navigationPage.close();
   console.log("Browser smoke checks passed.");
 } finally {
   if (browser) await browser.close();
