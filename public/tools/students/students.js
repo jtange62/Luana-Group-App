@@ -222,6 +222,7 @@
 
   function save() {
     var name = $("fName").value.trim();
+    var editing = !!state.editingId;
     var msg = $("formMsg");
     msg.textContent = "";
     if (!name) { msg.textContent = "Name is required."; return; }
@@ -249,6 +250,7 @@
       .then(function (res) {
         if (res && res.error) { msg.textContent = res.error; $("saveBtn").disabled = false; return; }
         closeModal(); closeDetail();
+        LuanaUtils.reportSuccess(editing ? "Student changes saved." : "Student added.");
         return load();
       })
       .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });

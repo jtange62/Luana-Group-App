@@ -781,6 +781,7 @@
   function closeModal() { $("modal").hidden = true; }
 
   function save() {
+    var editing = !!state.editingId;
     var staff = state.calendar === "staff";
     var students = state.calendar === "students";
     var staffName = $("fStaff").value.trim();
@@ -814,6 +815,7 @@
       .then(function (res) {
         if (res && res.error) { msg.textContent = res.error; $("saveBtn").disabled = false; return; }
         closeModal();
+        LuanaUtils.reportSuccess(editing ? "Event changes saved." : "Event added.");
         return loadEvents();
       })
       .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });

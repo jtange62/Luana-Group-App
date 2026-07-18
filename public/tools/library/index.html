@@ -34,13 +34,14 @@
 
   <div class="lib-toolbar">
     <select id="monthFilter" class="month-select" aria-label="Filter by month"></select>
-    <input id="search" class="search" type="search" placeholder="Search lessons, tags, files…" />
-    <button id="addBtn" class="btn-primary btn-sm">＋ Add</button>
+    <input id="search" class="search" type="search" aria-label="Search lessons" placeholder="Search lessons…" />
+    <button id="addBtn" class="btn-primary btn-sm">＋ Add lesson</button>
   </div>
 
   <section id="form" class="lesson-form" hidden>
     <p id="formTitle" class="form-heading">New lesson</p>
-    <input id="fTitle" type="text" placeholder="Theme / lesson title — e.g. Spring &amp; Animals" maxlength="200" />
+    <label class="field-label" for="fTitle">Lesson title</label>
+    <input id="fTitle" type="text" placeholder="e.g. Spring &amp; Animals" maxlength="200" />
     <div class="form-row">
       <select id="fProgram" class="form-select"></select>
       <select id="fMonth" class="form-select"></select>
@@ -64,7 +65,7 @@
   <main id="list" class="lesson-list" aria-live="polite"></main>
   <div id="empty" class="empty" hidden>
     <span class="empty-icon">📚</span>
-    <p>No lessons yet — tap “＋ Add” to upload the first one.</p>
+    <p>No lessons yet. Tap “Add lesson” to create the first one.</p>
   </div>
   <div id="noMatch" class="empty" hidden>
     <span class="empty-icon">🔍</span>

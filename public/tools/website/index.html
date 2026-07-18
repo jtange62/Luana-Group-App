@@ -34,14 +34,16 @@
 
   <div class="wi-toolbar">
     <div id="filterTabs" class="seg"></div>
-    <button id="addBtn" class="btn-primary btn-sm">＋ Add</button>
+    <button id="addBtn" class="btn-primary btn-sm">＋ Send item</button>
   </div>
 
   <section id="form" class="wi-form" hidden>
     <label class="field-label">What is it?</label>
     <select id="fType" class="form-select"></select>
-    <input id="fTitle" type="text" placeholder="Short label (optional)" maxlength="200" />
-    <textarea id="fNotes" rows="3" placeholder="Describe it, or write your request / suggestion…"></textarea>
+    <label class="field-label" for="fTitle">Short title (optional)</label>
+    <input id="fTitle" type="text" placeholder="e.g. Sports day photos" maxlength="200" />
+    <label class="field-label" for="fNotes">What should the website manager know?</label>
+    <textarea id="fNotes" rows="3" placeholder="Describe your request or suggestion…"></textarea>
     <div class="file-row">
       <label class="file-label">📎 Attach photos / files
         <input id="fFiles" type="file" multiple accept="image/*,application/pdf,.doc,.docx,.pages,.key,.ppt,.pptx" hidden />
@@ -58,7 +60,7 @@
   <main id="list" class="wi-list" aria-live="polite"></main>
   <div id="empty" class="empty" hidden>
     <span class="empty-icon">🌐</span>
-    <p>Nothing here yet — tap “＋ Add” to send the first item.</p>
+    <p>Nothing here yet. Tap “Send item” to send the first one.</p>
   </div>
   <div id="noMatch" class="empty" hidden>
     <span class="empty-icon">✅</span>

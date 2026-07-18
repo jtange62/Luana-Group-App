@@ -5,6 +5,11 @@ import { readFile } from "node:fs/promises";
 await import("../public/shared-utils.js");
 const utils = globalThis.LuanaUtils;
 
+test("shared feedback helpers are available to every tool", () => {
+  assert.equal(typeof utils.reportError, "function");
+  assert.equal(typeof utils.reportSuccess, "function");
+});
+
 test("shared HTML escaping covers text and attribute-sensitive characters", () => {
   assert.equal(utils.esc(`<a title="x">Tom & 'Luana'</a>`), "&lt;a title=&quot;x&quot;&gt;Tom &amp; &#39;Luana&#39;&lt;/a&gt;");
 });

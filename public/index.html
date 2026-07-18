@@ -26,9 +26,11 @@
       <div class="gate-logo"><img src="/icons/login-logo-96.png" width="96" height="96" fetchpriority="high" alt="Luana English School" /></div>
       <h1 class="gate-title">Luana Group App</h1>
       <p class="gate-sub">Staff tools — enter the password to continue</p>
-      <input id="pwInput" type="password" placeholder="staff password" autocomplete="current-password" />
-      <input id="gateName" type="text" placeholder="your name" autocomplete="name" />
-      <button id="enterBtn" class="btn-primary">Enter</button>
+      <label class="gate-label" for="pwInput">Staff password</label>
+      <input id="pwInput" type="password" placeholder="Enter the shared password" autocomplete="current-password" />
+      <label class="gate-label" for="gateName">Your name</label>
+      <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" />
+      <button id="enterBtn" class="btn-primary">Open staff tools</button>
       <p id="gateError" class="gate-error" hidden></p>
     </div>
   </main>

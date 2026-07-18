@@ -191,6 +191,7 @@
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || "Upload failed."; $("saveBtn").disabled = false; return; }
         closeForm();
+        LuanaUtils.reportSuccess("Sent to the website manager.");
         state.filter = "new";
         return load(true);
       })

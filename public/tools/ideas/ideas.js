@@ -312,6 +312,7 @@
         $("ideaInput").value = "";
         clearChosen();
         $("postBtn").disabled = false;
+        LuanaUtils.reportSuccess("Idea posted.");
         return loadPosts(true);
       })
       .catch(function () { $("postBtn").disabled = false; });

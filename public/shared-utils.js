@@ -56,9 +56,21 @@
     setTimeout(function () { if (toast.parentNode) toast.remove(); }, 5000);
   }
 
+  function reportSuccess(message) {
+    if (!global.document) return;
+    var old = document.querySelector(".app-toast");
+    if (old) old.remove();
+    var toast = document.createElement("div");
+    toast.className = "app-toast app-toast-success";
+    toast.setAttribute("role", "status");
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(function () { if (toast.parentNode) toast.remove(); }, 3500);
+  }
+
   global.LuanaUtils = {
     esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
-    firstUrl: firstUrl, linkify: linkify, reportError: reportError
+    firstUrl: firstUrl, linkify: linkify, reportError: reportError, reportSuccess: reportSuccess
   };
 
   if (!global.document) return;

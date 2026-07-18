@@ -354,6 +354,7 @@
 
   function save() {
     var title = $("fTitle").value.trim();
+    var editing = !!state.editingId;
     var msg = $("formMsg");
     msg.textContent = "";
     if (!title) { msg.textContent = "A title is required."; return; }
@@ -390,7 +391,7 @@
           if (!r.ok) throw new Error(j.error || "upload failed");
         }); });
       })
-      .then(function () { closeForm(); return loadLessons(); })
+      .then(function () { closeForm(); LuanaUtils.reportSuccess("Lesson changes saved."); return loadLessons(); })
       .catch(function (e) {
         msg.textContent = (e && e.message) || "Couldn't save. Try again.";
         $("saveBtn").disabled = false;
@@ -418,6 +419,7 @@
       .then(function (res) {
         if (!res.ok) { msg.textContent = res.j.error || "Upload failed."; $("saveBtn").disabled = false; return; }
         closeForm();
+        LuanaUtils.reportSuccess(editing ? "Lesson changes saved." : "Lesson added.");
         return loadLessons();
       })
       .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
