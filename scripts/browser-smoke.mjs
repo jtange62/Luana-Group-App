@@ -29,7 +29,7 @@ async function waitForServer() {
 await run("wrangler d1 execute luana-board --local --file schema.sql");
 const server = spawn(
   "wrangler pages dev public --port 8791 --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret",
-  { shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+  { shell: true, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] }
 );
 server.stdout.on("data", () => {});
 server.stderr.on("data", () => {});
@@ -77,5 +77,7 @@ try {
   if (browser) await browser.close();
   if (process.platform === "win32") {
     spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
-  } else server.kill("SIGTERM");
+  } else {
+    try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }
+  }
 }
