@@ -19,6 +19,9 @@ body{
 button{font-family:inherit;cursor:pointer;}
 input,textarea{font-family:inherit;font-size:16px;}
 a{color:inherit;}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,[tabindex]:focus-visible{
+  outline:3px solid var(--teal-mid) !important;outline-offset:3px;
+}
 
 /* ---------- Gate ---------- */
 .gate{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}

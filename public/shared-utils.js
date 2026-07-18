@@ -71,4 +71,58 @@
       else location.href = "/";
     });
   });
+
+  var focusable = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
+  var lastOutsideFocus = document.activeElement;
+  var modalOpeners = new WeakMap();
+
+  function visibleModal() {
+    var modals = Array.prototype.slice.call(document.querySelectorAll(".modal:not([hidden])"));
+    return modals.length ? modals[modals.length - 1] : null;
+  }
+
+  function prepareModal(modal) {
+    modal.setAttribute("role", "dialog");
+    modal.setAttribute("aria-modal", "true");
+    modal.setAttribute("tabindex", "-1");
+    var heading = modal.querySelector(".form-heading");
+    if (heading && heading.id) modal.setAttribute("aria-labelledby", heading.id);
+  }
+
+  document.querySelectorAll(".modal").forEach(prepareModal);
+  document.addEventListener("focusin", function (event) {
+    var modal = visibleModal();
+    if (!modal || !modal.contains(event.target)) lastOutsideFocus = event.target;
+  });
+  document.addEventListener("keydown", function (event) {
+    var modal = visibleModal();
+    if (!modal) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      modal.click();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    var items = Array.prototype.slice.call(modal.querySelectorAll(focusable)).filter(function (item) {
+      return !item.hidden && item.getAttribute("aria-hidden") !== "true" && item.offsetParent !== null;
+    });
+    if (!items.length) { event.preventDefault(); modal.focus(); return; }
+    var first = items[0], last = items[items.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
+
+  new MutationObserver(function (mutations) {
+    mutations.forEach(function (mutation) {
+      var modal = mutation.target;
+      if (!modal.classList.contains("modal")) return;
+      prepareModal(modal);
+      if (!modal.hidden) modalOpeners.set(modal, lastOutsideFocus);
+      else {
+        var opener = modalOpeners.get(modal);
+        if (opener && opener.isConnected) opener.focus();
+        modalOpeners.delete(modal);
+      }
+    });
+  }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ["hidden"] });
 })(typeof window !== "undefined" ? window : globalThis);

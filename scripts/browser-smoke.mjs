@@ -94,6 +94,18 @@ try {
     console.log(`✓ ${tool}`);
     await page.close();
   }
+  const keyboardPage = await context.newPage();
+  await keyboardPage.goto(`${origin}/tools/students/`, { waitUntil: "domcontentloaded" });
+  await keyboardPage.waitForSelector("#addBtn");
+  await keyboardPage.focus("#addBtn");
+  await keyboardPage.keyboard.press("Enter");
+  await keyboardPage.waitForSelector("#modal:not([hidden])");
+  if (await keyboardPage.getAttribute("#modal", "role") !== "dialog") throw new Error("modal has no dialog role");
+  await keyboardPage.keyboard.press("Escape");
+  await keyboardPage.waitForSelector("#modal", { state: "hidden" });
+  if (await keyboardPage.evaluate(() => document.activeElement?.id) !== "addBtn") throw new Error("modal did not restore focus");
+  console.log("✓ keyboard modal navigation");
+  await keyboardPage.close();
   const navigationPage = await context.newPage();
   await navigationPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
   await navigationPage.click('a[href="/tools/ideas/"]');
