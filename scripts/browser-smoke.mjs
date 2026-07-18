@@ -1,0 +1,74 @@
+import { spawn, spawnSync } from "node:child_process";
+import { chromium } from "playwright-core";
+
+const origin = "http://127.0.0.1:8791";
+const chromePath = process.env.LUANA_CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+
+function run(command) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, { shell: true, windowsHide: true, stdio: "inherit" });
+    child.on("exit", (code) => code === 0 ? resolve() : reject(new Error(`${command} exited ${code}`)));
+  });
+}
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 60; attempt++) {
+    try { if ((await fetch(origin + "/")).ok) return; } catch {}
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Local Wrangler server did not start");
+}
+
+await run("wrangler d1 execute luana-board --local --file schema.sql");
+const server = spawn(
+  "wrangler pages dev public --port 8791 --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret",
+  { shell: true, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] }
+);
+server.stdout.on("data", () => {});
+server.stderr.on("data", () => {});
+
+let browser;
+try {
+  await waitForServer();
+  const login = await fetch(origin + "/api/login", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: "test" }),
+  });
+  if (!login.ok) throw new Error(`Local login failed (${login.status})`);
+  const { token } = await login.json();
+  if (!token) throw new Error("Local login returned no token");
+
+  browser = await chromium.launch({ executablePath: chromePath, headless: true });
+  const context = await browser.newContext({ viewport: { width: 480, height: 900 } });
+  await context.addInitScript(({ authToken }) => {
+    localStorage.setItem("luana_token", authToken);
+    localStorage.setItem("luana_name", "browser-smoke");
+  }, { authToken: token });
+
+  const tools = [
+    ["calendar", "#view"], ["curriculum", "#months"], ["ideas", "#feed"],
+    ["library", "#list"], ["students", "#list"], ["website", "#list"],
+  ];
+  for (const [tool, selector] of tools) {
+    const page = await context.newPage();
+    const failures = [];
+    page.on("pageerror", (error) => failures.push(error.message));
+    page.on("response", (response) => {
+      if (response.url().includes("/api/") && response.status() >= 500) failures.push(`${response.status()} ${response.url()}`);
+    });
+    const response = await page.goto(`${origin}/tools/${tool}/`, { waitUntil: "domcontentloaded" });
+    if (!response || !response.ok()) failures.push(`page status ${response?.status()}`);
+    await page.waitForSelector(selector, { state: "attached" });
+    await page.waitForTimeout(300);
+    if (page.url() === origin + "/") failures.push("redirected to login");
+    if (failures.length) throw new Error(`${tool}: ${failures.join("; ")}`);
+    console.log(`✓ ${tool}`);
+    await page.close();
+  }
+  console.log("Browser smoke checks passed.");
+} finally {
+  if (browser) await browser.close();
+  if (process.platform === "win32") {
+    spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
+  } else server.kill("SIGTERM");
+}

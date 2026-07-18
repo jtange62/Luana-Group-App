@@ -4,6 +4,11 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "check": "node scripts/check-syntax.mjs && node --test"
+    "check": "node scripts/check-syntax.mjs && node --test",
+    "test:browser": "node scripts/browser-smoke.mjs",
+    "check:all": "npm run check && npm run test:browser"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.61.1"
   }
 }
