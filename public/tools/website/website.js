@@ -79,7 +79,7 @@
         '<span class="status-pill status-' + (s.status === "done" ? "done" : "new") + '">' + (s.status === "done" ? "Done" : "New") + "</span>" +
         '<span class="wi-actions">' +
           '<button class="done-btn">' + (s.status === "done" ? "Reopen" : "✓ Done") + "</button>" +
-          '<button class="del-btn" title="Delete">✕</button>' +
+          '<button class="del-btn" title="Delete" aria-label="Delete this website item">✕</button>' +
         "</span>" +
       "</div>" +
       (s.title ? '<p class="wi-title">' + esc(s.title) + "</p>" : "") +
@@ -104,9 +104,11 @@
   }
 
   function removeSub(s) {
-    if (!confirm("Delete this submission and its files?")) return;
+    var label = s.title || s.type || "this item";
+    if (!confirm('Permanently delete "' + label + '" and all its files? This cannot be undone.')) return;
     LuanaAuth.api("submission", { method: "DELETE", body: JSON.stringify({ id: s.id }) })
-      .then(function () { return load(true); });
+      .then(function () { LuanaUtils.reportSuccess("Website item deleted."); return load(true); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the item. Nothing was changed."); });
   }
 
   // ---------- Compose preview cluster ----------

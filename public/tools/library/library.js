@@ -127,7 +127,7 @@
       '<div class="lesson-head">' +
         '<h2 class="lesson-title">' + esc(l.title) + "</h2>" +
         '<div class="lesson-actions"><button class="edit-btn" title="Edit">✎</button>' +
-          (l.author === me ? '<button class="del-btn" title="Delete">✕</button>' : "") +
+          (l.author === me ? '<button class="del-btn" title="Delete" aria-label="Delete ' + esc(l.title) + '">✕</button>' : "") +
         "</div>" +
       "</div>" +
       (badgeHtml ? '<div class="lesson-badgerow">' + badgeHtml + "</div>" : "") +
@@ -243,9 +243,10 @@
   }
 
   function removeLesson(l) {
-    if (!confirm('Delete "' + l.title + '" and its files?')) return;
+    if (!confirm('Permanently delete "' + l.title + '" and all its files? This cannot be undone.')) return;
     LuanaAuth.api("lesson", { method: "DELETE", body: JSON.stringify({ id: l.id, author: me }) })
-      .then(function () { return loadLessons(); });
+      .then(function () { LuanaUtils.reportSuccess("Lesson deleted."); return loadLessons(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the lesson. Nothing was changed."); });
   }
 
   // ---------- Add / edit form ----------

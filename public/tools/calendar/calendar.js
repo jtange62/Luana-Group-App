@@ -823,9 +823,12 @@
 
   function removeEvent() {
     if (!state.editingId) return;
-    if (!confirm("Delete this event? Recurring events are removed entirely.")) return;
+    var label = $("fTitle").value.trim() || $("fStaff").value.trim() || "this event";
+    var recurring = $("fRecur").value !== "none" ? " This will delete the entire recurring series." : "";
+    if (!confirm('Permanently delete "' + label + '"?' + recurring + " This cannot be undone.")) return;
     LuanaAuth.api("event", { method: "DELETE", body: JSON.stringify({ id: state.editingId, author: me }) })
-      .then(function () { closeModal(); return loadEvents(); });
+      .then(function () { closeModal(); LuanaUtils.reportSuccess("Event deleted."); return loadEvents(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the event. Nothing was changed."); });
   }
 
   // ---------- Data ----------

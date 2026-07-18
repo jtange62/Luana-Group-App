@@ -258,9 +258,11 @@
 
   function removeStudent() {
     if (!state.editingId) return;
-    if (!confirm("Remove this student? Their attendance history is kept but they leave the roster.")) return;
+    var name = $("fName").value.trim() || "this student";
+    if (!confirm('Remove "' + name + '" from the roster? Their attendance history will be kept.')) return;
     LuanaAuth.api("students", { method: "DELETE", body: JSON.stringify({ id: state.editingId }) })
-      .then(function () { closeModal(); closeDetail(); return load(); });
+      .then(function () { closeModal(); closeDetail(); LuanaUtils.reportSuccess("Student removed from the roster."); return load(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't remove the student. Nothing was changed."); });
   }
 
   // ---------- Data ----------

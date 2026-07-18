@@ -166,7 +166,7 @@
         '<div class="card-head-right">' +
           '<span class="cat-pill" style="background:' + c.soft + ";color:" + c.dark + '">' + c.label + "</span>" +
           '<button class="edit-btn" title="Edit post">✎</button>' +
-          (p.author === me ? '<button class="del-btn" title="Delete post">✕</button>' : "") +
+          (p.author === me ? '<button class="del-btn" title="Delete post" aria-label="Delete this idea">✕</button>' : "") +
         "</div>" +
       "</div>" +
       '<p class="card-text">' + linkify(p.text) + "</p>" +
@@ -210,9 +210,11 @@
     var delBtn = el.querySelector(".del-btn");
     if (delBtn) {
       delBtn.onclick = function () {
-        if (!confirm("Delete this post?")) return;
+        var preview = p.text.length > 50 ? p.text.slice(0, 50) + "…" : p.text;
+        if (!confirm('Permanently delete your idea "' + preview + '"? This cannot be undone.')) return;
         LuanaAuth.api("post", { method: "DELETE", body: JSON.stringify({ id: p.id, author: me }) })
-          .then(function () { return loadPosts(true); });
+          .then(function () { LuanaUtils.reportSuccess("Idea deleted."); return loadPosts(true); })
+          .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the idea. Nothing was changed."); });
       };
     }
 

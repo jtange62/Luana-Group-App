@@ -465,10 +465,10 @@
   }
 
   function deleteWeek(id) {
-    if (!id || !confirm("Delete this week?")) return;
+    if (!id || !confirm("Permanently delete this week and its daily themes? This cannot be undone.")) return;
     LuanaAuth.api("curriculum-week", { method: "DELETE", body: JSON.stringify({ id: id }) })
-      .then(function () { return loadWeeks(); })
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the week."); });
+      .then(function () { LuanaUtils.reportSuccess("Curriculum week deleted."); return loadWeeks(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the week. Nothing was changed."); });
   }
 
   // ---------- Daily sub-themes (Summer School) ----------
@@ -528,10 +528,10 @@
   }
 
   function deleteDayTheme(weekId, date) {
-    if (!weekId || !date || !confirm("Remove this day theme?")) return;
+    if (!weekId || !date || !confirm("Permanently delete the day theme for " + prettyDate(date) + "? This cannot be undone.")) return;
     LuanaAuth.api("week-day", { method: "DELETE", body: JSON.stringify({ week_id: weekId, date: date }) })
-      .then(function () { return loadWeeks(); })
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the day theme."); });
+      .then(function () { LuanaUtils.reportSuccess("Day theme deleted."); return loadWeeks(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the day theme. Nothing was changed."); });
   }
 
   // ---------- Copy theme to other programs ----------
@@ -832,10 +832,10 @@
   }
 
   function deleteBlock(id) {
-    if (!id || !confirm("Delete this block? Its day notes go too.")) return;
+    if (!id || !confirm("Permanently delete this schedule block and all of its day notes? This cannot be undone.")) return;
     LuanaAuth.api("schedule-block", { method: "DELETE", body: JSON.stringify({ id: id }) })
-      .then(function () { return loadDay(); })
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the schedule block."); });
+      .then(function () { LuanaUtils.reportSuccess("Schedule block deleted."); return loadDay(); })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the schedule block. Nothing was changed."); });
   }
 
   function openNoteEdit(block) {
@@ -878,6 +878,7 @@
   }
 
   function removeNote() {
+    if (!confirm("Permanently delete today’s plan, record, and note? This cannot be undone.")) return;
     $("nPlanned").value = ""; $("nActual").value = ""; $("nText").value = "";
     saveNote();
   }
