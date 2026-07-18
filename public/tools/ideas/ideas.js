@@ -256,7 +256,7 @@
       });
       pruneThumbCache(state.posts);
       renderFeed();
-    }).catch(function () { $("loading").style.display = "none"; });
+    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load ideas."); });
   }
 
   function post() {

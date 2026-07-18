@@ -41,5 +41,23 @@
     });
   }
 
-  global.LuanaUtils = { esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage, firstUrl: firstUrl, linkify: linkify };
+  function reportError(error, fallback) {
+    var message = error && error.message && error.message !== "unauthorized"
+      ? error.message : (fallback || "Something went wrong. Please try again.");
+    if (global.console && console.error) console.error(error || message);
+    if (!global.document || message === "unauthorized") return;
+    var old = document.querySelector(".app-toast");
+    if (old) old.remove();
+    var toast = document.createElement("div");
+    toast.className = "app-toast";
+    toast.setAttribute("role", "alert");
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(function () { if (toast.parentNode) toast.remove(); }, 5000);
+  }
+
+  global.LuanaUtils = {
+    esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
+    firstUrl: firstUrl, linkify: linkify, reportError: reportError
+  };
 })(typeof window !== "undefined" ? window : globalThis);

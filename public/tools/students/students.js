@@ -268,7 +268,7 @@
       $("loading").style.display = "none";
       state.students = res.students || [];
       render();
-    }).catch(function () { $("loading").style.display = "none"; });
+    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load students."); });
   }
 
   // ---------- Wire up ----------

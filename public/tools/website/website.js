@@ -206,7 +206,7 @@
       $("loading").style.display = "none";
       state.submissions = res.submissions || [];
       render();
-    }).catch(function () { $("loading").style.display = "none"; });
+    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load submissions."); });
   }
 
   // ---------- Wire up ----------

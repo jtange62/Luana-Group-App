@@ -44,7 +44,20 @@
       if (t) opts.headers["Authorization"] = "Bearer " + t;
       return fetch("/api/" + path, opts).then(function (r) {
         if (r.status === 401) { LuanaAuth.signOut(); LuanaAuth.requireLogin(); throw new Error("unauthorized"); }
-        return r.json();
+        return r.text().then(function (text) {
+          var data = {};
+          if (text) {
+            try { data = JSON.parse(text); }
+            catch (e) { if (r.ok) throw new Error("The server returned an invalid response."); }
+          }
+          if (!r.ok) {
+            var error = new Error(data.error || ("Request failed (" + r.status + ")."));
+            error.status = r.status;
+            error.data = data;
+            throw error;
+          }
+          return data;
+        });
       });
     },
 

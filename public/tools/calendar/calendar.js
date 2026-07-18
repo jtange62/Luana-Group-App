@@ -497,7 +497,7 @@
           '<button class="guest-remove" title="Remove">&#x2715;</button>';
         row.querySelector(".guest-remove").onclick = function () {
           LuanaAuth.api("trials", { method: "DELETE", body: JSON.stringify({ id: t.id }) })
-            .then(function () { return loadTrials(); }).catch(function () {});
+            .then(function () { return loadTrials(); }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't remove the trial."); });
         };
         roster.appendChild(row);
       });
@@ -518,7 +518,7 @@
         ni.value = "";
         LuanaAuth.api("trials", { method: "POST", body: JSON.stringify({
           name: n, program: state.attProgram, date: state.attDate
-        }) }).then(function () { return loadTrials(); }).catch(function () {});
+        }) }).then(function () { return loadTrials(); }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't add the trial."); });
       };
       ni.addEventListener("keydown", function (e) { if (e.key === "Enter") trialBtn.click(); });
     })(trialNameInput);
@@ -574,7 +574,7 @@
     return LuanaAuth.api("trials?date=" + encodeURIComponent(state.attDate)).then(function (res) {
       state.trials = res.trials || [];
       if (state.calendar === "students") renderAttendance();
-    }).catch(function () {});
+    }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load trials."); });
   }
 
   function loadAttendance() {
@@ -584,14 +584,14 @@
       return Promise.all([
         LuanaAuth.api("attendance?from=" + wFrom + "&to=" + wTo).then(function (res) {
           state.weekMarks = res.byDate || {};
-        }).catch(function () {}),
+        }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load attendance."); }),
         LuanaAuth.api("trials?from=" + wFrom + "&to=" + wTo).then(function (res) {
           state.weekTrials = {};
           (res.trials || []).forEach(function (t) {
             if (!state.weekTrials[t.date]) state.weekTrials[t.date] = [];
             state.weekTrials[t.date].push(t);
           });
-        }).catch(function () {})
+        }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load trials."); })
       ]).then(function () {
         if (state.calendar === "students") renderAttendance();
       });
@@ -602,12 +602,12 @@
       return LuanaAuth.api("attendance?from=" + fmtYMD(ws) + "&to=" + fmtYMD(addDays(ws, 6))).then(function (res) {
         state.weekMarks = res.byDate || {};
         if (state.calendar === "students") renderAttendance();
-      }).catch(function () {});
+      }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load attendance."); });
     }
     return LuanaAuth.api("attendance?date=" + encodeURIComponent(state.attDate)).then(function (res) {
       state.attMarks = res.marks || {};
       if (state.calendar === "students") renderAttendance();
-    }).catch(function () {});
+    }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load attendance."); });
   }
 
   // ---------- Roster management (students + staff) ----------
@@ -829,7 +829,7 @@
       $("loading").style.display = "none";
       state.events = res.events || [];
       render();
-    }).catch(function () { $("loading").style.display = "none"; });
+    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load events."); });
   }
   function loadLessons() {
     return LuanaAuth.api("lessons").then(function (res) {
@@ -837,19 +837,19 @@
       state.lessonMap = {};
       state.lessons.forEach(function (l) { state.lessonMap[l.id] = l; });
       fillLessonSelect();
-    }).catch(function () {});
+    }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load lessons."); });
   }
   function loadStudents() {
     return LuanaAuth.api("students").then(function (res) {
       state.students = res.students || [];
       if (state.calendar === "students") renderAttendance();
-    }).catch(function () {});
+    }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load students."); });
   }
   function loadStaff() {
     return LuanaAuth.api("staff").then(function (res) {
       state.staff = res.staff || [];
       fillStaffSelect();
-    }).catch(function () {});
+    }).catch(function (e) { LuanaUtils.reportError(e, "Couldn't load staff."); });
   }
 
   // ---------- Wire up ----------

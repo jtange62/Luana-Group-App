@@ -402,7 +402,7 @@
         if (!confirm("Delete this comment?")) return;
         LuanaAuth.api("week-comment", { method: "DELETE", body: JSON.stringify({ id: btn.getAttribute("data-id") }) })
           .then(function () { return loadWeeks(); })
-          .catch(function () {});
+          .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the comment."); });
       };
     });
   }
@@ -467,7 +467,7 @@
     if (!id || !confirm("Delete this week?")) return;
     LuanaAuth.api("curriculum-week", { method: "DELETE", body: JSON.stringify({ id: id }) })
       .then(function () { return loadWeeks(); })
-      .catch(function () {});
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the week."); });
   }
 
   // ---------- Daily sub-themes (Summer School) ----------
@@ -530,7 +530,7 @@
     if (!weekId || !date || !confirm("Remove this day theme?")) return;
     LuanaAuth.api("week-day", { method: "DELETE", body: JSON.stringify({ week_id: weekId, date: date }) })
       .then(function () { return loadWeeks(); })
-      .catch(function () {});
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the day theme."); });
   }
 
   // ---------- Copy theme to other programs ----------
@@ -780,7 +780,7 @@
     $("loading").style.display = "block";
     return Promise.all([fetchBlocks(), fetchDayEvents()])
       .then(renderDay)
-      .catch(function () {})
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't load the day plan."); })
       .then(function () { $("loading").style.display = "none"; });
   }
   function setDate(ymd) { state.date = ymd; loadDay(); }
@@ -832,7 +832,7 @@
     if (!id || !confirm("Delete this block? Its day notes go too.")) return;
     LuanaAuth.api("schedule-block", { method: "DELETE", body: JSON.stringify({ id: id }) })
       .then(function () { return loadDay(); })
-      .catch(function () {});
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the schedule block."); });
   }
 
   function openNoteEdit(block) {
@@ -965,12 +965,12 @@
     $("loading").style.display = "block";
     return Promise.all([fetchThemes(), fetchWeeks()])
       .then(rerender)
-      .catch(function () {})
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't load curriculum."); })
       .then(function () { $("loading").style.display = "none"; });
   }
   // Weeks-only refresh — after adding/editing/deleting a week.
   function loadWeeks() {
-    return fetchWeeks().then(rerender).catch(function () {});
+    return fetchWeeks().then(rerender).catch(function (e) { LuanaUtils.reportError(e, "Couldn't refresh curriculum weeks."); });
   }
 
   // ---------- Wire up ----------

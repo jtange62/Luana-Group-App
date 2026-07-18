@@ -441,7 +441,7 @@
       $("loading").style.display = "none";
       state.lessons = res.lessons || [];
       render();
-    }).catch(function () { $("loading").style.display = "none"; });
+    }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load lessons."); });
   }
 
   // ---------- Build filters & form controls ----------
