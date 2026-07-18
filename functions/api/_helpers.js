@@ -3,7 +3,10 @@
 export function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
   });
 }
 
@@ -34,9 +37,10 @@ export function bearer(request) {
 }
 
 async function hmac(secret, message) {
+  if (!secret) throw new Error("SESSION_SECRET is not configured");
   const key = await crypto.subtle.importKey(
     "raw",
-    new TextEncoder().encode(secret || "fallback-secret-change-me"),
+    new TextEncoder().encode(secret),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"]

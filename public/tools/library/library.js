@@ -69,12 +69,20 @@
 
   function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
 
+  function releaseThumbs(root) {
+    if (!root) return;
+    root.querySelectorAll(".photo,.thumb").forEach(function (item) {
+      if (item._src) { URL.revokeObjectURL(item._src); item._src = null; }
+    });
+  }
+
   // Fetch a saved image (auth-gated) and show it as a thumbnail; tap to open lightbox.
   function loadThumb(btn, fileId) {
     var t = LuanaAuth.token();
     fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
       .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
       .then(function (blob) {
+        if (!btn.isConnected) return;
         var url = URL.createObjectURL(blob);
         btn.style.backgroundImage = "url('" + url + "')";
         btn.classList.add("loaded");
@@ -98,6 +106,7 @@
 
   function render() {
     var list = $("list");
+    releaseThumbs(list);
     list.innerHTML = "";
     var q = state.query.trim().toLowerCase();
     var items = state.lessons.filter(function (l) {
@@ -190,6 +199,7 @@
   function openDetail(l) {
     $("detailTitle").textContent = l.title;
     var body = $("detailBody");
+    releaseThumbs(body);
     body.innerHTML = "";
 
     var badgeBits = [];
@@ -266,7 +276,11 @@
     $("detail").scrollTop = 0;
   }
 
-  function closeDetail() { $("detail").hidden = true; }
+  function closeDetail() {
+    releaseThumbs($("detailBody"));
+    $("detailBody").innerHTML = "";
+    $("detail").hidden = true;
+  }
 
   function removeLesson(l) {
     if (!confirm('Delete "' + l.title + '" and its files?')) return;
@@ -293,7 +307,9 @@
     renderChosen();
   }
   function renderChosen() {
-    var wrap = $("fileList"); wrap.innerHTML = "";
+    var wrap = $("fileList");
+    releaseThumbs(wrap);
+    wrap.innerHTML = "";
     var t = LuanaAuth.token();
 
     // Existing files on the lesson (shown in edit mode)
@@ -305,7 +321,11 @@
         item.style.backgroundPosition = "center";
         fetch("/api/file/" + f.id, { headers: t ? { Authorization: "Bearer " + t } : {} })
           .then(function (r) { return r.blob(); })
-          .then(function (blob) { item.style.backgroundImage = "url('" + URL.createObjectURL(blob) + "')"; })
+          .then(function (blob) {
+            if (!item.isConnected) return;
+            item._src = URL.createObjectURL(blob);
+            item.style.backgroundImage = "url('" + item._src + "')";
+          })
           .catch(function () { item.textContent = "🖼️"; });
       } else {
         item.classList.add("thumb-file");

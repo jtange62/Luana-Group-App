@@ -14,6 +14,12 @@
   // Escapes quotes too — esc() output is also used inside HTML attributes.
   function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
   function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
+  function releaseThumbs(root) {
+    if (!root) return;
+    root.querySelectorAll(".photo").forEach(function (btn) {
+      if (btn._src) { URL.revokeObjectURL(btn._src); btn._src = null; }
+    });
+  }
 
   function timeAgo(ts) {
     var m = Math.round((Date.now() - ts) / 60000);
@@ -61,7 +67,9 @@
 
   function render() {
     renderTabs();
-    var list = $("list"); list.innerHTML = "";
+    var list = $("list");
+    releaseThumbs(list);
+    list.innerHTML = "";
     var items = state.submissions.filter(function (s) {
       return state.filter === "all" ? true : s.status === state.filter;
     });
@@ -160,6 +168,7 @@
     fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
       .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
       .then(function (blob) {
+        if (!btn.isConnected) return;
         var url = URL.createObjectURL(blob);
         btn.style.backgroundImage = "url('" + url + "')";
         btn.classList.add("loaded");

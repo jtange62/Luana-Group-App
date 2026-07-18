@@ -63,6 +63,15 @@
   // Blob URLs by file id, so the 30s feed refresh reuses already-downloaded
   // images instead of re-fetching every photo on each poll.
   var thumbCache = {};
+  function pruneThumbCache(posts) {
+    var live = {};
+    posts.forEach(function (post) {
+      (post.files || []).forEach(function (file) { if (isImage(file)) live[file.id] = true; });
+    });
+    Object.keys(thumbCache).forEach(function (fileId) {
+      if (!live[fileId]) { URL.revokeObjectURL(thumbCache[fileId]); delete thumbCache[fileId]; }
+    });
+  }
   function applyThumb(btn, url) {
     btn.style.backgroundImage = "url('" + url + "')";
     btn.classList.add("loaded");
@@ -274,6 +283,7 @@
         p.comments = p.comments || [];
         return p;
       });
+      pruneThumbCache(state.posts);
       renderFeed();
     }).catch(function () { $("loading").style.display = "none"; });
   }

@@ -785,14 +785,14 @@
     return LuanaAuth.api("schedule-blocks?program=" + encodeURIComponent(state.program) + "&date=" + state.date)
       .then(function (res) { state.blocks = res.blocks || []; state.dayNotes = res.notes || []; });
   }
-  // Events are fetched once per session — plenty fresh for day planning.
-  function fetchEventsOnce() {
-    if (state.events) return Promise.resolve();
-    return LuanaAuth.api("events").then(function (res) { state.events = res.events || []; });
+  // Day planning only needs rules that can produce an occurrence on this date.
+  function fetchDayEvents() {
+    return LuanaAuth.api("events?from=" + state.date + "&to=" + state.date)
+      .then(function (res) { state.events = res.events || []; });
   }
   function loadDay() {
     $("loading").style.display = "block";
-    return Promise.all([fetchBlocks(), fetchEventsOnce()])
+    return Promise.all([fetchBlocks(), fetchDayEvents()])
       .then(renderDay)
       .catch(function () {})
       .then(function () { $("loading").style.display = "none"; });
