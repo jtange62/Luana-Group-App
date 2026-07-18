@@ -33,8 +33,8 @@
   <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
 
   <div id="viewToggle" class="view-toggle" role="group" aria-label="View">
-    <button class="vt-btn active" data-view="plan" aria-pressed="true">🗓️ Plan</button>
-    <button class="vt-btn" data-view="day" aria-pressed="false">☀️ Day</button>
+    <button class="vt-btn active" data-view="plan" aria-pressed="true">🗓️ Monthly themes</button>
+    <button class="vt-btn" data-view="day" aria-pressed="false">☀️ Daily plan</button>
   </div>
 
   <p id="progHint" class="prog-hint"></p>
@@ -48,7 +48,7 @@
       <input id="dayDate" type="date" />
       <button id="dayNext" class="day-nav-btn" aria-label="Next day">›</button>
       <button id="dayToday" class="btn-ghost btn-sm">Today</button>
-      <button id="rhythmEditBtn" class="cm-edit">✎ Edit rhythm</button>
+      <button id="rhythmEditBtn" class="cm-edit">✎ Edit daily schedule</button>
     </div>
     <p id="dayContext" class="prog-hint"></p>
     <div id="dayEvents"></div>
@@ -143,8 +143,9 @@
   <!-- Add / edit a time block in the daily rhythm -->
   <div id="blockModal" class="modal" hidden>
     <div class="modal-card">
-      <p id="blockFormTitle" class="form-heading">Add block</p>
-      <label class="field-label">Label</label>
+      <p id="blockFormTitle" class="form-heading">Add time slot</p>
+      <p class="copy-hint">Set up one part of the normal day, such as Circle Time or Lunch.</p>
+      <label class="field-label">Activity or time name</label>
       <input id="bLabel" type="text" placeholder="e.g. Circle Time" maxlength="200" />
       <div class="time-row">
         <div>
@@ -156,9 +157,9 @@
           <input id="bEnd" type="time" />
         </div>
       </div>
-      <label class="field-label">Fills with…</label>
+      <label class="field-label">Show curriculum content from (optional)</label>
       <select id="bSource">
-        <option value="">Nothing — just the label</option>
+        <option value="">Don't show extra curriculum content</option>
         <option value="week_focus">Week focus</option>
         <option value="week_activities">Week activities</option>
         <option value="week_phonics">Week phonics</option>

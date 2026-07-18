@@ -151,6 +151,11 @@
   function render() {
     setActive("calToggle", "data-cal", state.calendar);
     var isStudents = state.calendar === "students";
+    $("calHelp").textContent = isStudents
+      ? "Record daily attendance and view weekly totals."
+      : state.calendar === "staff"
+        ? "View and add staff shifts."
+        : "School-wide events and reminders.";
 
     // The Students tab is an attendance register, not an event calendar.
     $("calBar").hidden = isStudents;
@@ -292,7 +297,8 @@
   }
 
   function attBtn(st, label, current) {
-    return '<button class="att-btn att-' + st + (current === st ? " active" : "") + '" data-st="' + st + '">' + label + "</button>";
+    var full = { present: "Present", absent: "Absent", late: "Late" }[st];
+    return '<button class="att-btn att-' + st + (current === st ? " active" : "") + '" data-st="' + st + '" title="' + full + '" aria-label="Mark ' + full + '">' + label + "</button>";
   }
 
   function scheduledFor(wd) {

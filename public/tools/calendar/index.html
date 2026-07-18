@@ -32,10 +32,11 @@
 
   <!-- Which calendar -->
   <div id="calToggle" class="seg seg-cal">
-    <button class="seg-btn" data-cal="general">🏫 General</button>
-    <button class="seg-btn" data-cal="students">👧 Students</button>
-    <button class="seg-btn" data-cal="staff">🧑‍🏫 Staff</button>
+    <button class="seg-btn" data-cal="general">🏫 Events</button>
+    <button class="seg-btn" data-cal="students">👧 Attendance</button>
+    <button class="seg-btn" data-cal="staff">🧑‍🏫 Staff shifts</button>
   </div>
+  <p id="calHelp" class="section-help"></p>
 
   <!-- Month nav -->
   <div id="calBar" class="cal-bar">
@@ -67,6 +68,7 @@
 
   <!-- Attendance (Students calendar) -->
   <section id="attendance" class="attendance" hidden>
+    <p class="section-help">Choose a class, then mark P = Present, A = Absent, or L = Late.</p>
     <div id="attDatebar" class="att-datebar">
       <button id="attPrev" class="nav-btn" aria-label="Previous day">‹</button>
       <input id="attDate" type="date" class="form-input att-date" />

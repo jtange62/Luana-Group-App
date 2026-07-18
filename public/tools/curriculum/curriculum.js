@@ -237,7 +237,7 @@
           '<span class="cm-comment-when">' + esc(timeAgo(Number(c.created_at))) + "</span>" +
           '<button class="cm-comment-del" data-id="' + esc(c.id) + '" title="Delete">✕</button></div>';
       }).join("") +
-      '<button class="cm-reply-toggle">💬 ' + (cms.length ? cms.length + (cms.length === 1 ? " note" : " notes") + " — add one" : "add a retro note") + "</button>" +
+      '<button class="cm-reply-toggle">💬 ' + (cms.length ? cms.length + (cms.length === 1 ? " note" : " notes") + " — add one" : "add a reflection note") + "</button>" +
       '<div class="cm-reply-box"><input type="text" maxlength="2000" placeholder="what worked / what didn\'t…" /><button>Send</button></div>' +
       "</div>";
 
@@ -687,8 +687,8 @@
       if (entry.text) dayHtml += '<div class="db-note-pill">📌 ' + esc(entry.text) + "</div>";
     }
     var editBtn = entry
-      ? '<button class="db-note has-entry" data-block="' + esc(block.id) + '">✎ Edit today</button>'
-      : '<button class="db-note" data-block="' + esc(block.id) + '">＋ Plan / record today</button>';
+      ? '<button class="db-note has-entry" data-block="' + esc(block.id) + '">✎ Edit today’s notes</button>'
+      : '<button class="db-note" data-block="' + esc(block.id) + '">＋ Add today’s lesson notes</button>';
 
     return '<div class="day-block">' +
       '<div class="db-time">' + esc(block.start_time) +
@@ -729,15 +729,15 @@
 
     var wrap = $("dayBlocks");
     if (!state.blocks.length) {
-      wrap.innerHTML = '<div class="day-empty">No daily rhythm for ' + esc(state.program) +
-        " yet — add the first time block.</div>" +
-        '<button class="day-add-block">＋ Add block</button>';
+      wrap.innerHTML = '<div class="day-empty">No daily schedule for ' + esc(state.program) +
+        " yet. Add the first time slot.</div>" +
+        '<button class="day-add-block">＋ Add time slot</button>';
     } else {
       var sorted = state.blocks.slice().sort(function (a, b) {
         return a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : a.created_at - b.created_at;
       });
       wrap.innerHTML = sorted.map(function (b) { return blockRowHtml(b, ctx.theme, ctx.week, dayTheme); }).join("") +
-        (state.rhythmEdit ? '<button class="day-add-block">＋ Add block</button>' : "");
+        (state.rhythmEdit ? '<button class="day-add-block">＋ Add time slot</button>' : "");
     }
 
     var addBtn = wrap.querySelector(".day-add-block");
@@ -790,7 +790,7 @@
 
   function openBlockEdit(block) {
     state.editingBlockId = block ? block.id : null;
-    $("blockFormTitle").textContent = (block ? "Edit block" : "Add block") + " — " + state.program;
+    $("blockFormTitle").textContent = (block ? "Edit time slot" : "Add time slot") + " — " + state.program;
     $("bLabel").value = block ? (block.label || "") : "";
     $("bStart").value = block ? (block.start_time || "") : "";
     $("bEnd").value = block ? (block.end_time || "") : "";
