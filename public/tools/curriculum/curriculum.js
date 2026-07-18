@@ -134,7 +134,8 @@
       b.onclick = function () {
         state.program = p;
         renderProgramTabs();
-        if (state.view === "day") loadDay(); else render();
+        fetchWeeks().then(function () { if (state.view === "day") loadDay(); else render(); })
+          .catch(function (e) { LuanaUtils.reportError(e, "Couldn't load curriculum weeks."); });
       };
       nav.appendChild(b);
     });
@@ -952,10 +953,11 @@
 
   // ---------- Data ----------
   function fetchThemes() {
-    return LuanaAuth.api("lessons").then(function (res) { state.lessons = res.lessons || []; });
+    return LuanaAuth.api("lessons?files=0").then(function (res) { state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
-    return LuanaAuth.api("curriculum-weeks").then(function (res) { state.weeks = res.weeks || []; });
+    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(state.program))
+      .then(function (res) { state.weeks = res.weeks || []; });
   }
   // Re-render whichever view is showing (day view also slots theme/week data).
   function rerender() { if (state.view === "day") renderDay(); else render(); }

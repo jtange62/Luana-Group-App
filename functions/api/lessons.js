@@ -8,6 +8,7 @@ export async function onRequestGet({ request, env }) {
   const month = clean(url.searchParams.get("month"), 2);
   const query = clean(url.searchParams.get("q"), 200).toLowerCase();
   const id = clean(url.searchParams.get("id"), 64);
+  const includeFiles = url.searchParams.get("files") !== "0";
   const requestedLimit = Number(url.searchParams.get("limit") || 1000);
   const limit = Number.isInteger(requestedLimit) ? Math.max(1, Math.min(requestedLimit, 1000)) : 1000;
   const cursor = url.searchParams.get("before") || "";
@@ -38,10 +39,15 @@ export async function onRequestGet({ request, env }) {
   bindings.push(fetchLimit);
   const page = `SELECT l.id FROM lessons l${where} ORDER BY l.created_at DESC, l.id DESC LIMIT ?`;
   const statement = (sql) => env.DB.prepare(sql).bind(...bindings);
-  const [lessonsRes, filesRes] = await env.DB.batch([
-    statement(`SELECT l.* FROM lessons l${where} ORDER BY l.created_at DESC, l.id DESC LIMIT ?`),
-    statement(`SELECT * FROM lesson_files WHERE lesson_id IN (${page}) ORDER BY created_at ASC`),
-  ]);
+  let lessonsRes, filesRes = { results: [] };
+  if (includeFiles) {
+    [lessonsRes, filesRes] = await env.DB.batch([
+      statement(`SELECT l.* FROM lessons l${where} ORDER BY l.created_at DESC, l.id DESC LIMIT ?`),
+      statement(`SELECT * FROM lesson_files WHERE lesson_id IN (${page}) ORDER BY created_at ASC`),
+    ]);
+  } else {
+    lessonsRes = await statement(`SELECT l.* FROM lessons l${where} ORDER BY l.created_at DESC, l.id DESC LIMIT ?`).all();
+  }
   const rows = lessonsRes.results || [];
   const hasMore = !id && rows.length > limit;
   const lessons = rows.slice(0, limit);
@@ -51,7 +57,7 @@ export async function onRequestGet({ request, env }) {
       id: file.id, filename: file.filename, size: file.size, type: file.type,
     });
   });
-  lessons.forEach((lesson) => { lesson.files = byLesson[lesson.id] || []; });
+  if (includeFiles) lessons.forEach((lesson) => { lesson.files = byLesson[lesson.id] || []; });
   const last = lessons[lessons.length - 1];
   return json({ lessons, has_more: hasMore, next_cursor: hasMore && last ? `${last.created_at}|${last.id}` : null });
 }

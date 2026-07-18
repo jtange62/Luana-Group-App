@@ -7,6 +7,7 @@ import { onRequestGet as getEvents } from "../functions/api/events.js";
 import { onRequestGet as getPosts } from "../functions/api/posts.js";
 import { onRequestGet as getSubmissions } from "../functions/api/submissions.js";
 import { onRequestGet as getLessons } from "../functions/api/lessons.js";
+import { onRequestGet as getCurriculumWeeks } from "../functions/api/curriculum-weeks.js";
 
 const SESSION_SECRET = "test-only-session-secret-that-is-long-enough";
 
@@ -209,4 +210,26 @@ test("canonical schema includes composite indexes for every cursor endpoint", as
   assert.match(schema, /idx_lessons_filter ON lessons \(program, month, created_at DESC, id DESC\)/);
   assert.match(schema, /idx_submissions_cursor ON submissions \(created_at DESC, id DESC\)/);
   assert.match(schema, /idx_submissions_status_cursor ON submissions \(status, created_at DESC, id DESC\)/);
+});
+
+test("lesson metadata mode skips the attachment query", async () => {
+  const DB = databaseSpy([{ id: "lesson-1", created_at: 1 }]);
+  const request = await authorizedRequest("https://example.test/api/lessons?files=0");
+  const response = await getLessons({ request, env: { DB, SESSION_SECRET } });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(DB.calls.length, 1);
+  assert.equal("files" in body.lessons[0], false);
+});
+
+test("curriculum weeks scope all three related queries to a program", async () => {
+  const DB = batchedDatabase([[], [], []]);
+  const request = await authorizedRequest("https://example.test/api/curriculum-weeks?program=Kinder");
+  const response = await getCurriculumWeeks({ request, env: { DB, SESSION_SECRET } });
+
+  assert.equal(response.status, 200);
+  assert.equal(DB.calls.length, 3);
+  assert.ok(DB.calls.every((call) => call.bindings[0] === "Kinder"));
+  assert.ok(DB.calls.every((call) => /lessons WHERE program = \?/.test(call.sql)));
 });

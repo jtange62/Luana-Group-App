@@ -9,6 +9,7 @@ export async function onRequestGet({ request, env }) {
 
   const url = new URL(request.url);
   const lessonId = clean(url.searchParams.get("lesson"), 60);
+  const program = clean(url.searchParams.get("program"), 40);
 
   const [weeksRes, commentsRes, daysRes] = await env.DB.batch(lessonId
     ? [
@@ -16,7 +17,11 @@ export async function onRequestGet({ request, env }) {
         env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id = ?) ORDER BY created_at ASC").bind(lessonId),
         env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id = ?) ORDER BY date ASC").bind(lessonId),
       ]
-    : [
+    : program ? [
+        env.DB.prepare("SELECT * FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?) ORDER BY lesson_id, week_no ASC").bind(program),
+        env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?)) ORDER BY created_at ASC").bind(program),
+        env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?)) ORDER BY date ASC").bind(program),
+      ] : [
         env.DB.prepare("SELECT * FROM curriculum_weeks ORDER BY lesson_id, week_no ASC"),
         env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks) ORDER BY created_at ASC"),
         env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks) ORDER BY date ASC"),

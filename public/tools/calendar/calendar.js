@@ -852,7 +852,7 @@
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load events."); });
   }
   function loadLessons() {
-    return LuanaAuth.api("lessons").then(function (res) {
+    return LuanaAuth.api("lessons?files=0").then(function (res) {
       state.lessons = res.lessons || [];
       state.lessonMap = {};
       state.lessons.forEach(function (l) { state.lessonMap[l.id] = l; });
