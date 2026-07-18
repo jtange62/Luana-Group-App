@@ -22,6 +22,7 @@
 
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
+  var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo;
 
   var state = {
     lessons: [],
@@ -70,21 +71,6 @@
   }
 
   state.date = fmtYMD(new Date());
-
-  // Escapes quotes too — esc() output is also used inside HTML attributes.
-  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-
-  // Copied from ideas.js — keep in sync.
-  function timeAgo(ts) {
-    var m = Math.round((Date.now() - ts) / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return m + "m ago";
-    var h = Math.round(m / 60);
-    if (h < 24) return h + "h ago";
-    var d = Math.round(h / 24);
-    if (d < 7) return d + "d ago";
-    return new Date(ts).toLocaleDateString();
-  }
 
   // Split a free-text field into items on newlines or commas.
   function items(text) {

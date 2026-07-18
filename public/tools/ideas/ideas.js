@@ -14,39 +14,10 @@
   var state = { activeCat: "all", posts: [] };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
+  var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
+  var isImage = LuanaUtils.isImage, firstUrl = LuanaUtils.firstUrl, linkify = LuanaUtils.linkify;
 
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
-  // Escapes quotes too — esc() output is also used inside HTML attributes.
-  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
-
-  function timeAgo(ts) {
-    var m = Math.round((Date.now() - ts) / 60000);
-    if (m < 1) return "just now";
-    if (m < 60) return m + "m ago";
-    var h = Math.round(m / 60);
-    if (h < 24) return h + "h ago";
-    var d = Math.round(h / 24);
-    if (d < 7) return d + "d ago";
-    return new Date(ts).toLocaleDateString();
-  }
-
-  var URL_RE = /(https?:\/\/[^\s<]+)/g;
-  function firstUrl(text) { var m = text.match(URL_RE); return m ? m[0].replace(/[.,)]+$/, "") : null; }
-  function linkify(text) {
-    return esc(text).replace(URL_RE, function (u) {
-      var clean = u.replace(/[.,)]+$/, "");
-      return '<a href="' + clean + '" target="_blank" rel="noopener noreferrer">' + clean + "</a>";
-    });
-  }
-
-  function isImage(f) { return (f.type || "").indexOf("image/") === 0; }
-
-  function fileSize(bytes) {
-    if (!bytes) return "";
-    if (bytes < 1024) return bytes + " B";
-    if (bytes < 1024 * 1024) return Math.round(bytes / 1024) + " KB";
-    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  }
 
   function openFile(fileId) {
     var t = LuanaAuth.token();

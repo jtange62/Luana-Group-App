@@ -10,9 +10,8 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
+  var esc = LuanaUtils.esc;
 
-  // Escapes quotes too — esc() output is also used inside HTML attributes.
-  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
   function daysArr(d) { return d ? String(d).split(",").map(Number).filter(function (n) { return n >= 0 && n <= 6; }) : []; }
 
   // Age in whole years from a "YYYY-MM-DD" birthday.

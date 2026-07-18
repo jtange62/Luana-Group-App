@@ -18,6 +18,7 @@
 
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
+  var esc = LuanaUtils.esc;
   var now = new Date();
   var STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   // Weekday chips in school order (Mon→Sun); value is JS getDay() index.
@@ -51,8 +52,6 @@
   function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function startOfWeek(d) { return addDays(d, -d.getDay()); }
-  // Escapes quotes too — esc() output is also used inside HTML attributes.
-  function esc(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;"); }
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
 
   function colorForName(name) {
