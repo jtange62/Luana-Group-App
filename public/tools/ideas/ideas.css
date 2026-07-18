@@ -87,3 +87,5 @@
 .empty{text-align:center;padding:40px 20px;color:var(--muted);}
 .empty-icon{font-size:30px;display:block;margin-bottom:8px;}
 .loading{text-align:center;padding:30px;color:var(--hint);font-size:14px;}
+.load-more{display:block;margin:4px auto 28px;padding:9px 16px;border:0.5px solid var(--line);border-radius:999px;background:#fff;color:var(--teal-mid);font:500 13px Inter,sans-serif;cursor:pointer;}
+.load-more:hover{background:var(--sand-2);}

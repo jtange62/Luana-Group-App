@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { json, makeToken, verifyToken } from "../functions/api/_helpers.js";
 import { onRequestGet as getEvents } from "../functions/api/events.js";
+import { onRequestGet as getPosts } from "../functions/api/posts.js";
 
 const SESSION_SECRET = "test-only-session-secret-that-is-long-enough";
 
@@ -85,5 +86,58 @@ test("event endpoint rejects missing authentication before querying D1", async (
   const response = await getEvents({ request, env: { DB, SESSION_SECRET } });
 
   assert.equal(response.status, 401);
+  assert.equal(DB.calls.length, 0);
+});
+
+function batchedDatabase(resultSets) {
+  const calls = [];
+  return {
+    calls,
+    prepare(sql) {
+      const call = { sql, bindings: [] };
+      calls.push(call);
+      return { bind(...bindings) { call.bindings = bindings; return this; } };
+    },
+    async batch() {
+      return resultSets.map((results) => ({ results }));
+    },
+  };
+}
+
+test("posts endpoint returns stable cursor pagination with one lookahead row", async () => {
+  const rows = [
+    { id: "c", created_at: 30 },
+    { id: "b", created_at: 20 },
+    { id: "a", created_at: 10 },
+  ];
+  const DB = batchedDatabase([rows, [], []]);
+  const request = await authorizedRequest("https://example.test/api/posts?limit=2");
+  const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(body.posts.map((post) => post.id), ["c", "b"]);
+  assert.equal(body.has_more, true);
+  assert.equal(body.next_cursor, "20|b");
+  assert.deepEqual(DB.calls.map((call) => call.bindings), [[3], [3], [3]]);
+});
+
+test("posts cursor binds timestamp and id consistently across the D1 batch", async () => {
+  const DB = batchedDatabase([[], [], []]);
+  const request = await authorizedRequest("https://example.test/api/posts?limit=30&before=20%7Cb");
+  const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(DB.calls.map((call) => call.bindings), [
+    [20, 20, "b", 31], [20, 20, "b", 31], [20, 20, "b", 31],
+  ]);
+  assert.ok(DB.calls.every((call) => /id < \?/.test(call.sql)));
+});
+
+test("posts endpoint rejects malformed cursors before querying D1", async () => {
+  const DB = batchedDatabase([]);
+  const request = await authorizedRequest("https://example.test/api/posts?before=broken");
+  const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
+  assert.equal(response.status, 400);
   assert.equal(DB.calls.length, 0);
 });

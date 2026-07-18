@@ -11,7 +11,7 @@
     { id: "general",    label: "general",    color: "#5F5E5A", soft: "#F1EFE8", dark: "#444441" }
   ];
 
-  var state = { activeCat: "all", posts: [] };
+  var state = { activeCat: "all", posts: [], nextCursor: null, hasMore: false };
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
@@ -202,7 +202,7 @@
         if (!txt) return;
         ta.disabled = true;
         LuanaAuth.api("post", { method: "PATCH", body: JSON.stringify({ id: p.id, author: me, text: txt }) })
-          .then(function () { return loadPosts(); })
+          .then(function () { return loadPosts(true); })
           .catch(function () { ta.disabled = false; });
       };
     }
@@ -212,7 +212,7 @@
       delBtn.onclick = function () {
         if (!confirm("Delete this post?")) return;
         LuanaAuth.api("post", { method: "DELETE", body: JSON.stringify({ id: p.id, author: me }) })
-          .then(function () { return loadPosts(); });
+          .then(function () { return loadPosts(true); });
       };
     }
 
@@ -237,7 +237,7 @@
       if (!txt) return;
       input.disabled = true;
       LuanaAuth.api("comment", { method: "POST", body: JSON.stringify({ post_id: p.id, author: me, text: txt }) })
-        .then(function () { return loadPosts(); })
+        .then(function () { return loadPosts(true); })
         .catch(function () { input.disabled = false; });
     };
     cwrap.appendChild(toggle);
@@ -245,18 +245,48 @@
     return el;
   }
 
-  function loadPosts() {
+  function normalizePosts(posts) {
+    return posts.map(function (p) {
+      p.created_at = Number(p.created_at);
+      p.comments = p.comments || [];
+      return p;
+    });
+  }
+
+  function mergePosts(incoming) {
+    var byId = {};
+    state.posts.concat(incoming).forEach(function (post) { byId[post.id] = post; });
+    state.posts = Object.keys(byId).map(function (id) { return byId[id]; })
+      .sort(function (a, b) { return b.created_at - a.created_at || String(b.id).localeCompare(String(a.id)); });
+  }
+
+  function loadPosts(reset) {
     $("loading").style.display = "block";
-    return LuanaAuth.api("posts").then(function (res) {
+    return LuanaAuth.api("posts?limit=30").then(function (res) {
       $("loading").style.display = "none";
-      state.posts = (res.posts || []).map(function (p) {
-        p.created_at = Number(p.created_at);
-        p.comments = p.comments || [];
-        return p;
-      });
+      var incoming = normalizePosts(res.posts || []);
+      if (reset) state.posts = incoming; else mergePosts(incoming);
+      if (reset) {
+        state.nextCursor = res.next_cursor || null;
+        state.hasMore = !!res.has_more;
+      }
       pruneThumbCache(state.posts);
       renderFeed();
+      $("loadMore").hidden = !state.hasMore;
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load ideas."); });
+  }
+
+  function loadOlder() {
+    if (!state.hasMore || !state.nextCursor) return;
+    $("loadMore").disabled = true;
+    return LuanaAuth.api("posts?limit=30&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
+      mergePosts(normalizePosts(res.posts || []));
+      state.nextCursor = res.next_cursor || null;
+      state.hasMore = !!res.has_more;
+      renderFeed();
+      $("loadMore").hidden = !state.hasMore;
+      $("loadMore").disabled = false;
+    }).catch(function (e) { $("loadMore").disabled = false; LuanaUtils.reportError(e, "Couldn't load older ideas."); });
   }
 
   function post() {
@@ -282,13 +312,14 @@
         $("ideaInput").value = "";
         clearChosen();
         $("postBtn").disabled = false;
-        return loadPosts();
+        return loadPosts(true);
       })
       .catch(function () { $("postBtn").disabled = false; });
   }
 
   $("postingAs").textContent = "Posting as " + me;
   $("postBtn").onclick = post;
+  $("loadMore").onclick = loadOlder;
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
   setInterval(function () {
@@ -298,7 +329,7 @@
     var ae = document.activeElement;
     var typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") && ae.value;
     if (typing || chosen.length) return;
-    loadPosts();
+    loadPosts(false);
   }, 30000);
 
   // ---------- Lightbox ----------
@@ -338,5 +369,5 @@
 
   renderTabs();
   syncComposer();
-  loadPosts();
+  loadPosts(true);
 })();
