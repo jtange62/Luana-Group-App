@@ -235,7 +235,11 @@
       var head = document.createElement("div");
       head.className = "week-day-head";
       head.innerHTML = "<b>" + WEEKDAYS[d.getDay()] + "</b> " + d.getDate();
-      (function (s) { head.onclick = function () { state.selected = s; state.view = "month"; render(); }; })(ymd);
+      (function (s) { head.onclick = function () {
+        var selectedDate = parseYMD(s);
+        state.selected = s; state.year = selectedDate.getFullYear(); state.month = selectedDate.getMonth();
+        state.view = "month"; loadEvents();
+      }; })(ymd);
       block.appendChild(head);
 
       if (evs.length) evs.forEach(function (ev) { block.appendChild(eventRow(ev)); });
@@ -823,9 +827,25 @@
   }
 
   // ---------- Data ----------
+  function eventRange() {
+    var from, to;
+    if (state.view === "week") {
+      from = startOfWeek(parseYMD(state.selected));
+      to = addDays(from, 6);
+    } else if (state.view === "agenda") {
+      from = parseYMD(state.selected);
+      to = addDays(from, 89);
+    } else {
+      from = new Date(state.year, state.month, 1);
+      to = new Date(state.year, state.month + 1, 0);
+    }
+    return { from: fmtYMD(from), to: fmtYMD(to) };
+  }
+
   function loadEvents() {
     $("loading").style.display = "block";
-    return LuanaAuth.api("events").then(function (res) {
+    var range = eventRange();
+    return LuanaAuth.api("events?from=" + range.from + "&to=" + range.to).then(function (res) {
       $("loading").style.display = "none";
       state.events = res.events || [];
       render();
@@ -890,16 +910,24 @@
   };
   $("viewToggle").onclick = function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
-    state.view = b.getAttribute("data-view"); render();
+    state.view = b.getAttribute("data-view");
+    syncMonthToSelected();
+    loadEvents();
   };
   $("prevBtn").onclick = function () { step(-1); };
   $("nextBtn").onclick = function () { step(1); };
   function step(dir) {
     if (state.view === "week") { state.selected = fmtYMD(addDays(parseYMD(state.selected), dir * 7)); }
     else if (state.view === "agenda") { state.selected = fmtYMD(addDays(parseYMD(state.selected), dir * 30)); }
-    else { state.month += dir; if (state.month < 0) { state.month = 11; state.year--; } else if (state.month > 11) { state.month = 0; state.year++; } }
+    else {
+      var selectedDay = parseYMD(state.selected).getDate();
+      state.month += dir;
+      if (state.month < 0) { state.month = 11; state.year--; }
+      else if (state.month > 11) { state.month = 0; state.year++; }
+      state.selected = fmtYMD(new Date(state.year, state.month, Math.min(selectedDay, new Date(state.year, state.month + 1, 0).getDate())));
+    }
     syncMonthToSelected();
-    render();
+    loadEvents();
   }
   function syncMonthToSelected() {
     if (state.view !== "month") { var d = parseYMD(state.selected); state.year = d.getFullYear(); state.month = d.getMonth(); }
@@ -907,7 +935,7 @@
   $("todayBtn").onclick = function () {
     var t = new Date();
     state.year = t.getFullYear(); state.month = t.getMonth(); state.selected = fmtYMD(t);
-    render();
+    loadEvents();
   };
   $("addBtn").onclick = openAdd;
   $("cancelBtn").onclick = closeModal;

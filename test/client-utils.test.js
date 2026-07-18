@@ -33,3 +33,11 @@ test("every tool loads shared utilities before its page script", async () => {
     assert.ok(html.indexOf('/shared-utils.js') < html.indexOf(`./${tool}.js`), `${tool} loads utilities too late`);
   }
 });
+
+test("calendar event loading remains date-scoped", async () => {
+  const source = await readFile(new URL("../public/tools/calendar/calendar.js", import.meta.url), "utf8");
+  assert.match(source, /events\?from=" \+ range\.from \+ "&to=" \+ range\.to/);
+  assert.doesNotMatch(source, /LuanaAuth\.api\("events"\)/);
+  assert.match(source, /state\.view === "week"/);
+  assert.match(source, /state\.view === "agenda"/);
+});
