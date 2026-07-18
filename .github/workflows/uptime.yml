@@ -12,7 +12,6 @@ permissions:
 
 jobs:
   health:
-    if: ${{ secrets.HEALTH_CHECK_TOKEN != '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:

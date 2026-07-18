@@ -8,7 +8,7 @@ The `Production uptime` GitHub Actions workflow checks this endpoint after every
 
 ## One-time token setup
 
-Generate one strong random token. Save the same value as the Cloudflare Pages secret `HEALTH_CHECK_TOKEN` and the GitHub Actions repository secret `HEALTH_CHECK_TOKEN`. The workflow remains safely skipped until the GitHub secret exists.
+Generate one strong random token. Save the same value as the Cloudflare Pages secret `HEALTH_CHECK_TOKEN` and the GitHub Actions repository secret `HEALTH_CHECK_TOKEN`.
 
 ```powershell
 npx wrangler pages secret put HEALTH_CHECK_TOKEN --project-name luana-group-app
