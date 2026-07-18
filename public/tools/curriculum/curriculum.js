@@ -93,6 +93,28 @@
       .sort(function (a, b) { return a.week_no - b.week_no; });
   }
 
+  // Summer School is one three-week program spanning July and August, so its
+  // visible week numbers continue across the two monthly theme cards.
+  function displayWeekNo(week) {
+    if (state.program !== DAY_THEMES_PROGRAM) return week.week_no;
+    var currentThemeIds = monthsFor(DAY_THEMES_PROGRAM).map(function (month) {
+      var theme = themeFor(DAY_THEMES_PROGRAM, month);
+      return theme && theme.id;
+    }).filter(Boolean);
+    var ordered = state.weeks.filter(function (item) {
+      return currentThemeIds.indexOf(item.lesson_id) !== -1;
+    }).sort(function (a, b) {
+      if (a.start_date && b.start_date) return a.start_date.localeCompare(b.start_date);
+      if (a.start_date) return -1;
+      if (b.start_date) return 1;
+      var aTheme = state.lessons.filter(function (lesson) { return lesson.id === a.lesson_id; })[0];
+      var bTheme = state.lessons.filter(function (lesson) { return lesson.id === b.lesson_id; })[0];
+      return Number(aTheme && aTheme.month || 0) - Number(bTheme && bTheme.month || 0) || a.week_no - b.week_no;
+    });
+    var index = ordered.findIndex(function (item) { return item.id === week.id; });
+    return index === -1 ? week.week_no : index + 1;
+  }
+
   // The theme + week covering a date. Date-anchored weeks win: a week with a
   // start_date covers start_date..start_date+6 under its own theme, letting a
   // program span month boundaries (Summer School). Otherwise fall back to
@@ -292,7 +314,7 @@
 
     return '<div class="cm-week" data-week="' + esc(w.id) + '">' +
       '<div class="cm-week-top">' +
-        '<span class="cm-week-no">Week ' + w.week_no + "</span>" +
+        '<span class="cm-week-no">Week ' + displayWeekNo(w) + "</span>" +
         (w.start_date ? '<span class="cm-week-dates">' + shortDate(w.start_date) + " – " + shortDate(fmtYMD(addDays(parseYMD(w.start_date), 4))) + "</span>" : "") +
         (w.focus ? '<span class="cm-week-focus">' + esc(w.focus) + "</span>" : "") +
         '<span class="cm-week-actions">' +
@@ -411,7 +433,7 @@
   function openWeekEdit(lessonId, week) {
     state.weekLessonId = lessonId;
     state.editingWeekId = week ? week.id : null;
-    $("weekFormTitle").textContent = week ? ("Edit Week " + week.week_no) : "Add week";
+    $("weekFormTitle").textContent = week ? ("Edit Week " + displayWeekNo(week)) : "Add week";
     $("wFocus").value = week ? (week.focus || "") : "";
     $("wStartField").hidden = !dayThemesOn();
     $("wStart").value = week ? (week.start_date || "") : "";
@@ -486,7 +508,7 @@
     state.dayThemeWeekId = week.id;
     state.editingDayDate = day ? day.date : null;
     state.openDays[week.id] = true; // show the result after saving
-    $("dayThemeFormTitle").textContent = (day ? "Edit day theme" : "Add day theme") + " — Week " + week.week_no;
+    $("dayThemeFormTitle").textContent = (day ? "Edit day theme" : "Add day theme") + " — Week " + displayWeekNo(week);
     $("dtDate").value = day ? day.date : nextDayDate(week);
     $("dtTheme").value = day ? (day.subtheme || "") : "";
     $("dtActivities").value = day ? (day.activities || "") : "";
@@ -715,7 +737,7 @@
         : prettyDate(state.date) + " — no theme set for " + MONTHS[mNo - 1] + " yet. Switch to Plan to add one.";
     } else {
       $("dayContext").textContent = prettyDate(state.date) + " — " + ctx.theme.title +
-        (ctx.week ? " · Week " + ctx.week.week_no + (ctx.week.focus ? ": " + ctx.week.focus : "") : "") +
+        (ctx.week ? " · Week " + displayWeekNo(ctx.week) + (ctx.week.focus ? ": " + ctx.week.focus : "") : "") +
         (dayTheme && dayTheme.subtheme ? " · 🌞 " + dayTheme.subtheme : "");
     }
 
