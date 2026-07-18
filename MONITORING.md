@@ -4,7 +4,7 @@
 
 `/api/health` performs read-only D1 and R2 probes. It is deliberately hidden behind the `HEALTH_CHECK_TOKEN` bearer token and returns only `ok` or `unavailable`.
 
-The `Production uptime` GitHub Actions workflow checks this endpoint every 15 minutes. A failed scheduled workflow appears in the repository Actions page and GitHub notification channels configured for the repository.
+The `Production uptime` GitHub Actions workflow checks this endpoint after every push to `main` and every 15 minutes. A failed workflow appears in the repository Actions page and GitHub notification channels configured for the repository.
 
 ## One-time token setup
 
