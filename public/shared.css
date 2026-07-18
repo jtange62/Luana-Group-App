@@ -35,10 +35,10 @@ a{color:inherit;}
 
 /* ---------- Buttons ---------- */
 .btn-primary{width:100%;height:48px;border:none;border-radius:999px;
-  background:var(--coral);color:#fff;font-weight:700;font-size:15px;letter-spacing:.01em;
-  box-shadow:0 6px 16px -6px rgba(232,113,74,0.6);transition:filter .12s,transform .08s,box-shadow .12s;}
+  background:var(--coral-dark);color:#fff;font-weight:700;font-size:15px;letter-spacing:.01em;
+  box-shadow:0 6px 16px -6px rgba(153,60,29,0.55);transition:filter .12s,transform .08s,box-shadow .12s;}
 .btn-primary:hover{filter:brightness(1.04);}
-.btn-primary:active{transform:scale(.96) translateY(1px);box-shadow:0 3px 10px -6px rgba(232,113,74,0.6);}
+.btn-primary:active{transform:scale(.96) translateY(1px);box-shadow:0 3px 10px -6px rgba(153,60,29,0.55);}
 .btn-sm{width:auto;height:44px;padding:0 22px;font-size:15px;}
 
 /* ---------- Topbar ---------- */

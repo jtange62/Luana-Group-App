@@ -27,7 +27,7 @@
 .cm-edit:hover{background:var(--teal-soft);border-color:var(--teal-mid);}
 
 .cm-body{margin-top:8px;}
-.cm-none{color:var(--hint);font-size:13.5px;margin:2px 0 0;font-style:italic;}
+.cm-none{color:var(--muted);font-size:13.5px;margin:2px 0 0;font-style:italic;}
 
 .cm-theme{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;
   padding-bottom:8px;border-bottom:0.5px solid var(--line);margin-bottom:2px;}

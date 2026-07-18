@@ -759,7 +759,9 @@
   function switchView(v) {
     state.view = v;
     document.querySelectorAll("#viewToggle .vt-btn").forEach(function (b) {
-      b.classList.toggle("active", b.getAttribute("data-view") === v);
+      var active = b.getAttribute("data-view") === v;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", String(active));
     });
     var day = v === "day";
     $("months").hidden = day;

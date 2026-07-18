@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
+import AxeBuilder from "@axe-core/playwright";
 
 const origin = "http://127.0.0.1:8791";
 const chromePath = [
@@ -10,6 +11,13 @@ const chromePath = [
   "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium",
 ].find((path) => path && existsSync(path));
 if (!chromePath) throw new Error("No supported system Chrome/Edge executable was found");
+
+async function accessibilityFailures(page) {
+  const result = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
+  return result.violations
+    .filter((violation) => violation.impact === "critical" || violation.impact === "serious")
+    .map((violation) => `${violation.id}: ${violation.nodes.map((node) => node.target.join(" ")).join(", ")}`);
+}
 
 function run(command) {
   return new Promise((resolve, reject) => {
@@ -49,6 +57,8 @@ try {
   const loginContext = await browser.newContext({ viewport: { width: 480, height: 900 } });
   const loginPage = await loginContext.newPage();
   await loginPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
+  const loginAccessibility = await accessibilityFailures(loginPage);
+  if (loginAccessibility.length) throw new Error(`login accessibility: ${loginAccessibility.join("; ")}`);
   await loginPage.fill("#pwInput", "test");
   await loginPage.fill("#gateName", "browser-login");
   await loginPage.click("#enterBtn");
@@ -78,6 +88,7 @@ try {
     if (!response || !response.ok()) failures.push(`page status ${response?.status()}`);
     await page.waitForSelector(selector, { state: "attached" });
     await page.waitForTimeout(300);
+    failures.push(...await accessibilityFailures(page));
     if (page.url() === origin + "/") failures.push("redirected to login");
     if (failures.length) throw new Error(`${tool}: ${failures.join("; ")}`);
     console.log(`✓ ${tool}`);

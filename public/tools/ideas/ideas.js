@@ -107,7 +107,7 @@
     var allActive = state.activeCat === "all";
     var allBtn = document.createElement("button");
     allBtn.className = "tab" + (allActive ? " active" : "");
-    if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "var(--teal)"; }
+    if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "#085041"; }
     allBtn.textContent = "All";
     allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); renderTabs(); renderFeed(); };
     nav.appendChild(allBtn);
