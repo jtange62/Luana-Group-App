@@ -119,9 +119,12 @@ CREATE TABLE IF NOT EXISTS post_files (
 );
 
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_cursor ON posts (created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
 CREATE INDEX IF NOT EXISTS idx_post_files_post ON post_files (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_lessons_cursor ON lessons (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_lessons_filter ON lessons (program, month, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
 -- Student roster (for attendance) and staff roster (for shift assignment).
 CREATE TABLE IF NOT EXISTS students (
@@ -236,6 +239,8 @@ CREATE INDEX IF NOT EXISTS idx_login_attempts ON login_attempts (ip, created_at)
 
 CREATE INDEX IF NOT EXISTS idx_events_start ON events (start_date);
 CREATE INDEX IF NOT EXISTS idx_submissions_status ON submissions (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_submissions_cursor ON submissions (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_submissions_status_cursor ON submissions (status, created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_submission_files_sub ON submission_files (submission_id);
 CREATE INDEX IF NOT EXISTS idx_students_program ON students (program);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);

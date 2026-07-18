@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 import { json, makeToken, verifyToken } from "../functions/api/_helpers.js";
 import { onRequestGet as getEvents } from "../functions/api/events.js";
@@ -199,4 +200,13 @@ test("lessons can fetch a directly linked lesson without pagination", async () =
   assert.equal(body.lessons[0].id, "target");
   assert.equal(body.has_more, false);
   assert.deepEqual(DB.calls[0].bindings, ["target", 1]);
+});
+
+test("canonical schema includes composite indexes for every cursor endpoint", async () => {
+  const schema = await readFile(new URL("../schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /idx_posts_cursor ON posts \(created_at DESC, id DESC\)/);
+  assert.match(schema, /idx_lessons_cursor ON lessons \(created_at DESC, id DESC\)/);
+  assert.match(schema, /idx_lessons_filter ON lessons \(program, month, created_at DESC, id DESC\)/);
+  assert.match(schema, /idx_submissions_cursor ON submissions \(created_at DESC, id DESC\)/);
+  assert.match(schema, /idx_submissions_status_cursor ON submissions \(status, created_at DESC, id DESC\)/);
 });
