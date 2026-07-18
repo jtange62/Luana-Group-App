@@ -6,7 +6,10 @@
     "test": "node --test",
     "check": "node scripts/check-syntax.mjs && node --test",
     "test:browser": "node scripts/browser-smoke.mjs",
-    "check:all": "npm run check && npm run test:browser"
+    "check:all": "npm run check && npm run test:browser",
+    "backup:d1": "node scripts/backup-d1.mjs --remote",
+    "backup:d1:local": "node scripts/backup-d1.mjs --local",
+    "backup:r2": "node scripts/backup-r2.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
