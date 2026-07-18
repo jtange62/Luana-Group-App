@@ -1,8 +1,15 @@
 import { spawn, spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
 
 const origin = "http://127.0.0.1:8791";
-const chromePath = process.env.LUANA_CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+const chromePath = [
+  process.env.LUANA_CHROME_PATH,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable", "/usr/bin/chromium",
+].find((path) => path && existsSync(path));
+if (!chromePath) throw new Error("No supported system Chrome/Edge executable was found");
 
 function run(command) {
   return new Promise((resolve, reject) => {

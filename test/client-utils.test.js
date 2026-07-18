@@ -41,3 +41,13 @@ test("calendar event loading remains date-scoped", async () => {
   assert.match(source, /state\.view === "week"/);
   assert.match(source, /state\.view === "agenda"/);
 });
+
+test("Cloudflare static responses define core security headers", async () => {
+  const headers = await readFile(new URL("../public/_headers", import.meta.url), "utf8");
+  assert.match(headers, /X-Content-Type-Options: nosniff/);
+  assert.match(headers, /X-Frame-Options: DENY/);
+  assert.match(headers, /Referrer-Policy: strict-origin-when-cross-origin/);
+  assert.match(headers, /Permissions-Policy:/);
+  assert.match(headers, /Content-Security-Policy:.*frame-ancestors 'none'/);
+  assert.match(headers, /connect-src 'self'/);
+});
