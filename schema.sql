@@ -13,7 +13,9 @@ CREATE TABLE IF NOT EXISTS posts (
   link_title  TEXT,
   link_desc   TEXT,
   link_image  TEXT,
-  link_domain TEXT
+  link_domain TEXT,
+  placed_at   INTEGER,        -- filed into the curriculum at (migration 021)
+  placed_note TEXT            -- where it was filed, for display
 );
 
 CREATE TABLE IF NOT EXISTS comments (
@@ -110,6 +112,20 @@ CREATE TABLE IF NOT EXISTS week_days (
 );
 CREATE INDEX IF NOT EXISTS idx_week_days_week ON week_days (week_id, date);
 
+-- Filing state (migration 021): a post is "placed" once its text has been
+-- appended into a curriculum theme, week or day.
+--   posts.placed_at   INTEGER
+--   posts.placed_note TEXT
+-- Checkable items under a post: supplies to gather, steps to build something.
+CREATE TABLE IF NOT EXISTS post_items (
+  id         TEXT PRIMARY KEY,
+  post_id    TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  done       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_post_items_post ON post_items (post_id, created_at);
+
 CREATE TABLE IF NOT EXISTS post_files (
   id       TEXT PRIMARY KEY,
   post_id  TEXT NOT NULL,
@@ -121,6 +137,7 @@ CREATE TABLE IF NOT EXISTS post_files (
 
 CREATE INDEX IF NOT EXISTS idx_posts_created ON posts (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_cursor ON posts (created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_posts_placed ON posts (placed_at, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_id);
 CREATE INDEX IF NOT EXISTS idx_post_files_post ON post_files (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
@@ -251,7 +268,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);
 -- page opens; nothing here identifies a person, only that the tool was opened.
 CREATE TABLE IF NOT EXISTS usage_daily (
   day   TEXT NOT NULL,              -- "YYYY-MM-DD" (UTC)
-  tool  TEXT NOT NULL,              -- today|tools|calendar|curriculum|ideas|students|website
+  tool  TEXT NOT NULL,              -- board|today|tools|calendar|curriculum|students|website
   hits  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, tool)
 );

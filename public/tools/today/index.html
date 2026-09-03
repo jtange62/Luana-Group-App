@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#DDF3E6" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+<title>Register — Luana Group App</title>
+<meta name="description" content="Daily register for Luana English School." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="./today.css" />
+</head>
+<body>
+<div id="app">
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="back-btn" href="/" aria-label="Back">‹</a>
+      <a class="brand" href="/" title="Home">
+        <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
+        <span class="brand-name">Luana Group App</span>
+      </a>
+      <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
+    </div>
+    <p class="brand-tag" id="dayLabel">Register</p>
+  </header>
+
+  <main class="today-main">
+    <div class="daybar">
+      <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
+      <p id="dayCount" class="day-count" aria-live="polite">—</p>
+      <button id="dayNext" class="nav-btn" aria-label="Next day">›</button>
+      <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
+    </div>
+
+    <p id="loading" class="loading">Loading…</p>
+
+    <section id="alerts" class="alerts" hidden aria-labelledby="alertsHead">
+      <h2 id="alertsHead" class="alerts-head">Allergies in the building today</h2>
+      <ul id="alertsList" class="alerts-list"></ul>
+    </section>
+
+    <div id="register" class="register"></div>
+
+    <p id="empty" class="empty" hidden></p>
+
+    <section id="onToday" class="on-today" hidden aria-labelledby="onTodayHead">
+      <h2 id="onTodayHead" class="section-head">On today</h2>
+      <ul id="onTodayList" class="event-list"></ul>
+    </section>
+  </main>
+
+  <footer class="today-footer">
+    <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy today’s summary</button>
+  </footer>
+
+  <!-- Summary preview -->
+  <div id="digest" class="modal" hidden>
+    <div class="modal-card">
+      <p id="digestHeading" class="form-heading">Today’s summary</p>
+      <pre id="digestText" class="digest-text"></pre>
+      <div class="modal-actions">
+        <button id="digestCopy" class="btn-ghost">Copy</button>
+        <button id="digestClose" class="btn-primary btn-tiny">Done</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="/shared-auth.js"></script>
+<script src="/shared-utils.js"></script>
+<script src="./today.js"></script>
+</body>
+</html>

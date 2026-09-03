@@ -114,7 +114,7 @@ test("posts endpoint returns stable cursor pagination with one lookahead row", a
     { id: "b", created_at: 20 },
     { id: "a", created_at: 10 },
   ];
-  const DB = batchedDatabase([rows, [], []]);
+  const DB = batchedDatabase([rows, [], [], []]);
   const request = await authorizedRequest("https://example.test/api/posts?limit=2");
   const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
   const body = await response.json();
@@ -123,19 +123,36 @@ test("posts endpoint returns stable cursor pagination with one lookahead row", a
   assert.deepEqual(body.posts.map((post) => post.id), ["c", "b"]);
   assert.equal(body.has_more, true);
   assert.equal(body.next_cursor, "20|b");
-  assert.deepEqual(DB.calls.map((call) => call.bindings), [[3], [3], [3]]);
+  assert.deepEqual(DB.calls.map((call) => call.bindings), [[3], [3], [3], [3]]);
 });
 
 test("posts cursor binds timestamp and id consistently across the D1 batch", async () => {
-  const DB = batchedDatabase([[], [], []]);
+  const DB = batchedDatabase([[], [], [], []]);
   const request = await authorizedRequest("https://example.test/api/posts?limit=30&before=20%7Cb");
   const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
 
   assert.equal(response.status, 200);
   assert.deepEqual(DB.calls.map((call) => call.bindings), [
-    [20, 20, "b", 31], [20, 20, "b", 31], [20, 20, "b", 31],
+    [20, 20, "b", 31], [20, 20, "b", 31], [20, 20, "b", 31], [20, 20, "b", 31],
   ]);
   assert.ok(DB.calls.every((call) => /id < \?/.test(call.sql)));
+});
+
+test("the board inbox asks only for ideas that have not been filed", async () => {
+  const DB = batchedDatabase([[], [], [], []]);
+  const request = await authorizedRequest("https://example.test/api/posts?placed=0&limit=30");
+  const response = await getPosts({ request, env: { DB, SESSION_SECRET } });
+
+  assert.equal(response.status, 200);
+  assert.ok(DB.calls.every((call) => /placed_at IS NULL/.test(call.sql)));
+
+  // Without the flag the feed is unfiltered.
+  const all = batchedDatabase([[], [], [], []]);
+  await getPosts({
+    request: await authorizedRequest("https://example.test/api/posts?limit=30"),
+    env: { DB: all, SESSION_SECRET },
+  });
+  assert.ok(all.calls.every((call) => !/placed_at/.test(call.sql)));
 });
 
 test("posts endpoint rejects malformed cursors before querying D1", async () => {

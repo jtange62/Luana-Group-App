@@ -1,11 +1,13 @@
-// Today — the app's front door.
+// The daily register.
 //
 // One job: mark who is here. Everything else on the page is something the app
 // already knows and hands back for free (allergies in the building, the class
-// theme, what is on) so that opening it is worth doing even on a day when
-// there is nothing to type.
+// theme, what is on) so it is worth opening even on a day with nothing to type.
 (function () {
   "use strict";
+
+  if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("today");
 
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc;
@@ -22,35 +24,6 @@
     var p = ymd.split("-");
     var d = new Date(+p[0], +p[1] - 1, +p[2] + delta);
     return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
-  }
-
-  // ---------- Login gate ----------
-  function showToday() {
-    $("gate").style.display = "none";
-    $("today").hidden = false;
-    LuanaUtils.ping("today");
-    load();
-  }
-
-  function enter() {
-    var pw = $("pwInput").value.trim();
-    var name = $("gateName").value.trim();
-    var err = $("gateError");
-    err.hidden = true;
-    if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
-    $("enterBtn").disabled = true;
-    LuanaAuth.login(pw, name).then(function (res) {
-      $("enterBtn").disabled = false;
-      if (!res.ok) {
-        err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error;
-        err.hidden = false; return;
-      }
-      showToday();
-    }).catch(function () {
-      $("enterBtn").disabled = false;
-      err.textContent = "Couldn't reach the server. Try again.";
-      err.hidden = false;
-    });
   }
 
   // ---------- Render ----------
@@ -271,10 +244,7 @@
   }
 
   // ---------- Wiring ----------
-  $("enterBtn").onclick = enter;
-  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("gateName").focus(); });
-  $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
-  $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
+  $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   $("dayPrev").onclick = function () { go(shiftDate(state.date, -1)); };
   $("dayNext").onclick = function () { go(shiftDate(state.date, 1)); };
@@ -285,5 +255,5 @@
   $("digestClose").onclick = function () { $("digest").hidden = true; };
   $("digest").onclick = function (e) { if (e.target === $("digest")) $("digest").hidden = true; };
 
-  if (LuanaAuth.isLoggedIn()) showToday();
+  load();
 })();

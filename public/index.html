@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/shared.css" />
-<link rel="stylesheet" href="/today.css" />
+<link rel="stylesheet" href="/board.css" />
 </head>
 <body>
 <div id="app">
@@ -36,8 +36,8 @@
     </div>
   </main>
 
-  <!-- Today — the register, plus what the day already knows (hidden until authed) -->
-  <div id="today" hidden>
+  <!-- The board: capture anything, then file it where it belongs -->
+  <div id="board" hidden>
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
@@ -46,55 +46,74 @@
         </div>
         <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
       </div>
-      <p class="brand-tag" id="dayLabel">Today</p>
+      <p class="brand-tag">Jot it down now, sort it out later</p>
     </header>
 
-    <main class="today-main">
-    <div class="daybar">
-      <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
-      <p id="dayCount" class="day-count" aria-live="polite">—</p>
-      <button id="dayNext" class="nav-btn" aria-label="Next day">›</button>
-      <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
+    <section class="composer">
+      <textarea id="ideaInput" rows="2" aria-label="Your idea" placeholder="Write your idea here…"></textarea>
+      <div id="ideaFileRow" class="file-row">
+        <label class="file-label">📎 Attach
+          <input id="ideaFiles" type="file" multiple hidden />
+        </label>
+        <span id="ideaFileList" class="file-chosen"></span>
+      </div>
+      <div class="composer-row">
+        <span id="postingAs" class="posting-as"></span>
+        <select id="catSelect" class="cat-select" aria-label="Category">
+          <option value="curriculum">curriculum</option>
+          <option value="events">events</option>
+          <option value="supplies">supplies</option>
+          <option value="general">general</option>
+        </select>
+        <button id="postBtn" class="btn-primary btn-sm">Post</button>
+      </div>
+    </section>
+
+    <nav id="tabs" class="tabs" aria-label="Categories"></nav>
+
+    <main id="feed" class="feed" aria-live="polite"></main>
+    <div id="empty" class="empty" hidden>
+      <span class="empty-icon">✎</span>
+      <p>Nothing here yet — be the first to post.</p>
     </div>
+    <div id="loading" class="loading">Loading…</div>
+    <button id="loadMore" class="load-more" hidden>Load older ideas</button>
 
-    <p id="loading" class="loading">Loading…</p>
-
-    <section id="alerts" class="alerts" hidden aria-labelledby="alertsHead">
-      <h2 id="alertsHead" class="alerts-head">Allergies in the building today</h2>
-      <ul id="alertsList" class="alerts-list"></ul>
-    </section>
-
-    <div id="register" class="register"></div>
-
-    <p id="empty" class="empty" hidden></p>
-
-    <section id="onToday" class="on-today" hidden aria-labelledby="onTodayHead">
-      <h2 id="onTodayHead" class="section-head">On today</h2>
-      <ul id="onTodayList" class="event-list"></ul>
-    </section>
-    </main>
-
-    <footer class="today-footer">
-      <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy today’s summary</button>
+    <footer class="board-footer">
       <a class="more-link" href="/tools/">All tools <span aria-hidden="true">→</span></a>
     </footer>
   </div>
 
-  <!-- Summary preview -->
-  <div id="digest" class="modal" hidden>
+  <!-- Send an idea into the curriculum -->
+  <div id="placeModal" class="modal" hidden>
     <div class="modal-card">
-      <p id="digestHeading" class="form-heading">Today’s summary</p>
-      <pre id="digestText" class="digest-text"></pre>
+      <p id="placeHeading" class="form-heading">Send to curriculum</p>
+      <p id="placePreview" class="place-preview"></p>
+      <label class="field-label" for="placeTarget">Where does this go?</label>
+      <select id="placeTarget" class="form-select"></select>
+      <label class="field-label" for="placeField">Which part?</label>
+      <select id="placeField" class="form-select"></select>
+      <p class="place-hint">It gets added to whatever is already there — nothing is overwritten.</p>
       <div class="modal-actions">
-        <button id="digestCopy" class="btn-ghost">Copy</button>
-        <button id="digestClose" class="btn-primary btn-tiny">Done</button>
+        <span id="placeMsg" class="form-msg"></span>
+        <button id="placeCancel" class="btn-ghost">Cancel</button>
+        <button id="placeGo" class="btn-primary btn-sm">Send</button>
       </div>
     </div>
   </div>
 
+  <!-- Photo lightbox -->
+  <div id="lightbox" class="lightbox" hidden>
+    <button id="lbClose" class="lb-close" aria-label="Close">✕</button>
+    <img id="lbImg" class="lb-img" src="" alt="Photo" />
+    <button id="lbPrev" class="lb-nav lb-prev" aria-label="Previous">‹</button>
+    <button id="lbNext" class="lb-nav lb-next" aria-label="Next">›</button>
+    <div id="lbCounter" class="lb-counter"></div>
+  </div>
 </div>
+
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/today.js"></script>
+<script src="/board.js"></script>
 </body>
 </html>

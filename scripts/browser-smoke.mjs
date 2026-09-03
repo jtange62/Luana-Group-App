@@ -62,7 +62,7 @@ try {
   await loginPage.fill("#pwInput", "test");
   await loginPage.fill("#gateName", "browser-login");
   await loginPage.click("#enterBtn");
-  await loginPage.waitForSelector("#today", { state: "visible" });
+  await loginPage.waitForSelector("#board", { state: "visible" });
   if (!(await loginPage.evaluate(() => !!localStorage.getItem("luana_token")))) throw new Error("UI login stored no token");
   console.log("✓ login");
   await loginContext.close();
@@ -74,8 +74,8 @@ try {
   }, { authToken: token });
 
   const tools = [
-    ["", "#register"], ["tools", "#grid"],
-    ["calendar", "#view"], ["curriculum", "#months"], ["ideas", "#feed"],
+    ["", "#feed"], ["tools", "#grid"], ["today", "#register"],
+    ["calendar", "#view"], ["curriculum", "#months"],
     ["students", "#list"], ["website", "#list"],
   ];
   for (const [tool, selector] of tools) {
@@ -92,8 +92,8 @@ try {
     await page.waitForTimeout(300);
     failures.push(...await accessibilityFailures(page));
     if (tool !== "" && page.url() === origin + "/") failures.push("redirected to login");
-    if (failures.length) throw new Error(`${tool || "today"}: ${failures.join("; ")}`);
-    console.log(`✓ ${tool || "today"}`);
+    if (failures.length) throw new Error(`${tool || "board"}: ${failures.join("; ")}`);
+    console.log(`✓ ${tool || "board"}`);
     await page.close();
   }
   const keyboardPage = await context.newPage();
@@ -112,8 +112,8 @@ try {
   await navigationPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
   await navigationPage.click('a[href="/tools/"]');
   await navigationPage.waitForURL("**/tools/");
-  await navigationPage.click('a[href="/tools/ideas/"]');
-  await navigationPage.waitForURL("**/tools/ideas/");
+  await navigationPage.click('a[href="/tools/today/"]');
+  await navigationPage.waitForURL("**/tools/today/");
   await navigationPage.click("a.back-btn");
   await navigationPage.waitForURL("**/tools/");
   await navigationPage.click("a.back-btn");
