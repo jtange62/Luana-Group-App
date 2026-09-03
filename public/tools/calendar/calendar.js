@@ -2,6 +2,7 @@
   "use strict";
 
   if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("calendar");
 
   var PROGRAMS = [
     { id: "Preschool",     color: "#0F6E56", soft: "#E1F5EE", dark: "#085041" },

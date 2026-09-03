@@ -2,6 +2,7 @@
   "use strict";
 
   if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("website");
 
   var TYPES = ["Photo", "Newsletter", "Document", "Request", "Suggestion", "Other"];
   var FILTERS = [{ id: "new", label: "New" }, { id: "done", label: "Done" }, { id: "all", label: "All" }];

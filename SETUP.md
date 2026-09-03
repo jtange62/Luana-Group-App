@@ -125,8 +125,8 @@ to build one:
 2. At the top of its JS, call `LuanaAuth.requireLogin()` and use `LuanaAuth.api(...)`
    for any backend calls — login is already handled for you.
 3. Add any new backend routes under `functions/api/`.
-4. In `public/index.html`, turn that tool's tile from a `<div class="tool-tile is-soon">`
-   into an `<a class="tool-tile" href="/tools/calendar/">`.
+4. Add a tile for it in `public/tools/index.html` (the All-tools grid). `/` is
+   the Today register, not the tool grid.
 5. Commit + push — Cloudflare redeploys automatically.
 
 Each new tool reuses the same login, palette, and database. Just ask me when you
@@ -152,3 +152,51 @@ want to build one and I'll generate the folder.
   ask me to add a "delete your own post" button.
 - **Link previews depend on the target site** — most unfurl; some show a plain link.
 - **Cost:** comfortably within Cloudflare's free tier.
+
+---
+
+## Today-first (branch `today-first`)
+
+`/` is the day's register. Marking attendance is the one thing staff do daily,
+so it is the front door; the six tools moved to `/tools/`. The page also hands
+back what the app already knows — allergies for the children actually in today,
+each class's month theme, and what is on — so opening it is worth doing on a day
+with nothing to type.
+
+### Required once, against production D1
+
+Migration 018 splits curriculum themes from library lessons (they shared the
+`lessons` table with nothing to tell them apart) and adds the usage counter:
+
+```powershell
+npx wrangler d1 execute luana-board --remote --file migrations/018_today_first.sql
+```
+
+Both changes are additive, so the currently deployed app keeps working if the
+migration runs before the branch is merged. A theme that was saved with only a
+title stays classified as a library lesson — the migration comment has the
+one-line UPDATE to move it back.
+
+### Is anyone using it?
+
+Every tool page counts one row per tool per day in `usage_daily`:
+
+```
+GET /api/usage?days=14   ->  { usage: [{ day, tool, hits }] }
+```
+
+Nothing in that table identifies a person. Before this there was no way to
+answer the question without Cloudflare dashboard access.
+
+### Daily summary
+
+`GET /api/summary?date=&format=text` renders the day as a message. Staff can
+read it in the app (**Copy today's summary**) with a normal session.
+
+The **Daily summary** workflow pushes it to a chat channel at 17:00 JST on
+weekdays. It is off until both secrets exist, and exits clean without them:
+
+- `SUMMARY_TOKEN` — a strong random string, set as *both* a Cloudflare Pages
+  secret and a GitHub Actions secret, exactly like `HEALTH_CHECK_TOKEN`.
+- `SUMMARY_WEBHOOK_URL` — a GitHub Actions secret. The workflow POSTs
+  `{"text": "..."}`, which Slack-compatible incoming webhooks accept as-is.

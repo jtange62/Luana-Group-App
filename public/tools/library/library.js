@@ -3,6 +3,7 @@
 
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("library");
 
   var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   var MONTHS = ["January", "February", "March", "April", "May", "June",
@@ -408,6 +409,7 @@
     fd.append("notes", $("fNotes").value.trim());
     fd.append("link", $("fLink").value.trim());
     fd.append("tags", $("fTags").value.trim());
+    fd.append("kind", "lesson");
     chosen.forEach(function (c) { fd.append("files", c.file); });
 
     var t = LuanaAuth.token();
@@ -427,7 +429,8 @@
   }
 
   function lessonPath(cursor) {
-    var params = ["limit=30"];
+    // kind=lesson keeps curriculum themes out of the library (migration 018).
+    var params = ["limit=30", "kind=lesson"];
     if (state.program !== "all") params.push("program=" + encodeURIComponent(state.program));
     if (state.month !== "all") params.push("month=" + encodeURIComponent(state.month));
     if (state.query.trim()) params.push("q=" + encodeURIComponent(state.query.trim()));

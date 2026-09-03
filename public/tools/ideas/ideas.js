@@ -3,6 +3,7 @@
 
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("ideas");
 
   var CATS = [
     { id: "curriculum", label: "curriculum", color: "#0F6E56", soft: "#E1F5EE", dark: "#085041" },

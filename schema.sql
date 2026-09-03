@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS lessons (
   activities  TEXT,          -- theme / weekly activities (Curriculum overview)
   phonics     TEXT,          -- phonics focus for the month (Curriculum overview)
   song        TEXT,          -- song of the month (Curriculum overview)
+  kind        TEXT NOT NULL DEFAULT 'lesson',  -- lesson (library) | theme (curriculum), migration 018
   created_at  INTEGER NOT NULL
 );
 
@@ -125,6 +126,7 @@ CREATE INDEX IF NOT EXISTS idx_post_files_post ON post_files (post_id);
 CREATE INDEX IF NOT EXISTS idx_lessons_created ON lessons (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lessons_cursor ON lessons (created_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_lessons_filter ON lessons (program, month, created_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_lessons_kind ON lessons (kind, program, month);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
 -- Student roster (for attendance) and staff roster (for shift assignment).
 CREATE TABLE IF NOT EXISTS students (
@@ -244,3 +246,12 @@ CREATE INDEX IF NOT EXISTS idx_submissions_status_cursor ON submissions (status,
 CREATE INDEX IF NOT EXISTS idx_submission_files_sub ON submission_files (submission_id);
 CREATE INDEX IF NOT EXISTS idx_students_program ON students (program);
 CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);
+
+-- One row per tool per day (migration 018). Written fire-and-forget when a tool
+-- page opens; nothing here identifies a person, only that the tool was opened.
+CREATE TABLE IF NOT EXISTS usage_daily (
+  day   TEXT NOT NULL,              -- "YYYY-MM-DD" (UTC)
+  tool  TEXT NOT NULL,              -- today|tools|calendar|curriculum|ideas|library|students|website
+  hits  INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (day, tool)
+);

@@ -3,6 +3,7 @@
 
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
+  LuanaUtils.ping("curriculum");
 
   var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   // Weekly "focus questions" are an After School–only field.
@@ -962,6 +963,7 @@
     fd.append("vocab", fields.vocab);
     fd.append("activities", fields.activities);
     fd.append("phonics", fields.phonics);
+    fd.append("kind", "theme");
 
     var t = LuanaAuth.token();
     fetch("/api/lesson", {
@@ -978,7 +980,8 @@
 
   // ---------- Data ----------
   function fetchThemes() {
-    return LuanaAuth.api("lessons?files=0").then(function (res) { state.lessons = res.lessons || []; });
+    // kind=theme keeps library lessons out of the curriculum (migration 018).
+    return LuanaAuth.api("lessons?kind=theme&files=0").then(function (res) { state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
     return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(state.program))

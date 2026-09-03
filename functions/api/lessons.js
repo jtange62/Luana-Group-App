@@ -8,6 +8,9 @@ export async function onRequestGet({ request, env }) {
   const month = clean(url.searchParams.get("month"), 2);
   const query = clean(url.searchParams.get("q"), 200).toLowerCase();
   const id = clean(url.searchParams.get("id"), 64);
+  // Library lessons and curriculum themes share this table; ?kind= keeps each
+  // tool to its own rows (migration 018).
+  const kind = clean(url.searchParams.get("kind"), 10);
   const includeFiles = url.searchParams.get("files") !== "0";
   const requestedLimit = Number(url.searchParams.get("limit") || 1000);
   const limit = Number.isInteger(requestedLimit) ? Math.max(1, Math.min(requestedLimit, 1000)) : 1000;
@@ -20,6 +23,7 @@ export async function onRequestGet({ request, env }) {
   const conditions = [];
   const bindings = [];
   if (id) { conditions.push("l.id = ?"); bindings.push(id); }
+  if (kind === "theme" || kind === "lesson") { conditions.push("l.kind = ?"); bindings.push(kind); }
   if (program && program !== "all") { conditions.push("l.program = ?"); bindings.push(program); }
   if (month && month !== "all") { conditions.push("CAST(l.month AS TEXT) = ?"); bindings.push(month); }
   if (query) {

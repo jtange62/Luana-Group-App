@@ -1,7 +1,7 @@
 :root{
   --sand:#FFFDF7;--sand-2:#F4EEDF;--teal:#0F8268;--teal-soft:#E2F6EE;--teal-mid:#0C7657;
   --coral:#E8714A;--coral-dark:#993C1D;--gold:#D4A24C;--gold-soft:#FAEEDA;--gold-dark:#854F0B;
-  --ink:#2B2B28;--muted:#6B6A63;--hint:#97958c;--line:rgba(27,77,74,0.14);--card:#fff;
+  --ink:#2B2B28;--muted:#6B6A63;--hint:#767469;--line:rgba(27,77,74,0.14);--card:#fff;
   --radius:18px;--radius-sm:12px;--radius-lg:24px;
   color-scheme:light;  /* always light — the app mirrors the light-only website */
   --shadow:0 2px 10px -4px rgba(27,77,74,0.16);

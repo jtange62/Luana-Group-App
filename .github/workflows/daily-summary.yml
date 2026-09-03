@@ -1,0 +1,36 @@
+name: Daily summary
+
+# The one thing the app sends out rather than asks for. Optional: without both
+# secrets the job logs that it has nothing to send and exits clean, so the
+# workflow can sit here unconfigured until someone wants the digest.
+
+on:
+  schedule:
+    - cron: "0 8 * * 1-5" # 17:00 JST on weekdays, after classes finish
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Send today's summary
+        env:
+          SUMMARY_TOKEN: ${{ secrets.SUMMARY_TOKEN }}
+          SUMMARY_WEBHOOK_URL: ${{ secrets.SUMMARY_WEBHOOK_URL }}
+        run: |
+          if [ -z "$SUMMARY_TOKEN" ] || [ -z "$SUMMARY_WEBHOOK_URL" ]; then
+            echo "SUMMARY_TOKEN or SUMMARY_WEBHOOK_URL is not set — nothing to send."
+            exit 0
+          fi
+          # Runners are UTC; the school is JST, so ask for the Japanese date.
+          today="$(date -u -d '+9 hours' +%F)"
+          summary="$(curl --fail-with-body --silent --show-error --max-time 20 \
+            -H "Authorization: Bearer $SUMMARY_TOKEN" \
+            "https://luana-group-app.pages.dev/api/summary?format=text&date=$today")"
+          jq -n --arg text "$summary" '{text: $text}' \
+            | curl --fail-with-body --silent --show-error --max-time 20 \
+                -H "Content-Type: application/json" --data @- "$SUMMARY_WEBHOOK_URL"

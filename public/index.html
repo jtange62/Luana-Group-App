@@ -16,6 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/shared.css" />
+<link rel="stylesheet" href="/today.css" />
 </head>
 <body>
 <div id="app">
@@ -35,8 +36,8 @@
     </div>
   </main>
 
-  <!-- Hub home (hidden until authed) -->
-  <div id="hub" hidden>
+  <!-- Today — the register, plus what the day already knows (hidden until authed) -->
+  <div id="today" hidden>
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
@@ -45,81 +46,55 @@
         </div>
         <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
       </div>
-      <p class="brand-tag">Pick a tool to get started</p>
+      <p class="brand-tag" id="dayLabel">Today</p>
     </header>
 
-    <main class="tool-grid">
-      <a class="tool-tile" href="/tools/ideas/" style="--tile:#C9EFD8;--tile-ink:#1C6E4A;">
-        <span class="tile-icon">💡</span>
-        <span class="tile-body">
-          <span class="tile-name">Idea board</span>
-          <span class="tile-desc">Share ideas, plan events, ask for supplies</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
+    <main class="today-main">
+    <div class="daybar">
+      <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
+      <p id="dayCount" class="day-count" aria-live="polite">—</p>
+      <button id="dayNext" class="nav-btn" aria-label="Next day">›</button>
+      <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
+    </div>
 
-      <a class="tool-tile" href="/tools/calendar/" style="--tile:#FBE6B0;--tile-ink:#8A5A12;">
-        <span class="tile-icon">📅</span>
-        <span class="tile-body">
-          <span class="tile-name">Calendar &amp; schedule</span>
-          <span class="tile-desc">Shared events and rota</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
+    <p id="loading" class="loading">Loading…</p>
 
-      <a class="tool-tile" href="/tools/students/" style="--tile:#F8CEDA;--tile-ink:#A33F63;">
-        <span class="tile-icon">👧</span>
-        <span class="tile-body">
-          <span class="tile-name">Student roster</span>
-          <span class="tile-desc">Profiles, contacts &amp; allergies</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
+    <section id="alerts" class="alerts" hidden aria-labelledby="alertsHead">
+      <h2 id="alertsHead" class="alerts-head">Allergies in the building today</h2>
+      <ul id="alertsList" class="alerts-list"></ul>
+    </section>
 
-      <a class="tool-tile" href="/tools/curriculum/" style="--tile:#FBD7C4;--tile-ink:#B4551F;">
-        <span class="tile-icon">🍎</span>
-        <span class="tile-body">
-          <span class="tile-name">Curriculum</span>
-          <span class="tile-desc">Monthly themes, vocab, activities &amp; songs</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
+    <div id="register" class="register"></div>
 
-      <a class="tool-tile" href="/tools/library/" style="--tile:#DCCFF3;--tile-ink:#5A3FA0;">
-        <span class="tile-icon">📚</span>
-        <span class="tile-body">
-          <span class="tile-name">Lesson library</span>
-          <span class="tile-desc">Resources, files &amp; lesson plans</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
+    <p id="empty" class="empty" hidden></p>
 
-      <a class="tool-tile" href="/tools/website/" style="--tile:#C3DDF3;--tile-ink:#225E86;">
-        <span class="tile-icon">🌐</span>
-        <span class="tile-body">
-          <span class="tile-name">Website inbox</span>
-          <span class="tile-desc">Send photos &amp; ideas for the school site</span>
-        </span>
-        <span class="tile-arrow">→</span>
-      </a>
-
+    <section id="onToday" class="on-today" hidden aria-labelledby="onTodayHead">
+      <h2 id="onTodayHead" class="section-head">On today</h2>
+      <ul id="onTodayList" class="event-list"></ul>
+    </section>
     </main>
 
-    <footer class="hub-footer">
-      <p class="footer-label">Shared files</p>
-      <a class="tool-tile drive-tile" href="https://drive.google.com/drive/folders/1hLgQRe9pWQ6aowrOrcql1UEGZ0YU5PCH?usp=drive_link" target="_blank" rel="noopener noreferrer">
-        <span class="tile-icon" style="background:#E1F5EE;color:#085041;">📁</span>
-        <span class="tile-body">
-          <span class="tile-name">Our Google Drive</span>
-          <span class="tile-desc">Open the main shared folder</span>
-        </span>
-        <span class="tile-arrow">↗</span>
-      </a>
+    <footer class="today-footer">
+      <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy today’s summary</button>
+      <a class="more-link" href="/tools/">All tools <span aria-hidden="true">→</span></a>
     </footer>
+  </div>
+
+  <!-- Summary preview -->
+  <div id="digest" class="modal" hidden>
+    <div class="modal-card">
+      <p id="digestHeading" class="form-heading">Today’s summary</p>
+      <pre id="digestText" class="digest-text"></pre>
+      <div class="modal-actions">
+        <button id="digestCopy" class="btn-ghost">Copy</button>
+        <button id="digestClose" class="btn-primary btn-tiny">Done</button>
+      </div>
+    </div>
   </div>
 
 </div>
 <script src="/shared-auth.js"></script>
-<script src="/hub.js"></script>
+<script src="/shared-utils.js"></script>
+<script src="/today.js"></script>
 </body>
 </html>

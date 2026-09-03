@@ -68,9 +68,20 @@
     setTimeout(function () { if (toast.parentNode) toast.remove(); }, 3500);
   }
 
+  // Count that a tool was opened. Fire and forget: a failed ping must never
+  // interrupt the page, and nothing here identifies who opened it.
+  function ping(tool) {
+    if (!global.LuanaAuth || !LuanaAuth.isLoggedIn()) return;
+    try {
+      LuanaAuth.api("usage", { method: "POST", body: JSON.stringify({ tool: tool }) })
+        .catch(function () {});
+    } catch (e) {}
+  }
+
   global.LuanaUtils = {
     esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
-    firstUrl: firstUrl, linkify: linkify, reportError: reportError, reportSuccess: reportSuccess
+    firstUrl: firstUrl, linkify: linkify, reportError: reportError,
+    reportSuccess: reportSuccess, ping: ping
   };
 
   if (!global.document) return;
