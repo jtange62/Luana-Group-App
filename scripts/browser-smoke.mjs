@@ -76,7 +76,7 @@ try {
   const tools = [
     ["", "#register"], ["tools", "#grid"],
     ["calendar", "#view"], ["curriculum", "#months"], ["ideas", "#feed"],
-    ["library", "#list"], ["students", "#list"], ["website", "#list"],
+    ["students", "#list"], ["website", "#list"],
   ];
   for (const [tool, selector] of tools) {
     const page = await context.newPage();

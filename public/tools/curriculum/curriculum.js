@@ -39,15 +39,7 @@
     openDays: {},       // week ids with the daily-themes section expanded
     openVocab: {},      // lesson ids with the vocab chips expanded
     openFiles: {},      // lesson ids with the resource list expanded
-    openDayField: {},   // "weekId|date|kind" keys with a day sub-section expanded
-    view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
-    date: null,         // "YYYY-MM-DD" shown in the day view (set below)
-    blocks: [],         // daily-rhythm template blocks for state.program
-    dayNotes: [],       // one-off notes for state.date's blocks
-    events: null,       // all calendar events; null until first day-view load
-    rhythmEdit: false,  // day view: template editing mode
-    editingBlockId: null,
-    noteBlockId: null   // block whose note is being edited
+    openDayField: {}    // "weekId|date|kind" keys with a day sub-section expanded
   };
 
   // ---------- Dates (copied from calendar.js — keep in sync) ----------
@@ -58,21 +50,6 @@
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
   function shortDate(ymd) { var d = parseYMD(ymd); return MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate(); }
-
-  // Recurrence check (copied from calendar.js — keep in sync).
-  function occursOn(ev, d) {
-    var start = parseYMD(ev.start_date);
-    if (d < start) return false;
-    if (ev.recur_until && d > parseYMD(ev.recur_until)) return false;
-    var r = ev.recur || "none";
-    if (r === "none") return d.getTime() === start.getTime();
-    if (r === "daily") return true;
-    if (r === "weekly") return d.getDay() === start.getDay();
-    if (r === "monthly") return d.getDate() === start.getDate();
-    return false;
-  }
-
-  state.date = fmtYMD(new Date());
 
   // Split a free-text field into items on newlines or commas.
   function items(text) {
@@ -158,7 +135,7 @@
       b.onclick = function () {
         state.program = p;
         renderProgramTabs();
-        fetchWeeks().then(function () { if (state.view === "day") loadDay(); else render(); })
+        fetchWeeks().then(render)
           .catch(function (e) { LuanaUtils.reportError(e, "Couldn't load curriculum weeks."); });
       };
       nav.appendChild(b);
@@ -211,7 +188,6 @@
           '<span class="cm-theme-name">' + esc(l.title) + "</span>" +
           '<span class="cm-theme-links">' +
             '<button class="cm-copy" title="Copy to other programs">⧉ copy</button>' +
-            '<a class="cm-lib" href="/tools/library/?lesson=' + encodeURIComponent(l.id) + '" title="Open in Lesson library">📚 resources</a>' +
           "</span></div>");
         if (l.song) parts.push(fieldBlock("🎵", "Song", '<p class="cm-text">' + esc(l.song) + "</p>"));
         if (l.vocab) {
@@ -670,276 +646,36 @@
       .catch(function () { msg.textContent = "Couldn't copy. Try again."; $("copyGoBtn").disabled = false; });
   }
 
-  // ---------- Day view ----------
-  // What each block `source` pulls from and how it renders.
-  var SOURCE_META = {
-    week_focus:       { icon: "🎯", label: "Week focus", name: "week focus", kind: "text", from: "week", field: "focus" },
-    week_activities:  { icon: "🎨", label: "Activities", name: "week activities", kind: "list", from: "week", field: "activities" },
-    week_phonics:     { icon: "🔠", label: "Phonics", name: "week phonics", kind: "text", from: "week", field: "phonics" },
-    week_questions:   { icon: "❓", label: "Questions", name: "week questions", kind: "list", from: "week", field: "questions" },
-    month_theme:      { icon: "🍎", label: "Theme", name: "month theme", kind: "text", from: "theme", field: "title" },
-    month_song:       { icon: "🎵", label: "Song", name: "song of the month", kind: "text", from: "theme", field: "song" },
-    month_vocab:      { icon: "🔤", label: "Vocab", name: "month vocab", kind: "chips", from: "theme", field: "vocab" },
-    month_activities: { icon: "🎨", label: "Activities", name: "month activities", kind: "list", from: "theme", field: "activities" },
-    month_phonics:    { icon: "🔠", label: "Phonics", name: "month phonics", kind: "text", from: "theme", field: "phonics" },
-    day_subtheme:     { icon: "🌞", label: "Day theme", name: "day theme", kind: "text", from: "day", field: "subtheme" },
-    day_vocab:        { icon: "🔤", label: "Target vocab", name: "day's target vocab", kind: "chips", from: "day", field: "vocab" },
-    day_activities:   { icon: "🎨", label: "Activities", name: "day's activities", kind: "list", from: "day", field: "activities" }
-  };
-
-  // The auto-filled content of a block for the shown date.
-  function blockContent(block, theme, week, day) {
-    var meta = SOURCE_META[block.source];
-    if (!meta) return "";
-    var src = meta.from === "week" ? week : meta.from === "day" ? day : theme;
-    var val = src ? src[meta.field] : null;
-    if (!val) return '<p class="cm-none">No ' + meta.name + " set for this date.</p>";
-    var inner;
-    if (meta.kind === "chips") {
-      inner = '<div class="cm-chips">' + items(val).map(function (v) { return '<span class="cm-chip">' + esc(v) + "</span>"; }).join("") + "</div>";
-    } else if (meta.kind === "list") {
-      inner = '<ul class="cm-list">' + items(val).map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>";
-    } else {
-      inner = '<p class="cm-text">' + esc(val) + "</p>";
-    }
-    return fieldBlock(meta.icon, meta.label, inner);
-  }
-
-  function noteFor(blockId) {
-    return state.dayNotes.filter(function (n) { return n.block_id === blockId && n.date === state.date; })[0] || null;
-  }
-
-  // Events surfaced in the day view: school-wide (general calendar) plus the
-  // current program's student events. Staff shifts stay in the Calendar tool.
-  function dayEventsFor(ymd) {
-    var d = parseYMD(ymd);
-    return (state.events || []).filter(function (ev) {
-      if (!occursOn(ev, d)) return false;
-      var cal = ev.calendar || "students";
-      if (cal === "general") return true;
-      return cal === "students" && (ev.program === state.program || ev.program === "General");
-    }).sort(function (a, b) { // all-day first, then by start time (as calendar.js)
-      var ta = a.start_time || "", tb = b.start_time || "";
-      if (!ta && tb) return -1;
-      if (ta && !tb) return 1;
-      return ta < tb ? -1 : ta > tb ? 1 : 0;
-    });
-  }
-
-  function blockRowHtml(block, theme, week, day) {
-    var entry = noteFor(block.id);
-    var actions = state.rhythmEdit
-      ? '<span class="cm-week-actions">' +
-          '<button class="db-edit" data-block="' + esc(block.id) + '" title="Edit">✎</button>' +
-          '<button class="db-del" data-block="' + esc(block.id) + '" title="Delete">✕</button>' +
-        "</span>"
-      : "";
-
-    // The day entry: today's plan, what actually happened, reminder note.
-    var dayHtml = "";
-    if (entry) {
-      if (entry.planned) dayHtml += fieldBlock("🎯", "Today's plan", '<p class="cm-text">' + esc(entry.planned) + "</p>");
-      if (entry.actual) dayHtml += '<div class="db-did">' + fieldBlock("✅", "What we did", '<p class="cm-text">' + esc(entry.actual) + "</p>") + "</div>";
-      if (entry.text) dayHtml += '<div class="db-note-pill">📌 ' + esc(entry.text) + "</div>";
-    }
-    var editBtn = entry
-      ? '<button class="db-note has-entry" data-block="' + esc(block.id) + '">✎ Edit today’s notes</button>'
-      : '<button class="db-note" data-block="' + esc(block.id) + '">＋ Add today’s lesson notes</button>';
-
-    return '<div class="day-block">' +
-      '<div class="db-time">' + esc(block.start_time) +
-        (block.end_time ? '<span class="db-time-end">–' + esc(block.end_time) + "</span>" : "") +
-      "</div>" +
-      '<div class="db-main">' +
-        '<div class="db-top"><span class="db-label">' + esc(block.label) + "</span>" + actions + "</div>" +
-        blockContent(block, theme, week, day) +
-        dayHtml +
-        editBtn +
-      "</div></div>";
-  }
-
-  function renderDay() {
-    $("dayDate").value = state.date;
-    $("rhythmEditBtn").classList.toggle("active", state.rhythmEdit);
-
-    var ctx = weekForDate(state.program, state.date);
-    var dayTheme = dayThemeFor(ctx.week, state.date);
-    if (!ctx.theme) {
-      var mNo = parseYMD(state.date).getMonth() + 1;
-      $("dayContext").textContent = monthsFor(state.program).indexOf(mNo) === -1
-        ? prettyDate(state.date) + " — outside the " + state.program + " season."
-        : prettyDate(state.date) + " — no theme set for " + MONTHS[mNo - 1] + " yet. Switch to Plan to add one.";
-    } else {
-      $("dayContext").textContent = prettyDate(state.date) + " — " + ctx.theme.title +
-        (ctx.week ? " · Week " + displayWeekNo(ctx.week) + (ctx.week.focus ? ": " + ctx.week.focus : "") : "") +
-        (dayTheme && dayTheme.subtheme ? " · 🌞 " + dayTheme.subtheme : "");
-    }
-
-    $("dayEvents").innerHTML = dayEventsFor(state.date).map(function (ev) {
-      var time = ev.start_time ? esc(ev.start_time) + (ev.end_time ? "–" + esc(ev.end_time) : "") : "All day";
-      return '<div class="day-ev"><span class="day-ev-time">' + time + "</span>" +
-        '<span class="day-ev-title">' + esc(ev.title) + "</span>" +
-        (ev.notes ? '<span class="day-ev-notes">' + esc(ev.notes) + "</span>" : "") +
-        "</div>";
-    }).join("");
-
-    var wrap = $("dayBlocks");
-    if (!state.blocks.length) {
-      wrap.innerHTML = '<div class="day-empty">No daily schedule for ' + esc(state.program) +
-        " yet. Add the first time slot.</div>" +
-        '<button class="day-add-block">＋ Add time slot</button>';
-    } else {
-      var sorted = state.blocks.slice().sort(function (a, b) {
-        return a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : a.created_at - b.created_at;
-      });
-      wrap.innerHTML = sorted.map(function (b) { return blockRowHtml(b, ctx.theme, ctx.week, dayTheme); }).join("") +
-        (state.rhythmEdit ? '<button class="day-add-block">＋ Add time slot</button>' : "");
-    }
-
-    var addBtn = wrap.querySelector(".day-add-block");
-    if (addBtn) addBtn.onclick = function () { openBlockEdit(null); };
-    function blockById(btn) {
-      return state.blocks.filter(function (x) { return x.id === btn.getAttribute("data-block"); })[0];
-    }
-    wrap.querySelectorAll(".db-edit").forEach(function (btn) {
-      btn.onclick = function () { var b = blockById(btn); if (b) openBlockEdit(b); };
-    });
-    wrap.querySelectorAll(".db-del").forEach(function (btn) {
-      btn.onclick = function () { deleteBlock(btn.getAttribute("data-block")); };
-    });
-    wrap.querySelectorAll(".db-note").forEach(function (btn) {
-      btn.onclick = function () { var b = blockById(btn); if (b) openNoteEdit(b); };
-    });
-  }
-
-  function switchView(v) {
-    state.view = v;
-    document.querySelectorAll("#viewToggle .vt-btn").forEach(function (b) {
-      var active = b.getAttribute("data-view") === v;
-      b.classList.toggle("active", active);
-      b.setAttribute("aria-pressed", String(active));
-    });
-    var day = v === "day";
-    $("months").hidden = day;
-    $("progHint").hidden = day;
-    $("dayView").hidden = !day;
-    if (day) loadDay(); else render();
-  }
-
-  function fetchBlocks() {
-    return LuanaAuth.api("schedule-blocks?program=" + encodeURIComponent(state.program) + "&date=" + state.date)
-      .then(function (res) { state.blocks = res.blocks || []; state.dayNotes = res.notes || []; });
-  }
-  // Day planning only needs rules that can produce an occurrence on this date.
-  function fetchDayEvents() {
-    return LuanaAuth.api("events?from=" + state.date + "&to=" + state.date)
-      .then(function (res) { state.events = res.events || []; });
-  }
-  function loadDay() {
-    $("loading").style.display = "block";
-    return Promise.all([fetchBlocks(), fetchDayEvents()])
-      .then(renderDay)
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't load the day plan."); })
-      .then(function () { $("loading").style.display = "none"; });
-  }
-  function setDate(ymd) { state.date = ymd; loadDay(); }
-
-  function openBlockEdit(block) {
-    state.editingBlockId = block ? block.id : null;
-    $("blockFormTitle").textContent = (block ? "Edit time slot" : "Add time slot") + " — " + state.program;
-    $("bLabel").value = block ? (block.label || "") : "";
-    $("bStart").value = block ? (block.start_time || "") : "";
-    $("bEnd").value = block ? (block.end_time || "") : "";
-    // Program-gated sources: week questions is After School–only, day themes
-    // are Summer School–only. Hide elsewhere unless this block already uses one.
-    var qOpt = $("bSource").querySelector('option[value="week_questions"]');
-    qOpt.hidden = !questionsOn() && !(block && block.source === "week_questions");
-    ["day_subtheme", "day_vocab", "day_activities"].forEach(function (v) {
-      var opt = $("bSource").querySelector('option[value="' + v + '"]');
-      opt.hidden = !dayThemesOn() && !(block && block.source === v);
-    });
-    $("bSource").value = block && block.source ? block.source : "";
-    $("blockFormMsg").textContent = "";
-    $("blockSaveBtn").disabled = false;
-    $("blockModal").hidden = false;
-    $("bLabel").focus();
-  }
-
-  function closeBlockModal() { $("blockModal").hidden = true; state.editingBlockId = null; }
-
-  function saveBlock() {
-    var msg = $("blockFormMsg");
-    msg.textContent = "";
-    var label = $("bLabel").value.trim();
-    var start = $("bStart").value;
-    if (!label || !start) { msg.textContent = "A label and start time are required."; return; }
-    $("blockSaveBtn").disabled = true;
-
-    var payload = { label: label, start_time: start, end_time: $("bEnd").value || "", source: $("bSource").value || "" };
-    var method;
-    if (state.editingBlockId) { method = "PATCH"; payload.id = state.editingBlockId; }
-    else { method = "POST"; payload.program = state.program; payload.author = me; }
-    LuanaAuth.api("schedule-block", { method: method, body: JSON.stringify(payload) })
-      .then(function (res) {
-        if (res && res.error) throw new Error(res.error);
-        closeBlockModal(); return loadDay();
-      })
-      .catch(function () { msg.textContent = "Couldn't save. Try again."; $("blockSaveBtn").disabled = false; });
-  }
-
-  function deleteBlock(id) {
-    if (!id || !confirm("Permanently delete this schedule block and all of its day notes? This cannot be undone.")) return;
-    LuanaAuth.api("schedule-block", { method: "DELETE", body: JSON.stringify({ id: id }) })
-      .then(function () { LuanaUtils.reportSuccess("Schedule block deleted."); return loadDay(); })
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the schedule block. Nothing was changed."); });
-  }
-
-  function openNoteEdit(block) {
-    state.noteBlockId = block.id;
-    var entry = noteFor(block.id);
-    $("noteFormTitle").textContent = block.label + " · " + prettyDate(state.date);
-    $("nPlanned").value = entry ? (entry.planned || "") : "";
-    $("nActual").value = entry ? (entry.actual || "") : "";
-    $("nText").value = entry ? (entry.text || "") : "";
-    $("noteRemoveBtn").hidden = !entry;
-    $("noteFormMsg").textContent = "";
-    $("noteSaveBtn").disabled = false;
-    $("noteModal").hidden = false;
-    $("nPlanned").focus();
-  }
-
-  function closeNoteModal() { $("noteModal").hidden = true; state.noteBlockId = null; }
-
-  // Saving a fully-emptied entry deletes it; otherwise the whole entry
-  // (plan / actual / note) is upserted — one per block+date.
-  function saveNote() {
-    var blockId = state.noteBlockId;
-    var planned = $("nPlanned").value.trim();
-    var actual = $("nActual").value.trim();
-    var text = $("nText").value.trim();
-    var hasAny = !!(planned || actual || text);
-    if (!hasAny && !noteFor(blockId)) { closeNoteModal(); return; }
-    var msg = $("noteFormMsg");
-    msg.textContent = "";
-    $("noteSaveBtn").disabled = true;
-
-    var req = hasAny
-      ? LuanaAuth.api("day-note", { method: "POST", body: JSON.stringify({ block_id: blockId, date: state.date, planned: planned, actual: actual, text: text, author: me }) })
-      : LuanaAuth.api("day-note", { method: "DELETE", body: JSON.stringify({ block_id: blockId, date: state.date }) });
-    req.then(function (res) {
-        if (res && res.error) throw new Error(res.error);
-        closeNoteModal(); return loadDay();
-      })
-      .catch(function () { msg.textContent = "Couldn't save. Try again."; $("noteSaveBtn").disabled = false; });
-  }
-
-  function removeNote() {
-    if (!confirm("Permanently delete today’s plan, record, and note? This cannot be undone.")) return;
-    $("nPlanned").value = ""; $("nActual").value = ""; $("nText").value = "";
-    saveNote();
-  }
-
   // ---------- Edit ----------
+  // Files staged for upload, the theme's current attachments, and any queued
+  // for deletion on save. The Lesson library used to be the only place a theme
+  // could gain a file; now it happens here.
+  var chosenFiles = [];
+  var editingFiles = [];
+  var pendingDeletes = [];
+
+  function renderFileRow() {
+    $("fFileList").textContent = chosenFiles.length
+      ? chosenFiles.length + " file" + (chosenFiles.length === 1 ? "" : "s") + " ready to upload"
+      : "";
+    var wrap = $("fExisting");
+    wrap.innerHTML = "";
+    editingFiles.forEach(function (f) {
+      if (pendingDeletes.indexOf(f.id) !== -1) return;
+      var row = document.createElement("div");
+      row.className = "cm-file-existing-row";
+      row.innerHTML = '<span class="cm-file-name">' + esc(f.filename) + "</span>";
+      var x = document.createElement("button");
+      x.type = "button";
+      x.className = "cm-file-x";
+      x.textContent = "\u2715";
+      x.setAttribute("aria-label", "Remove " + f.filename);
+      x.onclick = function () { pendingDeletes.push(f.id); renderFileRow(); };
+      row.appendChild(x);
+      wrap.appendChild(row);
+    });
+  }
+
   function openEdit(month, lesson) {
     state.editingMonth = String(month);
     state.editingId = lesson ? lesson.id : null;
@@ -949,6 +685,11 @@
     $("fVocab").value = lesson ? (lesson.vocab || "") : "";
     $("fActivities").value = lesson ? (lesson.activities || "") : "";
     $("fPhonics").value = lesson ? (lesson.phonics || "") : "";
+    chosenFiles = [];
+    pendingDeletes = [];
+    editingFiles = lesson && lesson.files ? lesson.files.slice() : [];
+    $("fFiles").value = "";
+    renderFileRow();
     $("formMsg").textContent = "";
     $("saveBtn").disabled = false;
     $("modal").hidden = false;
@@ -956,6 +697,23 @@
   }
 
   function closeModal() { $("modal").hidden = true; state.editingId = null; state.editingMonth = null; }
+
+  // Attaching to a theme that already exists goes through the append endpoint,
+  // since the PATCH above is JSON and cannot carry a file.
+  function uploadFiles(lessonId) {
+    var fd = new FormData();
+    fd.append("lessonId", lessonId);
+    fd.append("author", me);
+    chosenFiles.forEach(function (f) { fd.append("files", f); });
+    var t = LuanaAuth.token();
+    return fetch("/api/lesson-file", {
+      method: "POST",
+      headers: t ? { Authorization: "Bearer " + t } : {},
+      body: fd
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "upload failed"); });
+    });
+  }
 
   function save() {
     var title = $("fTitle").value.trim();
@@ -973,16 +731,30 @@
     };
 
     if (state.editingId) {
+      var editId = state.editingId;
       LuanaAuth.api("lesson", { method: "PATCH", body: JSON.stringify({
-        id: state.editingId, author: me,
+        id: editId, author: me,
         title: fields.title, program: state.program, month: state.editingMonth,
         song: fields.song, vocab: fields.vocab, activities: fields.activities, phonics: fields.phonics
       }) })
         .then(function (res) {
           if (res && res.error) throw new Error(res.error);
-          closeModal(); return loadAll();
+          if (!pendingDeletes.length) return;
+          return Promise.all(pendingDeletes.map(function (fileId) {
+            return LuanaAuth.api("lesson-file", { method: "DELETE",
+              body: JSON.stringify({ id: fileId, lessonId: editId, author: me }) });
+          }));
         })
-        .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });
+        .then(function () {
+          if (!chosenFiles.length) return;
+          msg.textContent = "Uploading files\u2026";
+          return uploadFiles(editId);
+        })
+        .then(function () { closeModal(); return loadAll(); })
+        .catch(function (e) {
+          msg.textContent = (e && e.message) || "Couldn't save. Try again.";
+          $("saveBtn").disabled = false;
+        });
       return;
     }
 
@@ -997,6 +769,7 @@
     fd.append("activities", fields.activities);
     fd.append("phonics", fields.phonics);
     fd.append("kind", "theme");
+    chosenFiles.forEach(function (f) { fd.append("files", f); });
 
     var t = LuanaAuth.token();
     fetch("/api/lesson", {
@@ -1021,7 +794,7 @@
       .then(function (res) { state.weeks = res.weeks || []; });
   }
   // Re-render whichever view is showing (day view also slots theme/week data).
-  function rerender() { if (state.view === "day") renderDay(); else render(); }
+  function rerender() { render(); }
 
   // Full refresh (themes + weeks) — used at startup and after a theme change.
   function loadAll() {
@@ -1052,21 +825,10 @@
   $("copyGoBtn").onclick = doCopy;
   $("copyModal").onclick = function (e) { if (e.target === $("copyModal")) closeCopyModal(); };
 
-  document.querySelectorAll("#viewToggle .vt-btn").forEach(function (b) {
-    b.onclick = function () { switchView(b.getAttribute("data-view")); };
-  });
-  $("dayPrev").onclick = function () { setDate(fmtYMD(addDays(parseYMD(state.date), -1))); };
-  $("dayNext").onclick = function () { setDate(fmtYMD(addDays(parseYMD(state.date), 1))); };
-  $("dayToday").onclick = function () { setDate(fmtYMD(new Date())); };
-  $("dayDate").onchange = function () { if ($("dayDate").value) setDate($("dayDate").value); };
-  $("rhythmEditBtn").onclick = function () { state.rhythmEdit = !state.rhythmEdit; renderDay(); };
-  $("blockCancelBtn").onclick = closeBlockModal;
-  $("blockSaveBtn").onclick = saveBlock;
-  $("blockModal").onclick = function (e) { if (e.target === $("blockModal")) closeBlockModal(); };
-  $("noteCancelBtn").onclick = closeNoteModal;
-  $("noteSaveBtn").onclick = saveNote;
-  $("noteRemoveBtn").onclick = removeNote;
-  $("noteModal").onclick = function (e) { if (e.target === $("noteModal")) closeNoteModal(); };
+  $("fFiles").onchange = function (e) {
+    Array.prototype.forEach.call(e.target.files, function (f) { chosenFiles.push(f); });
+    renderFileRow();
+  };
 
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 

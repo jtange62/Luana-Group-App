@@ -251,7 +251,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (date);
 -- page opens; nothing here identifies a person, only that the tool was opened.
 CREATE TABLE IF NOT EXISTS usage_daily (
   day   TEXT NOT NULL,              -- "YYYY-MM-DD" (UTC)
-  tool  TEXT NOT NULL,              -- today|tools|calendar|curriculum|ideas|library|students|website
+  tool  TEXT NOT NULL,              -- today|tools|calendar|curriculum|ideas|students|website
   hits  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, tool)
 );

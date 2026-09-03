@@ -32,7 +32,7 @@ test("shared URL helpers strip trailing prose punctuation and emit safe links", 
 });
 
 test("every tool loads shared utilities before its page script", async () => {
-  for (const tool of ["ideas", "library", "website", "calendar", "students", "curriculum"]) {
+  for (const tool of ["ideas", "website", "calendar", "students", "curriculum"]) {
     const html = await readFile(new URL(`../public/tools/${tool}/index.html`, import.meta.url), "utf8");
     assert.ok(html.indexOf('/shared-utils.js') > -1, `${tool} is missing shared-utils.js`);
     assert.ok(html.indexOf('/shared-utils.js') < html.indexOf(`./${tool}.js`), `${tool} loads utilities too late`);
@@ -60,8 +60,9 @@ test("Cloudflare static responses define core security headers", async () => {
 });
 
 test("HTML contains no inline executable scripts or event handlers", async () => {
-  const pages = ["index.html", ...["ideas", "library", "website", "calendar", "students", "curriculum"]
-    .map((tool) => `tools/${tool}/index.html`)];
+  const pages = ["index.html", "tools/index.html",
+    ...["ideas", "website", "calendar", "students", "curriculum"]
+      .map((tool) => `tools/${tool}/index.html`)];
   for (const page of pages) {
     const html = await readFile(new URL(`../public/${page}`, import.meta.url), "utf8");
     assert.doesNotMatch(html, /<script(?![^>]*\bsrc=)[^>]*>/i, `${page} has an inline script`);

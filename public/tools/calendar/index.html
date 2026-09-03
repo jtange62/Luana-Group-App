@@ -27,16 +27,8 @@
       </a>
       <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
     </div>
-    <p class="brand-tag">📅 Calendar &amp; schedule</p>
+    <p class="brand-tag">📅 Events</p>
   </header>
-
-  <!-- Which calendar -->
-  <div id="calToggle" class="seg seg-cal">
-    <button class="seg-btn" data-cal="general">🏫 Events</button>
-    <button class="seg-btn" data-cal="students">👧 Attendance</button>
-    <button class="seg-btn" data-cal="staff">🧑‍🏫 Staff shifts</button>
-  </div>
-  <p id="calHelp" class="section-help"></p>
 
   <!-- Month nav -->
   <div id="calBar" class="cal-bar">
@@ -66,65 +58,13 @@
     <p id="dayEmpty" class="day-empty" hidden>No events this day.</p>
   </section>
 
-  <!-- Attendance (Students calendar) -->
-  <section id="attendance" class="attendance" hidden>
-    <p class="section-help">Choose a class, then mark P = Present, A = Absent, or L = Late.</p>
-    <div id="attDatebar" class="att-datebar">
-      <button id="attPrev" class="nav-btn" aria-label="Previous day">‹</button>
-      <input id="attDate" type="date" class="form-input att-date" />
-      <button id="attNext" class="nav-btn" aria-label="Next day">›</button>
-    </div>
-    <div id="attViewToggle" class="seg seg-attview">
-      <button class="seg-btn" data-attview="day">Day</button>
-      <button class="seg-btn" data-attview="week">Week</button>
-      <button class="seg-btn" data-attview="overview">Overview</button>
-    </div>
-    <div id="attClasses" class="seg seg-class"></div>
-    <div id="attHead" class="att-head">
-      <span id="attSummary" class="att-summary"></span>
-      <button id="manageStudentsBtn" class="link-btn">Manage students</button>
-    </div>
-    <div id="roster" class="roster"></div>
-    <p id="rosterEmpty" class="day-empty" hidden>No students in this class yet — tap “Manage students” to add some.</p>
-  </section>
-
-  <!-- Roster management (students or staff) -->
-  <div id="rosterModal" class="modal" hidden>
-    <div class="modal-card">
-      <p id="rosterModalTitle" class="form-heading">Manage</p>
-      <div id="rosterModalList" class="roster-manage"></div>
-      <div class="roster-add">
-        <input id="rosterAddName" type="text" placeholder="Add a name…" maxlength="80" />
-        <div id="rosterAddDays" class="day-chips" hidden></div>
-        <button id="rosterAddBtn" class="btn-primary btn-sm">Add</button>
-      </div>
-      <div class="modal-actions"><span class="spacer"></span><button id="rosterModalClose" class="btn-ghost">Done</button></div>
-    </div>
-  </div>
-
   <!-- Add / edit form (overlay) -->
   <div id="modal" class="modal" hidden>
     <div class="modal-card">
       <p id="formTitle" class="form-heading">New event</p>
 
-      <div id="fStaffWrap" hidden>
-        <label class="field-label">Staff member</label>
-        <select id="fStaff" class="form-select"></select>
-        <button id="manageStaffBtn" type="button" class="link-btn">Manage staff list</button>
-      </div>
-
       <label class="field-label" id="titleLabel">Title</label>
       <input id="fTitle" type="text" placeholder="Event title" maxlength="200" />
-
-      <div id="fProgramWrap">
-        <label class="field-label">Program</label>
-        <select id="fProgram" class="form-select"></select>
-      </div>
-
-      <div id="fLessonWrap">
-        <label class="field-label">Linked lesson theme (optional)</label>
-        <select id="fLesson" class="form-select"></select>
-      </div>
 
       <label class="field-label">Date</label>
       <input id="fDate" type="date" class="form-input" />

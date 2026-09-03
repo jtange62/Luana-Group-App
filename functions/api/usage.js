@@ -7,7 +7,7 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 // POST /api/usage {tool}       -> increment today's counter (fire and forget)
 // GET  /api/usage?days=14      -> [{ day, tool, hits }] newest first
 
-const TOOLS = ["today", "tools", "calendar", "curriculum", "ideas", "library", "students", "website"];
+const TOOLS = ["today", "tools", "calendar", "curriculum", "ideas", "students", "website"];
 
 export async function onRequestPost({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);

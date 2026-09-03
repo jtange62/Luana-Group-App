@@ -188,6 +188,27 @@ GET /api/usage?days=14   ->  { usage: [{ day, tool, hits }] }
 Nothing in that table identifies a person. Before this there was no way to
 answer the question without Cloudflare dashboard access.
 
+### What was removed, and why
+
+Four things were cut on the evidence of what production actually held. Every
+table and every row was kept — only the interfaces went, so nothing is lost and
+each cut is a revert away.
+
+| Cut | What the data said |
+|---|---|
+| The calendar's attendance section (Day/Week/Overview + roster modal) | Today does this now, and it was the second of two places students could be edited. `calendar.js` went from 966 lines to 350. |
+| Staff shifts | `staff` had 0 rows and always has, so the feature never once held data. All 7 events are `general`; nothing was orphaned. |
+| The Lesson library | All 22 rows were curriculum themes. It was never a library — it was the overflow for themes needing a file, so Curriculum gained an attach-files control and the tool went. |
+| Curriculum's Daily-plan layer | 6 schedule blocks and 1 day note, against the most complex machinery in the app (the time-block template and its 12-option `source` enum). Curriculum is now month themes and weeks. |
+
+Routes deleted with them: `staff.js`, `schedule-block.js`, `schedule-blocks.js`,
+`day-note.js`. `attendance.js`, `trials.js`, `lesson.js`, `lesson-file.js` and
+`file/[id].js` all stay — Today and Curriculum still need them.
+
+One deliberate gap: trial visits can still be *seen* on Today, but the only UI
+that could *add* one lived in the calendar's day register. If you want to record
+a new trial, that control needs re-adding somewhere.
+
 ### Daily summary
 
 `GET /api/summary?date=&format=text` renders the day as a message. Staff can
