@@ -429,8 +429,11 @@
   }
 
   function lessonPath(cursor) {
-    // kind=lesson keeps curriculum themes out of the library (migration 018).
-    var params = ["limit=30", "kind=lesson"];
+    // kind=lesson keeps curriculum themes out of the library (migration 018),
+    // except when following a direct link to one row — a theme opened from
+    // Curriculum's "resources" link still has to resolve.
+    var params = ["limit=30"];
+    if (!highlightId || cursor) params.push("kind=lesson");
     if (state.program !== "all") params.push("program=" + encodeURIComponent(state.program));
     if (state.month !== "all") params.push("month=" + encodeURIComponent(state.month));
     if (state.query.trim()) params.push("q=" + encodeURIComponent(state.query.trim()));

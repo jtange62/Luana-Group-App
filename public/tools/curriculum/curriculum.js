@@ -38,6 +38,7 @@
     editingDayDate: null, // original date of the day row being edited
     openDays: {},       // week ids with the daily-themes section expanded
     openVocab: {},      // lesson ids with the vocab chips expanded
+    openFiles: {},      // lesson ids with the resource list expanded
     openDayField: {},   // "weekId|date|kind" keys with a day sub-section expanded
     view: "plan",       // "plan" (month cards) | "day" (daily rhythm)
     date: null,         // "YYYY-MM-DD" shown in the day view (set below)
@@ -164,6 +165,19 @@
     });
   }
 
+  // Attachments are auth-gated, so fetch the blob before opening it.
+  function openFile(fileId) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
+        setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+      })
+      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't open that file."); });
+  }
+
   function fieldBlock(icon, label, inner) {
     return '<div class="cm-field"><span class="cm-field-label">' + icon + " " + label + "</span>" + inner + "</div>";
   }
@@ -215,6 +229,16 @@
           parts.push(fieldBlock("🎨", "Activities", '<ul class="cm-list">' + actHtml + "</ul>"));
         }
         if (l.phonics) parts.push(fieldBlock("🔠", "Phonics", '<p class="cm-text">' + esc(l.phonics) + "</p>"));
+        if (l.files && l.files.length) {
+          var filesOpen = !!state.openFiles[l.id];
+          var fileHtml = l.files.map(function (f) {
+            return '<button class="cm-file" data-file="' + esc(f.id) + '">📄 ' + esc(f.filename) + "</button>";
+          }).join("");
+          parts.push('<div class="cm-field">' +
+            '<button class="cm-toggle" data-toggle="files">📎 Resources (' + l.files.length + ') <span class="cm-toggle-arrow">' + (filesOpen ? "▾" : "▸") + "</span></button>" +
+            (filesOpen ? '<div class="cm-files">' + fileHtml + "</div>" : "") +
+            "</div>");
+        }
         parts.push(weeksSection(l));
         bodyHtml = parts.join("");
       }
@@ -224,6 +248,15 @@
         card.querySelector(".cm-edit").onclick = function (e) { e.stopPropagation(); openEdit(month, lesson); };
         var copyBtn = card.querySelector(".cm-copy");
         if (copyBtn) copyBtn.onclick = function (e) { e.stopPropagation(); openCopy(lesson); };
+        var filesToggle = card.querySelector('.cm-toggle[data-toggle="files"]');
+        if (filesToggle) filesToggle.onclick = function (e) {
+          e.stopPropagation();
+          state.openFiles[lesson.id] = !state.openFiles[lesson.id];
+          render();
+        };
+        card.querySelectorAll(".cm-file").forEach(function (btn) {
+          btn.onclick = function (e) { e.stopPropagation(); openFile(btn.getAttribute("data-file")); };
+        });
         var vocabToggle = card.querySelector('.cm-toggle[data-toggle="vocab"]');
         if (vocabToggle) vocabToggle.onclick = function (e) {
           e.stopPropagation();
@@ -981,7 +1014,7 @@
   // ---------- Data ----------
   function fetchThemes() {
     // kind=theme keeps library lessons out of the curriculum (migration 018).
-    return LuanaAuth.api("lessons?kind=theme&files=0").then(function (res) { state.lessons = res.lessons || []; });
+    return LuanaAuth.api("lessons?kind=theme").then(function (res) { state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
     return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(state.program))
