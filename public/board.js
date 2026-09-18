@@ -23,7 +23,7 @@
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   var state = {
-    requestId: 0, activeCat: "all", posts: [], nextCursor: null, hasMore: false,
+    requestId: 0, activeCat: "all", showCompleted: false, posts: [], nextCursor: null, hasMore: false,
     targets: null,     // curriculum destinations, loaded when first needed
     placing: null      // the post being filed
   };
@@ -72,6 +72,7 @@
     $("postingAs").textContent = "Posting as " + me;
     restoreDrafts();
     if (resourceView) { document.querySelector(".composer").hidden = true; document.querySelector(".brand-tag").textContent = "Resources · Photos, files and links shared by the team"; }
+    $("completedFilter").hidden = resourceView;
     renderTabs();
     loadPosts(true);
   }
@@ -191,7 +192,7 @@
         button.onclick=function(){resourceType=entry[0];loadPosts(true);};nav.appendChild(button);
       });return;
     }
-    [["all","Recent shares"],["tasks","Open tasks"]].forEach(function(entry){
+    [["all","Recent shares"],["tasks",state.showCompleted ? "Tasks" : "Open tasks"]].forEach(function(entry){
       var button=document.createElement("button");button.className="tab"+(state.activeCat===entry[0]?" active":"");button.textContent=entry[1];
       button.onclick=function(){state.activeCat=entry[0];loadPosts(true);};nav.appendChild(button);
     });
@@ -264,7 +265,7 @@
         (p.placed_at
           ? '<span class="filed-pill" title="Filed or completed">✓ ' + esc(p.placed_note || "filed") + "</span>" +
             '<button class="unfile-btn">Reopen</button>'
-          : (p.text ? '<button class="place-btn">Add to curriculum</button>' : '') + ((p.items || []).length ? '<button class="complete-btn">Mark complete</button>' : '')) +
+          : (p.text ? '<button class="place-btn">Add to curriculum</button>' : '') + '<button class="complete-btn">Mark as completed</button>') +
         '<button class="additem-btn">Add checklist</button>' +
       "</div>" +
       '<div class="item-add"><input type="text" placeholder="What needs doing?" /><button>Add</button></div>' +
@@ -535,7 +536,8 @@
   }
 
   function postsQuery() {
-    var filter = state.activeCat === "tasks" ? "&tasks=1&placed=0" : state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
+    var filter = state.activeCat === "tasks" ? "&tasks=1" + (state.showCompleted ? "" : "&placed=0") : state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
+    if (!resourceView && !state.showCompleted) filter += "&completed=0";
     return "posts?limit=30" + filter + (resourceView ? "&resource="+resourceType : "") + (search ? "&q="+encodeURIComponent(search) : "");
   }
 
@@ -621,6 +623,7 @@
   $("chooseFiles").onclick = function () { $("ideaFiles").click(); };
   $("ideaPhotos").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   var searchTimer;
+  $("showCompleted").onchange = function () { state.showCompleted = this.checked; loadPosts(true); };
   $("boardSearch").oninput = function () { search=this.value.trim();clearTimeout(searchTimer);searchTimer=setTimeout(function(){loadPosts(true);},250); };
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };

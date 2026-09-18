@@ -146,7 +146,18 @@ try {
     if (!post) throw new Error("Shared message did not appear");
     postId = post.id;
     const card = workflow.locator('[data-post-id="' + postId + '"]');
-    if (await card.locator(".complete-btn").count()) throw new Error("Ordinary message should not offer completion");
+    await card.getByRole("button", {name:"Mark as completed",exact:true}).click();
+    await card.waitFor({state:"detached"});
+    await workflow.getByLabel("Show completed",{exact:true}).check();
+    await card.getByText("✓ Completed",{exact:true}).waitFor();
+    await workflow.reload();
+    await workflow.locator("#loading").waitFor({state:"hidden"});
+    if (await workflow.getByLabel("Show completed",{exact:true}).isChecked() || await card.count()) throw new Error("Completed posts must be hidden on opening the staff room");
+    await workflow.getByLabel("Show completed",{exact:true}).check();
+    await card.locator("summary").click();
+    await card.getByRole("button",{name:"Reopen",exact:true}).click();
+    await card.locator(".complete-btn").waitFor();
+    await workflow.getByLabel("Show completed",{exact:true}).uncheck();
     await card.locator(".reply-toggle").click();
     await card.locator(".reply-box input").fill("Keep my reply");
     await workflow.locator("#ideaInput").fill("Keep my idea");
@@ -161,6 +172,8 @@ try {
     await card.locator(".item-add button").click();
     await card.locator(".complete-btn").waitFor();
     await card.locator(".complete-btn").click();
+    await card.waitFor({state:"detached"});
+    await workflow.getByLabel("Show completed",{exact:true}).check();
     await card.getByText("✓ Completed",{exact:true}).waitFor();
     await card.locator("summary").click();
     await card.getByRole("button",{name:"Reopen",exact:true}).click();

@@ -69,6 +69,19 @@ test('open inbox finds older ideas and counts all open posts independently of pa
   assert.equal(remaining.open_count,1);assert.deepEqual(remaining.posts.map(p=>p.id),['newer']);
 });
 
+test('completed filter preserves pagination and search while keeping curriculum shares visible',async t=>{
+  const DB=database(t);const env={DB,SESSION_SECRET};
+  seed(DB,'older','Find this',1);seed(DB,'filed','Find curriculum',2,'general',1);
+  seed(DB,'done','Find completed',3);
+  await place({env,request:await request('post-place',{post_id:'done',action:'complete'})});
+  const get=async query=>(await posts({env,request:await request('posts?'+query)})).json();
+  const first=await get('completed=0&q=Find&limit=1');
+  assert.deepEqual(first.posts.map(p=>p.id),['filed']);assert.equal(first.has_more,true);
+  const next=await get('completed=0&q=Find&limit=1&before='+encodeURIComponent(first.next_cursor));
+  assert.deepEqual(next.posts.map(p=>p.id),['older']);assert.equal(next.has_more,false);
+  assert.deepEqual((await get('q=Find')).posts.map(p=>p.id),['done','filed','older']);
+});
+
 test('Summer School attendance respects selected weeks, breaks and year',async t=>{
   const DB=database(t);
   DB.sql.prepare('INSERT INTO students (id,name,program,days,ss_weeks,active,created_at) VALUES (?,?,?,?,?,1,1)').run('summer','Summer student','Summer School','1,2,3,4,5','1,3');

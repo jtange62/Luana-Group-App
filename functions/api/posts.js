@@ -26,6 +26,7 @@ export async function onRequestGet({ request, env }) {
   const fetchLimit = limit + 1;
   const clauses = [];
   if (scope) clauses.push(scope);
+  if (url.searchParams.get("completed") === "0") clauses.push("(placed_at IS NULL OR COALESCE(placed_note, '') != 'Completed')");
   if (url.searchParams.get("tasks") === "1") clauses.push("EXISTS (SELECT 1 FROM post_items i WHERE i.post_id = posts.id)");
   if (category) clauses.push("category = ?");
   if (resource === "photos") clauses.push("EXISTS (SELECT 1 FROM post_files f WHERE f.post_id = posts.id AND f.type LIKE 'image/%')");
