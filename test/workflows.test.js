@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { makeToken } from '../functions/api/_helpers.js';
 import { onRequestPost as place } from '../functions/api/post-place.js';
 import { onRequestGet as posts } from '../functions/api/posts.js';
+import { onRequestDelete as deleteEvent } from '../functions/api/event.js';
 import { buildToday } from '../functions/api/_today.js';
 
 function database(t) {
@@ -80,6 +81,25 @@ test('completed filter preserves pagination and search while keeping curriculum 
   const next=await get('completed=0&q=Find&limit=1&before='+encodeURIComponent(first.next_cursor));
   assert.deepEqual(next.posts.map(p=>p.id),['older']);assert.equal(next.has_more,false);
   assert.deepEqual((await get('q=Find')).posts.map(p=>p.id),['done','filed','older']);
+});
+
+test('staff can delete shared calendar events and recurring series',async t=>{
+  const DB=database(t);const env={DB,SESSION_SECRET};
+  DB.sql.prepare("INSERT INTO events (id,title,author,calendar,start_date,recur,created_at) VALUES ('series','Weekly meeting','another teacher','general','2026-09-01','weekly',1)").run();
+  const makeRequest=async authenticated=>new Request('https://example.test/api/event',{method:'DELETE',headers:{'Content-Type':'application/json',...(authenticated?{Authorization:'Bearer '+await makeToken(env)}:{})},body:JSON.stringify({id:'series',author:'tester'})});
+  assert.equal((await deleteEvent({env,request:await makeRequest(false)})).status,401);
+  assert.equal((await deleteEvent({env,request:await makeRequest(true)})).status,200);
+  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM events').get().n,0);
+});
+
+test('official holidays include substitute and citizens holidays without annual repetition',()=>{
+  const data=JSON.parse(readFileSync(new URL('../public/tools/calendar/holidays.json',import.meta.url),'utf8'));
+  const dates=new Map(data.holidays.map(h=>[h.date,h.name]));
+  assert.equal(dates.size,data.holidays.length);
+  for(const date of ['2026-05-06','2026-09-22','2027-03-22'])assert.ok(dates.get(date));
+  assert.equal(dates.get('2026-09-21'),'敬老の日');
+  assert.equal(dates.get('2027-09-20'),'敬老の日');
+  assert.equal(dates.has('2027-09-21'),false);
 });
 
 test('Summer School attendance respects selected weeks, breaks and year',async t=>{

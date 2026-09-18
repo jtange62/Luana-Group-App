@@ -203,6 +203,15 @@ try {
     await workflow.locator('[data-view="agenda"]').click();
     await workflow.locator("#view").getByText(marker,{exact:true}).waitFor();
     console.log("✓ saved calendar event appears in month, week and agenda");
+    const eventRow = workflow.locator("#view .ev-row").filter({hasText:marker});
+    workflow.once("dialog", dialog => dialog.dismiss());
+    await eventRow.getByRole("button",{name:"Delete",exact:true}).click();
+    await eventRow.waitFor();
+    workflow.once("dialog", dialog => dialog.accept());
+    await eventRow.getByRole("button",{name:"Delete",exact:true}).click();
+    await eventRow.waitFor({state:"detached"});
+    eventId = null;
+    console.log("✓ calendar deletion is directly available and respects cancellation");
 
     mkdirSync(".wrangler/review", {recursive:true});
     for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {

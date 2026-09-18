@@ -15,7 +15,7 @@
   var now = new Date();
   var state = {
     year: now.getFullYear(), month: now.getMonth(), selected: fmtYMD(now),
-    view: "month", events: [], editingId: null
+    view: "month", events: [], holidays: [], editingId: null
   };
 
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
@@ -41,7 +41,7 @@
 
   function eventsOn(ymd) {
     var d = parseYMD(ymd);
-    return sortEvents(state.events.filter(function (ev) {
+    return sortEvents(state.events.concat(state.holidays).filter(function (ev) {
       return (ev.calendar || "students") !== "students" && occursOn(ev, d);
     }));
   }
@@ -62,17 +62,19 @@
 
     var row = document.createElement("div");
     row.className = "ev-row";
-    row.style.borderLeftColor = EVENT_COLOR;
+    row.style.borderLeftColor = ev.holiday ? "#a63737" : EVENT_COLOR;
     row.innerHTML =
       '<div class="ev-main">' +
         '<div class="ev-top"><span class="ev-time">' + time + "</span>" + repeat + "</div>" +
         '<div class="ev-title">' + esc(ev.title) + "</div>" +
         (ev.notes ? '<div class="ev-notes">' + esc(ev.notes) + "</div>" : "") +
       "</div>" +
-      '<button class="ev-edit" title="Edit">✎</button>';
+      (ev.holiday ? '<span class="holiday-badge">祝日</span>' : '<div class="ev-actions"><button class="ev-edit">Edit</button><button class="ev-delete">' + (ev.recur && ev.recur !== "none" ? 'Delete series' : 'Delete') + '</button></div>');
 
     var editBtn = row.querySelector(".ev-edit");
     if (editBtn) editBtn.onclick = function () { openEdit(ev); };
+    var deleteBtn = row.querySelector(".ev-delete");
+    if (deleteBtn) deleteBtn.onclick = function () { removeEvent(ev, deleteBtn); };
     return row;
   }
 
@@ -117,12 +119,14 @@
       var dots = "";
       if (evs.length) {
         var seen = {}, colors = [];
-        evs.forEach(function () { var c = EVENT_COLOR; if (!seen[c]) { seen[c] = 1; colors.push(c); } });
+        evs.forEach(function (ev) { var c = ev.holiday ? "#a63737" : EVENT_COLOR; if (!seen[c]) { seen[c] = 1; colors.push(c); } });
         dots = '<span class="dots">' + colors.slice(0, 4).map(function (c) {
           return '<span class="dot" style="background:' + c + '"></span>';
         }).join("") + "</span>";
       }
       cell.innerHTML = '<span class="daynum">' + day + "</span>" + dots;
+      var holiday = evs.find(function (ev) { return ev.holiday; });
+      if (holiday) { cell.classList.add("is-holiday"); cell.setAttribute("aria-label", prettyDate(ymd) + ": " + holiday.title); cell.title = holiday.title; }
       (function (d) { cell.onclick = function () { state.selected = d; render(); }; })(ymd);
       view.appendChild(cell);
     }
@@ -219,6 +223,7 @@
 
   function openEdit(ev) {
     state.editingId = ev.id;
+    $("deleteBtn").disabled = false;
     $("formTitle").textContent = "Edit" + (ev.recur && ev.recur !== "none" ? " (whole series)" : "");
     $("fTitle").value = ev.title || "";
     $("fDate").value = ev.start_date || state.selected;
@@ -226,8 +231,8 @@
     $("fStart").value = ev.start_time || ""; $("fEnd").value = ev.end_time || "";
     $("fRecur").value = ev.recur || "none"; $("fUntil").value = ev.recur_until || "";
     $("fNotes").value = ev.notes || "";
-    // Anyone can edit, but only the event's author may delete it.
-    $("formMsg").textContent = ""; $("deleteBtn").hidden = ev.author !== me; $("saveBtn").disabled = false;
+    $("formMsg").textContent = ""; $("deleteBtn").hidden = false; $("saveBtn").disabled = false;
+    $("deleteBtn").textContent = ev.recur && ev.recur !== "none" ? "Delete series" : "Delete";
     syncTimeRow(); syncUntilRow();
     $("modal").hidden = false;
     $("fTitle").focus();
@@ -269,14 +274,15 @@
       .catch(function () { msg.textContent = "Couldn't save. Try again."; $("saveBtn").disabled = false; });
   }
 
-  function removeEvent() {
-    if (!state.editingId) return;
-    var label = $("fTitle").value.trim() || "this event";
-    var recurring = $("fRecur").value !== "none" ? " This will delete the entire recurring series." : "";
+  function removeEvent(ev, button) {
+    if (!ev || ev.holiday) return;
+    var label = ev.title || "this event";
+    var recurring = ev.recur && ev.recur !== "none" ? " This will delete the entire recurring series." : "";
     if (!confirm('Permanently delete "' + label + '"?' + recurring + " This cannot be undone.")) return;
-    LuanaAuth.api("event", { method: "DELETE", body: JSON.stringify({ id: state.editingId, author: me }) })
+    button.disabled = true;
+    LuanaAuth.api("event", { method: "DELETE", body: JSON.stringify({ id: ev.id, author: me }) })
       .then(function () { closeModal(); LuanaUtils.reportSuccess("Event deleted."); return loadEvents(); })
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't delete the event. Nothing was changed."); });
+      .catch(function (e) { button.disabled = false; LuanaUtils.reportError(e, "Couldn't delete the event. Nothing was changed."); });
   }
 
   // ---------- Data ----------
@@ -341,7 +347,7 @@
   $("addBtn").onclick = openAdd;
   $("cancelBtn").onclick = closeModal;
   $("saveBtn").onclick = save;
-  $("deleteBtn").onclick = removeEvent;
+  $("deleteBtn").onclick = function () { removeEvent(state.events.find(function (ev) { return ev.id === state.editingId; }), this); };
   $("fAllDay").onchange = syncTimeRow;
   $("fRecur").onchange = syncUntilRow;
   $("modal").onclick = function (e) { if (e.target === $("modal")) closeModal(); };
@@ -349,4 +355,9 @@
 
   $("weekdays").innerHTML = WEEKDAYS.map(function (w) { return "<span>" + w + "</span>"; }).join("");
   loadEvents();
+  fetch("./holidays.json").then(function (response) { if (!response.ok) throw new Error("Holiday data unavailable"); return response.json(); }).then(function (data) {
+    state.holidays = data.holidays.map(function (h) { return {id:"holiday-"+h.date,title:h.name,start_date:h.date,calendar:"general",recur:"none",holiday:true,notes:"Japanese public holiday"}; });
+    $("holidayInfo").firstChild.textContent = "Japanese public holidays through " + data.to.slice(0,4) + " · ";
+    render();
+  }).catch(function () { $("holidayInfo").firstChild.textContent = "Public holidays could not load. Refresh to try again. · "; });
 })();

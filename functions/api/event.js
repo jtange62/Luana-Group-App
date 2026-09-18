@@ -105,7 +105,8 @@ export async function onRequestDelete({ request, env }) {
 
   const existing = await env.DB.prepare("SELECT author FROM events WHERE id = ?").bind(body.id).first();
   if (!existing) return json({ error: "not found" }, 404);
-  if (existing.author !== clean(body.author, 60)) return json({ error: "forbidden" }, 403);
+  // The shared staff calendar allows signed-in staff to manage any event,
+  // matching the edit permission above.
 
   await env.DB.prepare("DELETE FROM events WHERE id = ?").bind(body.id).run();
   return json({ ok: true });
