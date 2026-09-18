@@ -278,6 +278,25 @@ try {
     if(planningStudent)await api("students","DELETE",{id:planningStudent});
     await attendancePage.close();
   }
+  const yearPage=await browser.newPage({viewport:{width:390,height:844}});
+  await yearPage.addInitScript(token=>{localStorage.setItem("luana_token",token);localStorage.setItem("luana_name","browser-smoke");},token);
+  await yearPage.goto(origin+"/tools/curriculum/");
+  await yearPage.getByRole("combobox",{name:"School year",exact:true}).selectOption("2027");
+  await yearPage.getByRole("heading",{name:"April 2027",exact:true}).waitFor();
+  await yearPage.getByRole("heading",{name:"March 2028",exact:true}).waitFor();
+  await yearPage.goto(origin+"/tools/today/");
+  await yearPage.getByRole("combobox",{name:"School year",exact:true}).selectOption("2027");
+  await yearPage.waitForFunction(()=>document.querySelector("#selectedDate").value==="2027-04-01");
+  await yearPage.locator("#selectedDate").fill("2027-03-31");
+  await yearPage.locator("#selectedDate").dispatchEvent("change");
+  await yearPage.waitForFunction(()=>document.querySelector('[aria-label="School year"]').value==="2026");
+  await yearPage.goto(origin+"/tools/calendar/");
+  await yearPage.locator("#addBtn").click();
+  await yearPage.locator("#fType").selectOption("closure");
+  await yearPage.locator("#fEndDate").waitFor();
+  if(await yearPage.locator("#repeatFields").isVisible())throw Error("Closures should use a date range");
+  await yearPage.close();
+  console.log("✓ April–March school-year controls and school-closure form");
   console.log("Browser smoke checks passed.");
 } finally {
   if (browser) await browser.close();

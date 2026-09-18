@@ -114,6 +114,7 @@
     LuanaAuth.api(student.legacy_trial?"trials":"visits",{method:"DELETE",body:JSON.stringify({id:student.visit_id||student.id})}).then(load).catch(function(e){LuanaUtils.reportError(e,"Could not cancel the visit.");});
   }
   function load(){
+    yearControl.set(LuanaYear.current(state.date));
     var request=++state.request,r=range();state.days=[];
     $("selectedDate").value=state.date;$("loading").style.display="block";$("digestBtn").disabled=true;
     $("register").innerHTML="";$("planner").innerHTML="";$("alerts").hidden=true;$("onToday").hidden=true;
@@ -125,7 +126,11 @@
   function openVisit(program){
     var request=++state.bookingRequest;
     $("visitDate").value=state.date;$("visitClass").value=program||state.program||CLASSES[0];$("visitKind").value="makeup";$("visitName").value="";$("visitNotes").value="";$("visitMessage").textContent="Loading students…";$("visitSave").disabled=true;$("visitModal").hidden=false;syncVisit();
-    LuanaAuth.api("students").then(function(data){if(request!==state.bookingRequest)return;state.students=data.students;$("visitStudent").innerHTML='<option value="">Choose a student</option>'+state.students.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.name+" · "+s.program)+'</option>';}).join("");$("visitMessage").textContent="";$("visitSave").disabled=false;}).catch(function(e){$("visitMessage").textContent=e.message;});
+    loadVisitStudents();
+  }
+  function loadVisitStudents(){
+    var request=++state.bookingRequest;$("visitSave").disabled=true;
+    LuanaAuth.api("students?school_year="+LuanaYear.current($("visitDate").value)).then(function(data){if(request!==state.bookingRequest)return;state.students=data.students;$("visitStudent").innerHTML='<option value="">Choose a student</option>'+state.students.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.name+" · "+s.program)+'</option>';}).join("");$("visitMessage").textContent="";$("visitSave").disabled=false;}).catch(function(e){$("visitMessage").textContent=e.message;});
   }
   function syncVisit(){var trial=$("visitKind").value==="trial";$("visitStudentField").hidden=trial;$("visitNameField").hidden=!trial;}
   function closeVisit(){state.bookingRequest++;$("visitModal").hidden=true;}
@@ -147,9 +152,14 @@
   $("viewModes").onclick=function(e){var b=e.target.closest("[data-view]");if(b){state.view=b.dataset.view;load();}};
   $("dayPrev").onclick=function(){step(-1);};$("dayNext").onclick=function(){step(1);};$("dayToday").onclick=function(){go(today());};
   $("addVisit").onclick=function(){openVisit();};$("visitKind").onchange=syncVisit;$("visitCancel").onclick=closeVisit;$("visitSave").onclick=saveVisit;
+  $("visitDate").onchange=loadVisitStudents;
   $("visitModal").onclick=function(e){if(e.target===$("visitModal"))closeVisit();};
   $("digestBtn").onclick=function(){LuanaAuth.api("summary?date="+state.date).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
   $("digestClose").onclick=function(){$("digest").hidden=true;};$("digest").onclick=function(e){if(e.target===$("digest"))$("digest").hidden=true;};
   $("digestCopy").onclick=function(){if(!navigator.clipboard){LuanaUtils.reportError(null,"Select the summary and copy it manually.");return;}navigator.clipboard.writeText($("digestText").textContent).then(function(){LuanaUtils.reportSuccess("Summary copied.");}).catch(function(e){LuanaUtils.reportError(e,"Could not copy.");});};
+  var yearControl=LuanaYear.mount($("schoolYearControl"),LuanaYear.current(state.date),function(year){go(year+"-04-01");});
+  var yearSummary=document.createElement("button");yearSummary.className="btn-ghost";yearSummary.textContent="School-year summary";
+  yearSummary.onclick=function(){LuanaAuth.api("year-summary?school_year="+LuanaYear.current(state.date)).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
+  $("schoolYearControl").querySelector(".school-year-bar").appendChild(yearSummary);
   load();
 })();

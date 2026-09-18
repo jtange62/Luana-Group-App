@@ -29,6 +29,7 @@
     </div>
     <p class="brand-tag">📅 Events</p>
   </header>
+  <div id="schoolYearControl"></div>
 
   <!-- Month nav -->
   <div id="calBar" class="cal-bar">
@@ -64,17 +65,25 @@
     <div class="modal-card">
       <p id="formTitle" class="form-heading">New event</p>
 
+      <label class="field-label" for="fType">Type</label>
+      <select id="fType" class="form-select"><option value="event">Event</option><option value="closure">School break / closure</option></select>
       <label class="field-label" id="titleLabel">Title</label>
       <input id="fTitle" type="text" placeholder="Event title" maxlength="200" />
 
       <label class="field-label">Date</label>
       <input id="fDate" type="date" class="form-input" />
-      <label class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
+      <div id="closureFields" hidden>
+        <label class="field-label" for="fEndDate">Last day closed</label><input id="fEndDate" type="date" class="form-input" />
+        <label class="field-label" for="fClosedClass">Closed classes</label><select id="fClosedClass" class="form-select"><option value="General">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
+        <p>Regular classes will not be expected on these dates. Booked makeup and trial visits remain visible.</p>
+      </div>
+      <label id="allDayField" class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
       <div id="timeRow" class="form-row">
         <div class="time-field"><label class="field-label">Start</label><input id="fStart" type="time" class="form-input" /></div>
         <div class="time-field"><label class="field-label">End</label><input id="fEnd" type="time" class="form-input" /></div>
       </div>
 
+      <div id="repeatFields">
       <label class="field-label">Repeat</label>
       <select id="fRecur" class="form-select">
         <option value="none">Does not repeat</option>
@@ -87,6 +96,7 @@
         <input id="fUntil" type="date" class="form-input" />
       </div>
 
+      </div>
       <label class="field-label" for="fNotes">Notes</label>
       <textarea id="fNotes" rows="2" placeholder="Notes (optional)"></textarea>
       <p id="formMsg" class="form-msg"></p>
@@ -104,6 +114,7 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
+<script src="/school-year.js"></script>
 <script src="./calendar.js"></script>
 </body>
 </html>

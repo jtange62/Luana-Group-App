@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS comments (
 
 -- Lesson library — entries can hold notes, links, and uploaded files (R2).
 CREATE TABLE IF NOT EXISTS lessons (
+  school_year INTEGER NOT NULL DEFAULT 2026,
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
   author      TEXT NOT NULL,
@@ -56,6 +57,8 @@ CREATE TABLE IF NOT EXISTS lesson_files (
 
 -- Calendar events. Recurring events store a rule and are expanded on read.
 CREATE TABLE IF NOT EXISTS events (
+  event_type TEXT NOT NULL DEFAULT 'event',
+  end_date TEXT,
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
   author      TEXT NOT NULL,
@@ -147,6 +150,8 @@ CREATE INDEX IF NOT EXISTS idx_lessons_kind ON lessons (kind, program, month);
 CREATE INDEX IF NOT EXISTS idx_lesson_files_lesson ON lesson_files (lesson_id);
 -- Student roster (for attendance) and staff roster (for shift assignment).
 CREATE TABLE IF NOT EXISTS students (
+  school_year INTEGER NOT NULL DEFAULT 2026,
+  source_student_id TEXT,
   id          TEXT PRIMARY KEY,
   name        TEXT NOT NULL,
   program     TEXT NOT NULL,   -- Preschool|Kinder|After School|Summer School
@@ -287,3 +292,10 @@ CREATE TABLE IF NOT EXISTS attendance_visits (
   UNIQUE(student_id,date)
 );
 CREATE INDEX IF NOT EXISTS idx_attendance_visits_date ON attendance_visits(date,program);
+
+CREATE INDEX IF NOT EXISTS idx_lessons_school_year ON lessons(school_year,kind,program,month);
+CREATE INDEX IF NOT EXISTS idx_students_school_year ON students(school_year,active,program);
+CREATE TABLE IF NOT EXISTS school_year_copies (school_year INTEGER NOT NULL, kind TEXT NOT NULL, PRIMARY KEY(school_year,kind));
+
+CREATE TABLE IF NOT EXISTS summer_weeks (school_year INTEGER NOT NULL, id TEXT NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL, PRIMARY KEY(school_year,id));
+INSERT OR IGNORE INTO summer_weeks VALUES (2026,'1','2026-07-27','2026-07-31'),(2026,'2','2026-08-03','2026-08-07'),(2026,'3','2026-08-17','2026-08-21');

@@ -18,6 +18,7 @@ function database(t) {
       const statement = sql.prepare(query); let args = [];
       return {
         bind(...values) { args = values; return this; },
+        async all() { return {results:statement.all(...args)}; },
         async first() { return statement.get(...args) || null; },
         async run() { return this.execute(); },
         execute() {
@@ -174,4 +175,84 @@ test('planning migration preserves legacy makeup and trial bookings without doub
  await cancelVisit({env,request:await request('visits',{id:'legacy-trial-old-trial'})});
  await cancelVisit({env,request:await request('visits',{id:'legacy-old-mark'})});
  day=await buildToday(DB,'2026-09-22');assert.equal(day.programs.length,0);
+});
+
+import {schoolYear,shiftDate} from '../functions/api/_school-year.js';
+import {onRequestPost as copySchoolYear} from '../functions/api/school-years.js';
+import {onRequestPost as createEvent} from '../functions/api/event.js';
+import {onRequestGet as eventsGet} from '../functions/api/events.js';
+import {onRequestGet as studentsGet} from '../functions/api/students.js';
+import {onRequestGet as lessonsGet} from '../functions/api/lessons.js';
+import {onRequestGet as plannerGet} from '../functions/api/planner.js';
+import {onRequestGet as yearSummary} from '../functions/api/year-summary.js';
+
+test('Japanese school years change on April 1 and leap dates copy safely',()=>{
+  assert.equal(schoolYear('2027-03-31'),2026);assert.equal(schoolYear('2027-04-01'),2027);
+  assert.equal(shiftDate('2028-02-29',1),'2029-02-28');
+});
+test('rosters and January themes are isolated by school year across a planner range',async t=>{
+  const DB=database(t),env={DB,SESSION_SECRET};
+  for(const y of [2026,2027]){
+    DB.sql.prepare("INSERT INTO students(id,name,program,days,created_at,school_year) VALUES (?,?, 'Kinder','0,1,2,3,4,5,6',1,?)").run('s'+y,'Student '+y,y);
+    DB.sql.prepare("INSERT INTO lessons(id,title,author,program,month,kind,created_at,school_year) VALUES (?,?,'tester','Kinder','1','theme',1,?)").run('l'+y,'Theme '+y,y);
+  }
+  const roster=await(await studentsGet({env,request:await request('students?school_year=2027')})).json();
+  assert.deepEqual(roster.students.map(s=>s.id),['s2027']);
+  const themes=await(await lessonsGet({env,request:await request('lessons?kind=theme&school_year=2026')})).json();
+  assert.deepEqual(themes.lessons.map(s=>s.id),['l2026']);
+  const january=await buildToday(DB,'2027-01-08');assert.equal(january.programs[0].theme.id,'l2026');
+  const range=await(await plannerGet({env,request:await request('planner?from=2027-03-31&to=2027-04-01')})).json();
+  assert.equal(range.days[0].programs[0].expected[0].id,'s2026');assert.equal(range.days[1].programs[0].expected[0].id,'s2027');
+});
+test('copying a school year preserves originals, files and weekly plans without copying attendance or reflections',async t=>{
+  const DB=database(t),objects=new Map([['file','photo']]);
+  const env={DB,SESSION_SECRET,FILES:{async get(id){return objects.has(id)?{body:objects.get(id),httpMetadata:{}}:null;},async put(id,body){objects.set(id,body);},async delete(id){objects.delete(id);}}};
+  DB.sql.prepare("INSERT INTO lessons(id,title,author,program,month,kind,created_at) VALUES ('plan','Ocean','tester','Kinder','1','theme',1)").run();
+  DB.sql.prepare("INSERT INTO curriculum_weeks(id,lesson_id,week_no,start_date,focus,created_at) VALUES ('week','plan',1,'2027-01-11','Fish',1)").run();
+  DB.sql.prepare("INSERT INTO week_days(id,week_id,date,subtheme,created_at) VALUES ('day','week','2027-01-12','Sharks',1)").run();
+  DB.sql.prepare("INSERT INTO week_comments(id,week_id,author,text,created_at) VALUES ('comment','week','tester','Past reflection',1)").run();
+  DB.sql.prepare("INSERT INTO lesson_files(id,lesson_id,filename,created_at) VALUES ('file','plan','photo.png',1)").run();
+  const copy=async kind=>copySchoolYear({env,request:await request('school-years',{from:2026,to:2027,kind})});
+  assert.equal((await copy('plans')).status,200);assert.equal((await copy('plans')).status,409);
+  const plan=DB.sql.prepare('SELECT * FROM lessons WHERE school_year=2027').get();assert.equal(plan.title,'Ocean');
+  const week=DB.sql.prepare('SELECT * FROM curriculum_weeks WHERE lesson_id=?').get(plan.id);assert.equal(week.start_date,'2028-01-11');
+  assert.equal(DB.sql.prepare('SELECT date FROM week_days WHERE week_id=?').get(week.id).date,'2028-01-12');
+  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM week_comments').get().n,1);
+  const file=DB.sql.prepare('SELECT id FROM lesson_files WHERE lesson_id=?').get(plan.id);assert.equal(objects.get(file.id),'photo');assert.notEqual(file.id,'file');
+  DB.sql.prepare("UPDATE lessons SET title='Changed' WHERE id=?").run(plan.id);assert.equal(DB.sql.prepare("SELECT title FROM lessons WHERE id='plan'").get().title,'Ocean');
+  DB.sql.prepare("INSERT INTO students(id,name,program,days,created_at) VALUES ('student','Aiko','Kinder','1',1)").run();
+  DB.sql.prepare("INSERT INTO attendance(id,student_id,date,status,created_at) VALUES ('mark','student','2027-01-11','present',1)").run();
+  assert.equal((await copy('roster')).status,200);
+  const student=DB.sql.prepare('SELECT * FROM students WHERE school_year=2027').get();assert.equal(student.source_student_id,'student');assert.notEqual(student.id,'student');
+  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM attendance').get().n,1);
+  const summary=await(await yearSummary({env,request:await request('year-summary?school_year=2026')})).json();assert.match(summary.text,/present: 1/);
+});
+test('school closures span dates and suppress only the selected class while preserving booked visits',async t=>{
+  const DB=database(t),env={DB,SESSION_SECRET};
+  for(const program of ['Kinder','Preschool'])DB.sql.prepare("INSERT INTO students(id,name,program,days,created_at) VALUES (?,?,?,'0,1,2,3,4,5,6',1)").run(program,program,program);
+  const response=await createEvent({env,request:await request('event',{title:'Winter break',calendar:'general',event_type:'closure',program:'Kinder',start_date:'2026-12-25',end_date:'2027-01-05'})});assert.equal(response.status,200);
+  const eventList=await(await eventsGet({env,request:await request('events?from=2027-01-01&to=2027-01-31')})).json();assert.equal(eventList.events.length,1);
+  const day=await buildToday(DB,'2027-01-04');assert.deepEqual(day.programs.map(p=>p.program),['Preschool']);assert.match(day.events[0].title,/Closed/);
+  assert.equal((await buildToday(DB,'2027-01-06')).programs.length,2);
+});
+
+import {onRequestPost as saveSummer} from '../functions/api/summer-weeks.js';
+test('summer schedules are configured independently for each school year',async t=>{
+  const DB=database(t),env={DB,SESSION_SECRET};
+  DB.sql.prepare("INSERT INTO students(id,name,program,days,ss_weeks,school_year,created_at) VALUES ('summer27','Summer child','Summer School','1','1',2027,1)").run();
+  assert.equal((await buildToday(DB,'2027-07-26')).totals.expected,0);
+  assert.equal((await saveSummer({env,request:await request('summer-weeks',{school_year:2027,weeks:[{id:'1',start:'2027-07-26',end:'2027-07-30'}]})})).status,200);
+  assert.equal((await buildToday(DB,'2027-07-26')).totals.expected,1);
+  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM summer_weeks WHERE school_year=2026').get().n,3);
+  assert.equal((await saveSummer({env,request:await request('summer-weeks',{school_year:2027,weeks:[{id:'1',start:'2026-07-26',end:'2026-07-30'}]})})).status,400);
+});
+test('school-year migration adds scope without removing existing records',()=>{
+  const db=new DatabaseSync(':memory:');
+  try{
+    db.exec("CREATE TABLE lessons(id TEXT,kind TEXT,program TEXT,month TEXT); CREATE TABLE students(id TEXT,active INTEGER,program TEXT); CREATE TABLE events(id TEXT,title TEXT); INSERT INTO lessons VALUES ('existing-plan','theme','Kinder','1'); INSERT INTO students VALUES ('existing-student',1,'Kinder'); INSERT INTO events VALUES ('existing-event','School meeting');");
+    db.exec(readFileSync(new URL('../migrations/023_school_year.sql',import.meta.url),'utf8'));
+    assert.equal(db.prepare('SELECT school_year FROM lessons').get().school_year,2026);
+    assert.equal(db.prepare('SELECT id FROM students').get().id,'existing-student');
+    assert.equal(db.prepare('SELECT title FROM events').get().title,'School meeting');
+  }finally{db.close();}
 });

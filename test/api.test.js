@@ -54,7 +54,7 @@ test("event range queries bind the inclusive range in recurrence-safe order", as
   assert.deepEqual(await response.json(), { events: [{ id: "event-1" }] });
   assert.deepEqual(DB.calls[0].bindings, ["2026-07-31", "2026-07-01", "2026-07-01", "2026-07-31"]);
   assert.match(DB.calls[0].sql, /recur_until/);
-  assert.match(DB.calls[0].sql, /start_date BETWEEN \? AND \?/);
+  assert.match(DB.calls[0].sql, /COALESCE\(end_date,start_date\) >= \? AND start_date <= \?/);
 });
 
 test("event range validation rejects incomplete, reversed, and malformed ranges", async () => {

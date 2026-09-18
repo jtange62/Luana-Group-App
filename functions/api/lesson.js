@@ -1,5 +1,7 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
+import { requestedYear } from './_school-year.js';
+
 const MAX_FILE = 50 * 1024 * 1024; // 50 MB per file
 const MAX_FILES = 20;
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
@@ -48,12 +50,14 @@ export async function onRequestPost({ request, env }) {
     if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 50 MB' }, 400);
   }
 
+  const year=requestedYear(form.get('school_year'));
+  if(year===null)return json({error:'Invalid school year'},400);
   const lessonId = crypto.randomUUID();
   const now = Date.now();
 
   await env.DB.prepare(
-    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, kind, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, kind, now).run();
+    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, kind, created_at, school_year) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, kind, now, year).run();
 
   // Upload sequentially (one file buffered at a time), insert rows in one batch.
   const inserts = [];

@@ -101,3 +101,5 @@
   .modal{align-items:center;padding:20px;}
   .modal-card{border-radius:18px;}
 }
+
+#summerSettings{padding:12px;border:1px solid var(--line);border-radius:12px;margin:8px 0;}#summerSettings summary{min-height:44px;cursor:pointer;}.summer-date-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0;}.summer-date-row label{display:flex;flex-direction:column;gap:4px;}.summer-date-row input{min-height:44px;max-width:155px;}

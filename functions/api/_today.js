@@ -7,6 +7,8 @@
 
 import { summerWeekOn } from "../../public/school-settings.js";
 
+import {schoolYear} from './_school-year.js';
+
 const STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June",
@@ -28,7 +30,7 @@ function occursOn(event, date) {
   if (date < start) return false;
   if (event.recur_until && date > parseYMD(event.recur_until)) return false;
   const rule = event.recur || "none";
-  if (rule === "none") return date.getTime() === start.getTime();
+  if (rule === "none") return date <= parseYMD(event.end_date || event.start_date);
   if (rule === "daily") return true;
   if (rule === "weekly") return date.getUTCDay() === start.getUTCDay();
   if (rule === "monthly") return date.getUTCDate() === start.getUTCDate();
@@ -37,10 +39,10 @@ function occursOn(event, date) {
 
 // A student attends on this weekday. "x" marks a one-off trial placeholder,
 // which never belongs to the regular schedule.
-function attendsOn(student, weekday, ymd) {
+function attendsOn(student, weekday, ymd, summerWeeks) {
   if (!student.days || student.days === "x") return false;
   if (student.program === "Summer School") {
-    const week = summerWeekOn(ymd);
+    const week = summerWeeks ? summerWeeks.find(w=>ymd>=w.start && ymd<=w.end) : summerWeekOn(ymd);
     if (!week || !String(student.ss_weeks || "").split(",").includes(week.id)) return false;
   }
   return student.days.split(",").map(Number).indexOf(weekday) !== -1;
@@ -53,35 +55,37 @@ export async function buildToday(DB, ymd) {
   const weekday = date.getUTCDay();
   const month = String(date.getUTCMonth() + 1);
 
-  const [studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes] = await DB.batch([
+  const [studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes, summerRes] = await DB.batch([
     DB.prepare(
-      "SELECT id, name, program, days, allergies, ss_weeks FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
-    ),
+      "SELECT id, name, program, days, allergies, ss_weeks, school_year FROM students WHERE (active = 1 AND school_year = ?) OR id IN (SELECT student_id FROM attendance WHERE date = ?) ORDER BY program, name COLLATE NOCASE"
+    ).bind(schoolYear(ymd),ymd),
     DB.prepare("SELECT student_id, status FROM attendance WHERE date = ?").bind(ymd),
     DB.prepare("SELECT id, name, program FROM trials WHERE date = ? ORDER BY created_at").bind(ymd),
     DB.prepare(
-      "SELECT id, title, calendar, program, staff_name, start_date, start_time, end_time, notes, recur, recur_until" +
+      "SELECT id, title, calendar, program, staff_name, start_date, start_time, end_time, notes, recur, recur_until, event_type, end_date" +
       " FROM events" +
       " WHERE ((recur IS NOT NULL AND recur != 'none')" +
       "        AND start_date <= ?" +
       "        AND (recur_until IS NULL OR recur_until = '' OR recur_until >= ?))" +
-      "    OR ((recur IS NULL OR recur = 'none') AND start_date = ?)" +
+      "    OR ((recur IS NULL OR recur = 'none') AND start_date <= ? AND COALESCE(end_date,start_date) >= ?)" +
       " LIMIT 500"
-    ).bind(ymd, ymd, ymd),
+    ).bind(ymd, ymd, ymd, ymd),
     DB.prepare(
       "SELECT id, title, program, song, vocab, activities, phonics FROM lessons" +
-      " WHERE kind = 'theme' AND CAST(month AS TEXT) = ? ORDER BY created_at DESC"
-    ).bind(month),
+      " WHERE kind = 'theme' AND CAST(month AS TEXT) = ? AND school_year = ? ORDER BY created_at DESC"
+    ).bind(month,schoolYear(ymd)),
     DB.prepare("SELECT * FROM attendance_visits WHERE date = ? ORDER BY created_at").bind(ymd),
+    DB.prepare("SELECT id,start,end FROM summer_weeks WHERE school_year=? ORDER BY start").bind(schoolYear(ymd)),
   ]);
-  return shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes);
+  return shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes, summerRes);
 }
 
-export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes) {
+export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes, summerRes) {
   const date = parseYMD(ymd);
   const weekday = date.getUTCDay();
   const visits = visitsRes?.results || [];
 
+  const closures=(eventsRes.results||[]).filter(e=>e.event_type==="closure" && occursOn(e,date));
   const students = studentsRes.results || [];
   const marks = {};
   (marksRes.results || []).forEach((row) => { marks[row.student_id] = row.status; });
@@ -111,8 +115,9 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
       if (visits.some(visit => visit.student_id === student.id)) return;
       const status = marks[student.id] || "";
       const row = { id: student.id, name: student.name, status, allergies: student.allergies || "" };
-      if (attendsOn(student, weekday, ymd)) expected.push(row);
-      else if (GUEST_STATUSES.indexOf(status) !== -1 || status === "present" || status === "late") guests.push(row);
+      const closed=closures.some(e=>!e.program || e.program==="General" || e.program===program);
+      if (!closed && (student.school_year == null || student.school_year === schoolYear(ymd)) && attendsOn(student, weekday, ymd, summerRes?.results)) expected.push(row);
+      else if (GUEST_STATUSES.indexOf(status) !== -1 || status === "present" || status === "late" || status === "absent") guests.push(row);
     });
 
     visits.filter(visit => visit.program === program).forEach(visit => {
@@ -123,7 +128,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
     if (!expected.length && !guests.length && !trials.length) return;
 
     const counts = { present: 0, absent: 0, late: 0, unmarked: 0 };
-    expected.concat(guests.filter(row => row.visit_id)).forEach((row) => {
+    expected.concat(guests).forEach((row) => {
       if (counts[row.status] !== undefined) counts[row.status]++;
       else if (!row.status) counts.unmarked++;
     });
@@ -158,7 +163,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
     .filter((event) => (event.calendar || "students") !== "students" && occursOn(event, date))
     .map((event) => ({
       id: event.id,
-      title: event.title,
+      title: (event.event_type === "closure" ? "Closed — " : "") + event.title,
       calendar: event.calendar || "general",
       program: event.program || "",
       staff_name: event.staff_name || "",
@@ -170,6 +175,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
 
   return {
     date: ymd,
+    school_year: schoolYear(ymd),
     weekday: WEEKDAY_FULL[weekday],
     pretty: WEEKDAY_FULL[weekday] + ", " + date.getUTCDate() + " " + MONTHS[date.getUTCMonth()],
     programs,
@@ -181,7 +187,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
 
 // Plain-text digest — what gets pushed to a chat channel each afternoon.
 export function summaryText(data) {
-  const lines = ["Luana — " + data.pretty];
+  const lines = ["Luana — " + data.pretty + " · " + data.school_year + "年度"];
 
   if (!data.programs.length) {
     lines.push("", "No classes scheduled.");

@@ -19,7 +19,7 @@ export async function onRequestGet({ request, env }) {
          WHERE ((recur IS NOT NULL AND recur != 'none')
                 AND start_date <= ?
                 AND (recur_until IS NULL OR recur_until = '' OR recur_until >= ?))
-            OR ((recur IS NULL OR recur = 'none') AND start_date BETWEEN ? AND ?)
+            OR ((recur IS NULL OR recur = 'none') AND COALESCE(end_date,start_date) >= ? AND start_date <= ?)
          ORDER BY start_date ASC, start_time ASC LIMIT 2000`
       ).bind(to, from, from, to).all()
     : await env.DB.prepare(

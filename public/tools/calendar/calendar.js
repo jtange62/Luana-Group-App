@@ -32,7 +32,7 @@
     if (d < start) return false;
     if (ev.recur_until && d > parseYMD(ev.recur_until)) return false;
     var r = ev.recur || "none";
-    if (r === "none") return d.getTime() === start.getTime();
+    if (r === "none") return d <= parseYMD(ev.end_date || ev.start_date);
     if (r === "daily") return true;
     if (r === "weekly") return d.getDay() === start.getDay();
     if (r === "monthly") return d.getDate() === start.getDate();
@@ -66,7 +66,7 @@
     row.innerHTML =
       '<div class="ev-main">' +
         '<div class="ev-top"><span class="ev-time">' + time + "</span>" + repeat + "</div>" +
-        '<div class="ev-title">' + esc(ev.title) + "</div>" +
+        '<div class="ev-title">' + esc((ev.event_type === "closure" ? "Closed — " : "") + ev.title) + "</div>" +
         (ev.notes ? '<div class="ev-notes">' + esc(ev.notes) + "</div>" : "") +
       "</div>" +
       (ev.holiday ? '<span class="holiday-badge">祝日</span>' : '<div class="ev-actions"><button class="ev-edit">Edit</button><button class="ev-delete">' + (ev.recur && ev.recur !== "none" ? 'Delete series' : 'Delete') + '</button></div>');
@@ -86,6 +86,7 @@
   }
 
   function render() {
+    yearControl.set(LuanaYear.current(state.selected));
     setActive("viewToggle", "data-view", state.view);
     $("weekdays").hidden = state.view !== "month";
     $("dayPanel").hidden = state.view !== "month";
@@ -208,21 +209,25 @@
   function syncTimeRow() { $("timeRow").hidden = $("fAllDay").checked; }
   function syncUntilRow() { $("untilRow").hidden = $("fRecur").value === "none"; }
 
+  function syncClosure(){var closed=$("fType").value==="closure";$("closureFields").hidden=!closed;$("allDayField").hidden=closed;$("repeatFields").hidden=closed;$("fRecur").disabled=closed;$("fAllDay").disabled=closed;if(closed){$("fRecur").value="none";$("fAllDay").checked=true;}syncTimeRow();syncUntilRow();}
+
   function openAdd() {
     state.editingId = null;
+    $("fType").value="event";$("fEndDate").value=state.selected;$("fClosedClass").value="General";
     $("formTitle").textContent = "New event";
     $("fTitle").value = "";
     $("fDate").value = state.selected;
     $("fAllDay").checked = false; $("fStart").value = ""; $("fEnd").value = "";
     $("fRecur").value = "none"; $("fUntil").value = ""; $("fNotes").value = "";
     $("formMsg").textContent = ""; $("deleteBtn").hidden = true; $("saveBtn").disabled = false;
-    syncTimeRow(); syncUntilRow();
+    syncClosure();
     $("modal").hidden = false;
     $("fTitle").focus();
   }
 
   function openEdit(ev) {
     state.editingId = ev.id;
+    $("fType").value=ev.event_type||"event";$("fEndDate").value=ev.end_date||ev.start_date;$("fClosedClass").value=ev.program||"General";
     $("deleteBtn").disabled = false;
     $("formTitle").textContent = "Edit" + (ev.recur && ev.recur !== "none" ? " (whole series)" : "");
     $("fTitle").value = ev.title || "";
@@ -233,7 +238,7 @@
     $("fNotes").value = ev.notes || "";
     $("formMsg").textContent = ""; $("deleteBtn").hidden = false; $("saveBtn").disabled = false;
     $("deleteBtn").textContent = ev.recur && ev.recur !== "none" ? "Delete series" : "Delete";
-    syncTimeRow(); syncUntilRow();
+    syncClosure();
     $("modal").hidden = false;
     $("fTitle").focus();
   }
@@ -254,6 +259,9 @@
       id: state.editingId || undefined,
       author: me,
       calendar: "general",
+      event_type: $("fType").value,
+      end_date: $("fType").value==="closure" ? $("fEndDate").value : date,
+      program: $("fType").value==="closure" ? $("fClosedClass").value : "General",
       title: title,
       start_date: date,
       start_time: allDay ? "" : $("fStart").value,
@@ -348,12 +356,15 @@
   $("cancelBtn").onclick = closeModal;
   $("saveBtn").onclick = save;
   $("deleteBtn").onclick = function () { removeEvent(state.events.find(function (ev) { return ev.id === state.editingId; }), this); };
+  $("fType").onchange=syncClosure;
+  $("fDate").onchange=function(){if($("fEndDate").value<this.value)$("fEndDate").value=this.value;};
   $("fAllDay").onchange = syncTimeRow;
   $("fRecur").onchange = syncUntilRow;
   $("modal").onclick = function (e) { if (e.target === $("modal")) closeModal(); };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   $("weekdays").innerHTML = WEEKDAYS.map(function (w) { return "<span>" + w + "</span>"; }).join("");
+  var yearControl=LuanaYear.mount($("schoolYearControl"),LuanaYear.current(state.selected),function(year){state.selected=year+"-04-01";state.year=year;state.month=3;loadEvents();});
   loadEvents();
   fetch("./holidays.json").then(function (response) { if (!response.ok) throw new Error("Holiday data unavailable"); return response.json(); }).then(function (data) {
     state.holidays = data.holidays.map(function (h) { return {id:"holiday-"+h.date,title:h.name,start_date:h.date,calendar:"general",recur:"none",holiday:true,notes:"Japanese public holiday"}; });

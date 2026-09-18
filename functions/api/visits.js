@@ -1,4 +1,5 @@
 import { json, verifyToken, bearer, clean } from './_helpers.js';
+import {schoolYear} from './_school-year.js';
 export function validDate(value) {
   return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10) === value;
 }
@@ -9,7 +10,7 @@ export async function onRequestPost({request,env}) {
  const date=clean(body.date,10),program=clean(body.program,40),kind=clean(body.kind,10),studentId=clean(body.student_id,64);
  if(!validDate(date)||!PROGRAMS.includes(program)||!['makeup','trial','other'].includes(kind))return json({error:'Choose a date, class and visit type.'},400);
  let name=clean(body.name,80);
- if(studentId){const student=await env.DB.prepare('SELECT name FROM students WHERE id=? AND active=1').bind(studentId).first();if(!student)return json({error:'Student not found'},404);name=student.name;}
+ if(studentId){const student=await env.DB.prepare('SELECT name FROM students WHERE id=? AND active=1 AND school_year=?').bind(studentId,schoolYear(date)).first();if(!student)return json({error:'Student not found'},404);name=student.name;}
  if(!name || (kind==='makeup'&&!studentId))return json({error:'Choose the student, or enter a trial visitor’s name.'},400);
  const id=crypto.randomUUID();
  const result=await env.DB.prepare('INSERT OR IGNORE INTO attendance_visits(id,student_id,name,program,date,kind,notes,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(id,studentId||null,name,program,date,kind,clean(body.notes,1000),Date.now()).run();

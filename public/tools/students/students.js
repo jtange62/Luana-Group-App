@@ -1,4 +1,4 @@
-import { SUMMER_WEEKS } from "/school-settings.js";
+var SUMMER_WEEKS = [];
 
 (function () {
   "use strict";
@@ -12,11 +12,12 @@ import { SUMMER_WEEKS } from "/school-settings.js";
   var WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   var $ = function (id) { return document.getElementById(id); };
+  var year = LuanaYear.current();
   var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
   var esc = LuanaUtils.esc;
-  document.querySelector("#ssFields .day-chips").innerHTML = SUMMER_WEEKS.map(function (week) {
+  function renderSummerChips(){document.querySelector("#ssFields .day-chips").innerHTML = SUMMER_WEEKS.map(function (week) {
     return '<button type="button" class="day-chip" data-week="' + esc(week.id) + '">' + esc(week.label) + '</button>';
-  }).join("");
+  }).join("");}
 
   function daysArr(d) { return d ? String(d).split(",").map(Number).filter(function (n) { return n >= 0 && n <= 6; }) : []; }
 
@@ -74,6 +75,7 @@ import { SUMMER_WEEKS } from "/school-settings.js";
 
   function render() {
     renderTabs();
+    $("summerSettings").hidden=state.program!=="Summer School";
     var list = $("list"); list.innerHTML = "";
     var shown = state.students.filter(matches);
 
@@ -236,6 +238,7 @@ import { SUMMER_WEEKS } from "/school-settings.js";
 
     var payload = {
       id: state.editingId || undefined,
+      school_year: year,
       name: name,
       program: $("fProgram").value,
       days: state.newDays.join(","),
@@ -275,13 +278,29 @@ import { SUMMER_WEEKS } from "/school-settings.js";
   // ---------- Data ----------
   function load() {
     $("loading").style.display = "block";
-    return LuanaAuth.api("students").then(function (res) {
+    var selectedYear=year;
+    return Promise.all([LuanaAuth.api("students?school_year="+year),LuanaAuth.api("summer-weeks?school_year="+year)]).then(function (results) {
+      if(selectedYear!==year)return;
+      var res=results[0];
+      SUMMER_WEEKS=results[1].weeks.map(function(w){return {id:w.id,start:w.start,end:w.end,label:"Week "+w.id+" · "+w.start+" – "+w.end};});
+      renderSummerChips();
+      $("summerDates").innerHTML="";SUMMER_WEEKS.forEach(addSummerRow);
       $("loading").style.display = "none";
       state.students = res.students || [];
       render();
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load students."); });
   }
 
+  function addSummerRow(week){
+    var row=document.createElement("div");row.className="summer-date-row";row.dataset.week=week.id;
+    row.innerHTML='<b>Week '+esc(week.id)+'</b><label>Start<input class="summer-start" type="date" value="'+esc(week.start||'')+'" /></label><label>End<input class="summer-end" type="date" value="'+esc(week.end||'')+'" /></label><button type="button" class="btn-ghost">Remove week '+esc(week.id)+'</button>';
+    row.querySelector("button").onclick=function(){row.remove();};$("summerDates").appendChild(row);
+  }
+  $("addSummerWeek").onclick=function(){var ids=Array.from($("summerDates").children).map(function(row){return Number(row.dataset.week);});for(var i=1;i<=12;i++){if(ids.indexOf(i)===-1){addSummerRow({id:String(i)});return;}}};
+  $("saveSummer").onclick=function(){
+    var weeks=Array.from($("summerDates").children).map(function(row){return {id:row.dataset.week,start:row.querySelector(".summer-start").value,end:row.querySelector(".summer-end").value};});
+    this.disabled=true;LuanaAuth.api("summer-weeks",{method:"POST",body:JSON.stringify({school_year:year,weeks:weeks})}).then(function(){LuanaUtils.reportSuccess("Summer dates saved.");return load();}).catch(function(e){LuanaUtils.reportError(e,"Could not save summer dates.");}).finally(function(){$("saveSummer").disabled=false;});
+  };
   // ---------- Wire up ----------
   $("addBtn").onclick = openAdd;
   $("cancelBtn").onclick = closeModal;
@@ -298,5 +317,6 @@ import { SUMMER_WEEKS } from "/school-settings.js";
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   fillProgramSelect();
+  LuanaYear.mount($("schoolYearControl"),year,function(value){year=value;state.students=[];render();load();},"roster");
   load();
 })();

@@ -30,6 +30,8 @@
     </div>
     <p class="brand-tag">👧 Student roster</p>
   </header>
+  <div id="schoolYearControl"></div>
+  <details id="summerSettings" hidden><summary>Summer School dates for this year</summary><p>Set the dates before selecting weeks for students.</p><div id="summerDates"></div><button id="addSummerWeek" class="btn-ghost">Add a week</button><button id="saveSummer" class="btn-ghost">Save summer dates</button></details>
 
   <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
 
@@ -136,6 +138,7 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
+<script src="/school-year.js"></script>
 <script type="module" src="./students.js"></script>
 </body>
 </html>

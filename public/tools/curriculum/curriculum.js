@@ -16,7 +16,7 @@
   // Months a program runs in; unlisted programs run all year.
   var PROGRAM_MONTHS = { "Summer School": [7, 8] };
   function monthsFor(program) {
-    return PROGRAM_MONTHS[program] || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    return PROGRAM_MONTHS[program] || [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
   }
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
@@ -25,6 +25,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo;
 
+  var year = LuanaYear.current();
   var state = {
     lessons: [],
     weeks: [],
@@ -166,7 +167,7 @@
       : state.program + " runs in " + months.map(function (m) { return MONTHS[m - 1]; }).join(" and ") + " — tap a month to plan it.";
 
     var wrap = $("months"); wrap.innerHTML = "";
-    var thisMonth = new Date().getMonth() + 1; // 1..12
+    var thisMonth = year === LuanaYear.current() ? new Date().getMonth() + 1 : 0; // 1..12
 
     for (var i = 0; i < months.length; i++) {
       var m = months[i];
@@ -175,7 +176,7 @@
       card.className = "month-card" + (m === thisMonth ? " is-current" : "") + (l ? "" : " is-empty");
 
       var head = '<div class="cm-head">' +
-        '<h2 class="cm-month">' + MONTHS[m - 1] + (m === thisMonth ? ' <span class="cm-now">now</span>' : "") + "</h2>" +
+        '<h2 class="cm-month">' + MONTHS[m - 1] + " " + (m < 4 ? year + 1 : year) + (m === thisMonth ? ' <span class="cm-now">now</span>' : "") + "</h2>" +
         '<button class="cm-edit" title="' + (l ? "Edit" : "Set theme") + '">' + (l ? "✎" : "＋ Set theme") + "</button>" +
         "</div>";
 
@@ -613,6 +614,7 @@
       chain = chain.then(function () {
         // Lesson create is multipart (same as save()).
         var fd = new FormData();
+    fd.append("school_year", year);
         fd.append("title", lesson.title || "");
         fd.append("author", me);
         fd.append("program", p);
@@ -702,6 +704,7 @@
   // since the PATCH above is JSON and cannot carry a file.
   function uploadFiles(lessonId) {
     var fd = new FormData();
+    fd.append("school_year", year);
     fd.append("lessonId", lessonId);
     fd.append("author", me);
     chosenFiles.forEach(function (f) { fd.append("files", f); });
@@ -760,6 +763,7 @@
 
     // New theme — lesson create is multipart/form-data (files may ride along elsewhere).
     var fd = new FormData();
+    fd.append("school_year", year);
     fd.append("title", fields.title);
     fd.append("author", me);
     fd.append("program", state.program);
@@ -786,13 +790,14 @@
 
   // ---------- Data ----------
   function fetchThemes() {
+    var selectedYear = year;
     // kind=theme keeps library lessons out of the curriculum (migration 018).
-    return LuanaAuth.api("lessons?kind=theme").then(function (res) { state.lessons = res.lessons || []; });
+    return LuanaAuth.api("lessons?kind=theme&school_year=" + selectedYear).then(function (res) { if(selectedYear === year) state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
-    var program = state.program;
-    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(program))
-      .then(function (res) { if (program === state.program) state.weeks = res.weeks || []; });
+    var program = state.program, selectedYear = year;
+    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(program) + "&school_year=" + year)
+      .then(function (res) { if (program === state.program && selectedYear === year) state.weeks = res.weeks || []; });
   }
   // Re-render whichever view is showing (day view also slots theme/week data).
   function rerender() { render(); }
@@ -833,6 +838,7 @@
 
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
+  LuanaYear.mount($("schoolYearControl"), year, function(value){year=value;state.lessons=[];state.weeks=[];render();loadAll();}, "plans");
   renderProgramTabs();
   loadAll();
 })();

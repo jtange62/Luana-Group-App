@@ -1,5 +1,7 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
+import { requestedYear } from './_school-year.js';
+
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 
 // Profile fields beyond the core name/program/days. All optional text.
@@ -22,10 +24,12 @@ function cleanDays(raw) {
 // DELETE /api/students {id}      -> soft delete (keeps attendance history)
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
+  const year=requestedYear(new URL(request.url).searchParams.get('school_year'));
+  if(year===null)return json({error:'Invalid school year'},400);
   const res = await env.DB.prepare(
-    "SELECT id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at, photo_ok, ss_weeks, ss_type " +
-    "FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
-  ).all();
+    "SELECT school_year, id, name, program, days, birthday, guardian, phone, email, allergies, emergency, notes, enrolled_at, photo_ok, ss_weeks, ss_type " +
+    "FROM students WHERE active = 1 AND school_year = ? ORDER BY program, name COLLATE NOCASE"
+  ).bind(year).all();
   return json({ students: res.results || [] });
 }
 
@@ -37,8 +41,10 @@ export async function onRequestPost({ request, env }) {
   if (!name) return json({ error: "name required" }, 400);
   if (!program) return json({ error: "valid class required" }, 400);
 
-  const cols = ["id", "name", "program", "days", "active", "created_at"];
-  const vals = [crypto.randomUUID(), name, program, cleanDays(body.days), 1, Date.now()];
+  const year=requestedYear(body.school_year);
+  if(year===null)return json({error:'Invalid school year'},400);
+  const cols = ["school_year", "id", "name", "program", "days", "active", "created_at"];
+  const vals = [year, crypto.randomUUID(), name, program, cleanDays(body.days), 1, Date.now()];
   PROFILE_FIELDS.forEach((f) => {
     if (body[f] != null) { cols.push(f); vals.push(clean(body[f], 1000)); }
   });
@@ -46,7 +52,7 @@ export async function onRequestPost({ request, env }) {
   const placeholders = cols.map(() => "?").join(",");
   await env.DB.prepare(`INSERT INTO students (${cols.join(",")}) VALUES (${placeholders})`)
     .bind(...vals).run();
-  return json({ ok: true, id: vals[0] });
+  return json({ ok: true, id: vals[1] });
 }
 
 export async function onRequestPatch({ request, env }) {
