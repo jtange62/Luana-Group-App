@@ -187,7 +187,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
 
 // Plain-text digest — what gets pushed to a chat channel each afternoon.
 export function summaryText(data) {
-  const lines = ["Luana — " + data.pretty + " · " + data.school_year + "年度"];
+  const lines = ["Luana — " + data.pretty + " · " + data.school_year + "–" + (data.school_year + 1) + " school year"];
 
   if (!data.programs.length) {
     lines.push("", "No classes scheduled.");

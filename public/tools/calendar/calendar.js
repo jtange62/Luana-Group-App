@@ -69,7 +69,7 @@
         '<div class="ev-title">' + esc((ev.event_type === "closure" ? "Closed — " : "") + ev.title) + "</div>" +
         (ev.notes ? '<div class="ev-notes">' + esc(ev.notes) + "</div>" : "") +
       "</div>" +
-      (ev.holiday ? '<span class="holiday-badge">祝日</span>' : '<div class="ev-actions"><button class="ev-edit">Edit</button><button class="ev-delete">' + (ev.recur && ev.recur !== "none" ? 'Delete series' : 'Delete') + '</button></div>');
+      (ev.holiday ? '<span class="holiday-badge">Holiday</span>' : '<div class="ev-actions"><button class="ev-edit">Edit</button><button class="ev-delete">' + (ev.recur && ev.recur !== "none" ? 'Delete series' : 'Delete') + '</button></div>');
 
     var editBtn = row.querySelector(".ev-edit");
     if (editBtn) editBtn.onclick = function () { openEdit(ev); };

@@ -10,7 +10,7 @@ export async function onRequestGet({request,env}) {
     env.DB.prepare("SELECT s.program,a.status,COUNT(*) AS count FROM attendance a JOIN students s ON s.id=a.student_id WHERE a.date BETWEEN ? AND ? AND NOT EXISTS (SELECT 1 FROM attendance_visits v WHERE v.student_id=a.student_id AND v.date=a.date) GROUP BY s.program,a.status").bind(from,to),
     env.DB.prepare('SELECT program,status,kind,COUNT(*) AS count FROM attendance_visits WHERE date BETWEEN ? AND ? GROUP BY program,status,kind').bind(from,to)
   ]);
-  const lines=['Luana — '+year+'年度 ('+from+' to '+to+')','Recorded attendance totals; unmarked regular days are not counted.'];
+  const lines=['Luana — '+year+'–'+(year+1)+' school year ('+from+' to '+to+')','Recorded attendance totals; unmarked regular days are not counted.'];
   const programs=[...new Set([...roster.results,...marks.results,...visits.results].map(r=>r.program))];
   for(const program of programs){
     const count=roster.results.find(r=>r.program===program)?.count||0;

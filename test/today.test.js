@@ -125,7 +125,7 @@ test("themes are looked up by the date's own month", async () => {
 test("the summary reads as a message, and names what is still unmarked", async () => {
   const text = summaryText(await sample());
 
-  assert.match(text, /^Luana — Thursday, 3 September · 2026年度$/m);
+  assert.match(text, /^Luana — Thursday, 3 September · 2026–2027 school year$/m);
   assert.match(text, /^Preschool \(2\) — 1 in, 1 out$/m);
   assert.match(text, /^ {2}Absent: Ben$/m);
   assert.match(text, /^ {2}Theme: Under the Sea · Song: Baby Shark$/m);

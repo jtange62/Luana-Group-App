@@ -130,7 +130,7 @@ var SUMMER_WEEKS = [];
         ? s.ss_weeks.split(",").map(function (w) { return SS_DATES[w] || ("Week " + w); }).join("\n")
         : "—";
       html += detailRow("Weeks attending", weeksLabel);
-      if (s.ss_type) html += detailRow("Student type", s.ss_type === "internal" ? "内部生 — Internal" : "外部生 — External");
+      if (s.ss_type) html += detailRow("Student type", s.ss_type === "internal" ? "Internal" : "External");
     }
     html += detailRow("Photo consent", s.photo_ok ? "Yes — OK to post photos" : "No — do not post photos");
     $("detailBody").innerHTML = html;

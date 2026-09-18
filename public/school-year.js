@@ -1,7 +1,7 @@
 (function (root) {
   function currentDate() { return new Date().toLocaleDateString('sv-SE', {timeZone:'Asia/Tokyo'}); }
   function yearOf(date) { date = date || currentDate(); return Number(date.slice(0,4)) - (Number(date.slice(5,7)) < 4 ? 1 : 0); }
-  function label(year) { return year + '–' + (year + 1) + ' / ' + year + '年度'; }
+  function label(year) { return year + '–' + (year + 1); }
   function mount(container, year, change, copyKind) {
     var wrap = document.createElement('div'); wrap.className = 'school-year-bar';
     var caption = document.createElement('label'); caption.textContent = 'School year';

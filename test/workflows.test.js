@@ -98,8 +98,8 @@ test('official holidays include substitute and citizens holidays without annual 
   const dates=new Map(data.holidays.map(h=>[h.date,h.name]));
   assert.equal(dates.size,data.holidays.length);
   for(const date of ['2026-05-06','2026-09-22','2027-03-22'])assert.ok(dates.get(date));
-  assert.equal(dates.get('2026-09-21'),'敬老の日');
-  assert.equal(dates.get('2027-09-20'),'敬老の日');
+  assert.equal(dates.get('2026-09-21'),'Respect for the Aged Day');
+  assert.equal(dates.get('2027-09-20'),'Respect for the Aged Day');
   assert.equal(dates.has('2027-09-21'),false);
 });
 
