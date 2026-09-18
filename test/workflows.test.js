@@ -97,3 +97,48 @@ test('failed upload leaves no partial post and removes previously uploaded files
  await assert.rejects(async()=>createPost({env,request:new Request('https://example.test/api/post',{method:'POST',headers:{Authorization:'Bearer '+await makeToken(env)},body:form})}),/storage failure/);
  assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM posts').get().n,0);assert.equal(removed.length,1);
 });
+import {onRequestPost as bookVisit,onRequestPatch as markVisit,onRequestDelete as cancelVisit} from '../functions/api/visits.js';
+import {onRequestGet as getPlanner} from '../functions/api/planner.js';
+
+test('makeup booking keeps its class and reason after marking absent, and cancels cleanly',async t=>{
+ const DB=database(t),env={DB,SESSION_SECRET};
+ DB.sql.prepare('INSERT INTO students(id,name,program,days,active,created_at) VALUES (?,?,?,?,1,1)').run('s1','Aiko','Preschool','1');
+ const booked=await bookVisit({env,request:await request('visits',{student_id:'s1',program:'Kinder',date:'2026-09-21',kind:'makeup'})});
+ assert.equal(booked.status,200);const {id}=await booked.json();
+ let day=await buildToday(DB,'2026-09-21');assert.equal(day.programs.length,1);assert.equal(day.programs[0].program,'Kinder');assert.equal(day.programs[0].guests[0].kind,'makeup');
+ assert.equal((await bookVisit({env,request:await request('visits',{student_id:'s1',program:'Kinder',date:'2026-09-21',kind:'makeup'})})).status,409);
+ await markVisit({env,request:await request('visits',{id,status:'absent'})});
+ day=await buildToday(DB,'2026-09-21');assert.equal(day.programs[0].guests[0].kind,'makeup');assert.equal(day.programs[0].guests[0].status,'absent');
+ const period=await(await getPlanner({env,request:await request('planner?from=2026-09-21&to=2026-09-27')})).json();
+ assert.equal(period.days.length,7);assert.equal(period.days[0].programs[0].guests[0].visit_id,id);
+ await cancelVisit({env,request:await request('visits',{id})});
+ day=await buildToday(DB,'2026-09-21');assert.equal(day.programs[0].program,'Preschool');assert.equal(day.programs[0].expected.length,1);
+});
+
+test('trial visitor can be booked and marked without creating a roster profile',async t=>{
+ const DB=database(t),env={DB,SESSION_SECRET};
+ const {id}=await(await bookVisit({env,request:await request('visits',{name:'New child',program:'Kinder',date:'2026-09-22',kind:'trial'})})).json();
+ await markVisit({env,request:await request('visits',{id,status:'present'})});
+ const day=await buildToday(DB,'2026-09-22');assert.equal(day.programs[0].guests[0].kind,'trial');assert.equal(day.totals.present,1);
+ assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM students').get().n,0);
+});
+
+test('planner rejects impossible, reversed and oversized date ranges',async t=>{
+ const DB=database(t),env={DB,SESSION_SECRET};
+ for(const query of ['from=2026-02-30&to=2026-03-01','from=2026-09-30&to=2026-09-01','from=2026-01-01&to=2026-12-31'])assert.equal((await getPlanner({env,request:await request('planner?'+query)})).status,400);
+});
+
+test('planning migration preserves legacy makeup and trial bookings without double-counting',async t=>{
+ const DB=database(t),env={DB,SESSION_SECRET};
+ DB.sql.prepare('INSERT INTO students(id,name,program,days,active,created_at) VALUES (?,?,?,?,1,1)').run('old-student','Legacy student','Kinder','1');
+ DB.sql.prepare('INSERT INTO attendance(id,student_id,date,status,created_at) VALUES (?,?,?,?,1)').run('old-mark','old-student','2026-09-22','makeup');
+ DB.sql.prepare('INSERT INTO trials(id,name,program,date,created_at) VALUES (?,?,?,?,1)').run('old-trial','Legacy trial','Kinder','2026-09-22');
+ const migration=readFileSync(new URL('../migrations/022_attendance_planning.sql',import.meta.url),'utf8');
+ DB.sql.exec(migration);DB.sql.exec(migration);
+ let day=await buildToday(DB,'2026-09-22');assert.equal(day.programs[0].guests.length,2);assert.equal(day.programs[0].trials.length,0);
+ await markVisit({env,request:await request('visits',{id:'legacy-old-mark',status:'present'})});
+ day=await buildToday(DB,'2026-09-22');assert.equal(day.programs[0].guests.find(s=>s.id==='old-student').kind,'makeup');
+ await cancelVisit({env,request:await request('visits',{id:'legacy-trial-old-trial'})});
+ await cancelVisit({env,request:await request('visits',{id:'legacy-old-mark'})});
+ day=await buildToday(DB,'2026-09-22');assert.equal(day.programs.length,0);
+});

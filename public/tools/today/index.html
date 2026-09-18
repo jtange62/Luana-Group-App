@@ -30,6 +30,11 @@
   </header>
 
   <main class="today-main">
+    <div class="planner-controls">
+      <label for="selectedDate">Choose a date</label><input id="selectedDate" type="date" />
+      <label for="classFilter">Class</label><select id="classFilter"><option value="">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
+    </div>
+    <nav id="viewModes" class="view-modes" aria-label="Attendance view"><button data-view="day" aria-pressed="true">Day</button><button data-view="week" aria-pressed="false">Week</button><button data-view="month" aria-pressed="false">Month</button></nav>
     <div class="daybar">
       <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
       <p id="dayCount" class="day-count" aria-live="polite">—</p>
@@ -37,10 +42,14 @@
       <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
     </div>
 
+    <p id="periodLabel" class="period-label"></p>
+    <button id="addVisit" class="btn-primary btn-sm">Add makeup / trial</button>
+    <p id="markLegend" class="mark-legend">P = Present · A = Absent · L = Late. Tap a selected mark to clear it.</p>
+    <div id="planner" hidden></div>
     <p id="loading" class="loading">Loading…</p>
 
     <section id="alerts" class="alerts" hidden aria-labelledby="alertsHead">
-      <h2 id="alertsHead" class="alerts-head">Allergies in the building today</h2>
+      <h2 id="alertsHead" class="alerts-head">Allergy notes for this day</h2>
       <ul id="alertsList" class="alerts-list"></ul>
     </section>
 
@@ -55,9 +64,22 @@
   </main>
 
   <footer class="today-footer">
-    <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy today’s summary</button>
+    <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy selected day’s summary</button>
   </footer>
 
+  <div id="visitModal" class="modal" hidden>
+    <div class="modal-card">
+      <h2 id="visitHeading" class="form-heading">Add a visit</h2>
+      <label class="field-label" for="visitDate">Date</label><input id="visitDate" type="date" />
+      <label class="field-label" for="visitClass">Class</label><select id="visitClass"><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
+      <label class="field-label" for="visitKind">Visit type</label><select id="visitKind"><option value="makeup">Makeup</option><option value="trial">Trial</option><option value="other">Extra visit</option></select>
+      <div id="visitStudentField"><label class="field-label" for="visitStudent">Student</label><select id="visitStudent"></select></div>
+      <div id="visitNameField" hidden><label class="field-label" for="visitName">Visitor’s name</label><input id="visitName" type="text" maxlength="80" /></div>
+      <label class="field-label" for="visitNotes">Notes (optional)</label><textarea id="visitNotes" rows="2" maxlength="1000"></textarea>
+      <p id="visitMessage" role="status"></p>
+      <div class="modal-actions"><button id="visitCancel" class="btn-ghost">Cancel</button><button id="visitSave" class="btn-primary btn-sm">Book visit</button></div>
+    </div>
+  </div>
   <!-- Summary preview -->
   <div id="digest" class="modal" hidden>
     <div class="modal-card">

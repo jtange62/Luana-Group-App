@@ -272,3 +272,18 @@ CREATE TABLE IF NOT EXISTS usage_daily (
   hits  INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (day, tool)
 );
+
+-- A booked visit is separate from the attendance mark made on arrival.
+CREATE TABLE IF NOT EXISTS attendance_visits (
+  id TEXT PRIMARY KEY,
+  student_id TEXT,
+  name TEXT NOT NULL,
+  program TEXT NOT NULL,
+  date TEXT NOT NULL,
+  kind TEXT NOT NULL CHECK(kind IN ('makeup','trial','other')),
+  status TEXT NOT NULL DEFAULT '' CHECK(status IN ('','present','absent','late')),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at INTEGER NOT NULL,
+  UNIQUE(student_id,date)
+);
+CREATE INDEX IF NOT EXISTS idx_attendance_visits_date ON attendance_visits(date,program);

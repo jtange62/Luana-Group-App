@@ -53,7 +53,7 @@ export async function buildToday(DB, ymd) {
   const weekday = date.getUTCDay();
   const month = String(date.getUTCMonth() + 1);
 
-  const [studentsRes, marksRes, trialsRes, eventsRes, themesRes] = await DB.batch([
+  const [studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes] = await DB.batch([
     DB.prepare(
       "SELECT id, name, program, days, allergies, ss_weeks FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
     ),
@@ -72,7 +72,15 @@ export async function buildToday(DB, ymd) {
       "SELECT id, title, program, song, vocab, activities, phonics FROM lessons" +
       " WHERE kind = 'theme' AND CAST(month AS TEXT) = ? ORDER BY created_at DESC"
     ).bind(month),
+    DB.prepare("SELECT * FROM attendance_visits WHERE date = ? ORDER BY created_at").bind(ymd),
   ]);
+  return shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes);
+}
+
+export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, themesRes, visitsRes) {
+  const date = parseYMD(ymd);
+  const weekday = date.getUTCDay();
+  const visits = visitsRes?.results || [];
 
   const students = studentsRes.results || [];
   const marks = {};
@@ -86,6 +94,7 @@ export async function buildToday(DB, ymd) {
 
   const trialsFor = {};
   (trialsRes.results || []).forEach((trial) => {
+    if (visits.some(visit => visit.id === "legacy-trial-" + trial.id)) return;
     (trialsFor[trial.program] = trialsFor[trial.program] || []).push({ id: trial.id, name: trial.name });
   });
 
@@ -99,17 +108,22 @@ export async function buildToday(DB, ymd) {
     const guests = [];
 
     inProgram.forEach((student) => {
+      if (visits.some(visit => visit.student_id === student.id)) return;
       const status = marks[student.id] || "";
       const row = { id: student.id, name: student.name, status, allergies: student.allergies || "" };
       if (attendsOn(student, weekday, ymd)) expected.push(row);
       else if (GUEST_STATUSES.indexOf(status) !== -1 || status === "present" || status === "late") guests.push(row);
     });
 
+    visits.filter(visit => visit.program === program).forEach(visit => {
+      const student = students.find(row => row.id === visit.student_id);
+      guests.push({id: visit.student_id || visit.id, visit_id:visit.id, name:student?.name || visit.name, status:visit.status, kind:visit.kind, notes:visit.notes, allergies:student?.allergies || ""});
+    });
     const trials = trialsFor[program] || [];
     if (!expected.length && !guests.length && !trials.length) return;
 
     const counts = { present: 0, absent: 0, late: 0, unmarked: 0 };
-    expected.forEach((row) => {
+    expected.concat(guests.filter(row => row.visit_id)).forEach((row) => {
       if (counts[row.status] !== undefined) counts[row.status]++;
       else if (!row.status) counts.unmarked++;
     });
@@ -136,7 +150,7 @@ export async function buildToday(DB, ymd) {
       guests,
       trials,
       counts,
-      done: expected.length > 0 && counts.unmarked === 0,
+      done: expected.length + guests.length > 0 && counts.unmarked === 0,
     });
   });
 
@@ -180,12 +194,12 @@ export function summaryText(data) {
     if (group.counts.late) bits.push(group.counts.late + " late");
     if (group.counts.absent) bits.push(group.counts.absent + " out");
     if (group.counts.unmarked) bits.push(group.counts.unmarked + " not marked");
-    lines.push("", group.program + " (" + group.expected.length + ") — " + (bits.join(", ") || "nothing marked yet"));
+    lines.push("", group.program + " (" + (group.expected.length + group.guests.length + group.trials.length) + ") — " + (bits.join(", ") || "nothing marked yet"));
 
     const away = group.expected.filter((row) => row.status === "absent").map((row) => row.name);
     if (away.length) lines.push("  Absent: " + away.join(", "));
 
-    const guests = group.guests.map((row) => row.name + " (" + row.status + ")")
+    const guests = group.guests.map((row) => row.name + " (" + (row.kind || row.status) + (row.kind && row.status ? ", " + row.status : "") + ")")
       .concat(group.trials.map((trial) => trial.name + " (trial)"));
     if (guests.length) lines.push("  Also in: " + guests.join(", "));
 

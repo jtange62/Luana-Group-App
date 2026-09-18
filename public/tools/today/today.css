@@ -92,3 +92,37 @@
   .modal{align-items:center;}
   .mark{width:46px;height:46px;}
 }
+/* Date planning keeps each class together at every scale. */
+.planner-controls{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin:14px 0;}
+.planner-controls label{font-size:13px;font-weight:600;color:var(--muted);}
+.planner-controls label[for=selectedDate]{grid-column:1;grid-row:1;}
+.planner-controls label[for=classFilter]{grid-column:2;grid-row:1;}
+.planner-controls input,.planner-controls select{width:100%;min-width:0;min-height:44px;padding:9px;border:1px solid var(--line);border-radius:12px;background:white;color:var(--ink);font:inherit;}
+.view-modes{display:flex;gap:6px;padding:4px;background:var(--sand-2);border-radius:14px;}
+.view-modes button{flex:1;min-height:44px;border:0;border-radius:11px;background:none;font:600 14px Inter,sans-serif;color:var(--muted);}
+.view-modes button[aria-pressed=true]{background:white;color:var(--teal-mid);box-shadow:var(--shadow);}
+.period-label{font-weight:600;text-align:center;color:var(--teal-mid);}
+.mark-legend{font-size:12px;color:var(--muted);margin:12px 0;}
+.add-class-visit{margin:12px 0;min-height:44px;}
+.student{flex-wrap:wrap;}
+.student-name{white-space:normal;overflow:visible;min-width:110px;}
+.visit-notes{display:block;font-size:12px;color:var(--muted);font-weight:400;}
+.cancel-visit{background:none;color:var(--muted);border:0;padding:8px;min-height:36px;font-size:12px;}
+.planner-class{margin:20px 0;padding:14px;background:white;border-radius:18px;box-shadow:var(--shadow);}
+.week-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.plan-day{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0;min-height:80px;text-align:left;border:1px solid var(--line);border-radius:10px;background:var(--sand);padding:10px;color:var(--ink);font:inherit;}
+.plan-day:hover{border-color:var(--teal);}
+.plan-day.is-today{border:2px solid var(--teal);}
+.plan-day strong{font-size:13px;color:var(--teal-mid);}
+.plan-count{font-size:12px;font-weight:600;}
+.plan-name{font-size:12px;overflow-wrap:anywhere;}
+.plan-name.is-absent{color:var(--muted);text-decoration:line-through;}
+.plan-extra{font-size:10px;color:var(--gold-dark);}
+.month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
+.month-grid .plan-day{padding:5px 3px;min-height:70px;align-items:center;}
+.month-grid .plan-count{font-size:10px;line-height:1.3;}
+.weekday-label{text-align:center;font-size:10px;color:var(--muted);padding:6px 0;}
+#visitModal label{display:block;font-size:13px;font-weight:600;margin:10px 0 5px;}
+#visitModal input,#visitModal select,#visitModal textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;font:inherit;background:white;color:var(--ink);}
+#visitMessage{font-size:13px;color:var(--coral-dark);}
+@media(min-width:960px){body[data-page=today] #app{max-width:1160px;}.week-grid{grid-template-columns:repeat(7,minmax(0,1fr));}.month-grid .plan-day{min-height:100px;}.month-grid .plan-count{font-size:13px;}.month-grid .plan-extra{font-size:12px;}#register{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start;}}

@@ -208,6 +208,54 @@ try {
     if (eventId) await api("event", "DELETE", {id:eventId,author:"browser-smoke"});
     await workflow.close();
   }
+
+  const attendancePage = await context.newPage();
+  let planningStudent, makeupId, trialId;
+  try {
+    planningStudent=(await api("students","POST",{name:"Planning student "+marker,program:"Preschool",days:"1"})).id;
+    await attendancePage.goto(origin+"/tools/today/");
+    await attendancePage.locator("#selectedDate").fill("2026-09-22");
+    await attendancePage.locator("#selectedDate").dispatchEvent("change");
+    await attendancePage.locator("#addVisit").click();
+    await attendancePage.locator("#visitClass").selectOption("Kinder");
+    await attendancePage.locator('#visitStudent option[value="'+planningStudent+'"]').waitFor({state:"attached"});
+    await attendancePage.locator("#visitStudent").selectOption(planningStudent);
+    const makeupResponse=attendancePage.waitForResponse(r=>r.url().endsWith("/api/visits")&&r.request().method()==="POST");
+    await attendancePage.locator("#visitSave").click();
+    makeupId=(await(await makeupResponse).json()).id;
+    await attendancePage.locator("#visitModal").waitFor({state:"hidden"});
+    await attendancePage.locator("#classFilter").selectOption("Kinder");
+    await attendancePage.getByRole("button",{name:"Present — Planning student "+marker,exact:true}).click();
+    await attendancePage.locator('.mark.on-present').waitFor();
+    await attendancePage.getByRole("button",{name:"Week",exact:true}).click();
+    await attendancePage.locator('.plan-name').filter({hasText:"Planning student "+marker+" · Makeup"}).waitFor();
+    await attendancePage.getByRole("button",{name:"Month",exact:true}).click();
+    await attendancePage.getByRole("button",{name:/Kinder, Tuesday, 22 September/}).click();
+    await attendancePage.locator('.mark.on-present').waitFor();
+    await attendancePage.locator("#addVisit").click();
+    await attendancePage.locator("#visitKind").selectOption("trial");
+    await attendancePage.locator("#visitName").fill("Trial child "+marker);
+    const trialResponse=attendancePage.waitForResponse(r=>r.url().endsWith("/api/visits")&&r.request().method()==="POST");
+    await attendancePage.locator("#visitSave").click();
+    trialId=(await(await trialResponse).json()).id;
+    await attendancePage.getByRole("button",{name:"Absent — Trial child "+marker,exact:true}).click();
+    await attendancePage.locator('.mark.on-absent').waitFor();
+    for(const width of [390,1280]){
+      await attendancePage.setViewportSize({width,height:900});
+      for(const view of ["day","week","month"]){
+        await attendancePage.locator('[data-view="'+view+'"]').click();
+        await attendancePage.locator("#loading").waitFor({state:"hidden"});
+        if(await attendancePage.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw new Error("Planner overflow at "+width);
+        await attendancePage.screenshot({path:".wrangler/review/today-"+view+"-"+width+".png",fullPage:true});
+      }
+    }
+    console.log("✓ date selection, class planning, makeup and trial bookings, arrival marks and all views");
+  } finally {
+    if(makeupId)await api("visits","DELETE",{id:makeupId});
+    if(trialId)await api("visits","DELETE",{id:trialId});
+    if(planningStudent)await api("students","DELETE",{id:planningStudent});
+    await attendancePage.close();
+  }
   console.log("Browser smoke checks passed.");
 } finally {
   if (browser) await browser.close();
