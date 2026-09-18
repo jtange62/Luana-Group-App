@@ -13,9 +13,10 @@ export async function onRequestPost({ request, env }) {
   const category = CATEGORIES.includes(clean(form.get("category"), 20)) ? clean(form.get("category"), 20) : "general";
   const author = clean(form.get("author"), 60) || "anonymous";
   const text = clean(form.get("text"), 4000);
-  if (!text) return json({ error: "empty" }, 400);
+
 
   const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
+  if (!text && !files.length) return json({ error: "Write a message or choose a photo or file." }, 400);
   if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
   for (const f of files) {
     if (f.size > MAX_FILE) return json({ error: '"' + f.name + '" is over 50 MB' }, 400);
@@ -31,27 +32,34 @@ export async function onRequestPost({ request, env }) {
     try { link = await unfurl(linkVal); } catch { /* ignore */ }
   }
 
-  await env.DB.prepare(
+  const postInsert = env.DB.prepare(
     `INSERT INTO posts (id, category, author, text, created_at, link_url, link_title, link_desc, link_image, link_domain)
      VALUES (?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, category, author, text, now,
     link.url, link.title, link.desc, link.image, link.domain
-  ).run();
+  );
 
   // Upload sequentially (keeps one file buffered at a time) but write all the
   // rows in a single D1 batch instead of one round trip per file.
-  const inserts = [];
-  for (const f of files) {
-    const fileId = crypto.randomUUID();
-    await env.FILES.put(fileId, await f.arrayBuffer(), {
-      httpMetadata: { contentType: f.type || "application/octet-stream" },
-    });
-    inserts.push(env.DB.prepare(
-      "INSERT INTO post_files (id, post_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
-    ).bind(fileId, id, clean(f.name, 255) || "file", f.size, f.type || null, now));
+  const inserts = [postInsert];
+  const uploaded = [];
+  try {
+    for (const f of files) {
+      const fileId = crypto.randomUUID();
+      await env.FILES.put(fileId, await f.arrayBuffer(), {
+        httpMetadata: { contentType: f.type || "application/octet-stream" },
+      });
+      uploaded.push(fileId);
+      inserts.push(env.DB.prepare(
+        "INSERT INTO post_files (id, post_id, filename, size, type, created_at) VALUES (?,?,?,?,?,?)"
+      ).bind(fileId, id, clean(f.name, 255) || "file", f.size, f.type || null, now));
+    }
+    await env.DB.batch(inserts);
+  } catch (error) {
+    await Promise.all(uploaded.map(id => env.FILES.delete(id).catch(() => {})));
+    throw error;
   }
-  if (inserts.length) await env.DB.batch(inserts);
 
   return json({ ok: true, id });
 }
@@ -94,6 +102,7 @@ export async function onRequestDelete({ request, env }) {
   await env.DB.batch([
     env.DB.prepare("DELETE FROM post_files WHERE post_id = ?").bind(id),
     env.DB.prepare("DELETE FROM comments WHERE post_id = ?").bind(id),
+    env.DB.prepare("DELETE FROM post_items WHERE post_id = ?").bind(id),
     env.DB.prepare("DELETE FROM posts WHERE id = ?").bind(id),
   ]);
 

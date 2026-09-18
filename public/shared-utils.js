@@ -100,11 +100,11 @@
   navigation.className = "app-nav";
   navigation.setAttribute("aria-label", "Staff tools");
   var path = location.pathname;
-  var links = [["/", "Ideas"], ["/tools/today/", "Today"], ["/tools/curriculum/", "Curriculum"], ["/tools/", "More"]];
+  var links = [["/", "Staff room"], ["/tools/today/", "Today"], ["/?view=resources", "Resources"], ["/tools/curriculum/", "Plans"], ["/tools/", "More"]];
   links.forEach(function (entry) {
     var link = document.createElement("a");
     link.href = entry[0]; link.textContent = entry[1];
-    var active = path === entry[0] || (entry[1] === "More" && ["/tools/students/", "/tools/calendar/", "/tools/website/"].indexOf(path) !== -1);
+    var active = (path + (path === "/" ? location.search : "")) === entry[0] || (entry[1] === "More" && ["/tools/students/", "/tools/calendar/", "/tools/website/"].indexOf(path) !== -1);
     if (active) link.setAttribute("aria-current", "page");
     navigation.appendChild(link);
   });

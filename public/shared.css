@@ -138,3 +138,5 @@ a.brand:active{opacity:.7;}
   .app-nav { border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0; }
 }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important;scroll-behavior:auto !important; } }
+
+.app-nav a{font-size:12px;min-width:0;padding:0 3px;text-align:center;}

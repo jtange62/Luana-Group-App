@@ -76,3 +76,24 @@ test('Summer School attendance respects selected weeks, breaks and year',async t
     assert.equal((await buildToday(DB,day)).totals.expected,expected,day);
   }
 });
+import { onRequestPost as createPost } from '../functions/api/post.js';
+
+test('caption-free uploads appear in matching resource filters and filename search',async t=>{
+ const DB=database(t);const objects=new Map();const env={DB,SESSION_SECRET,FILES:{async put(id,bytes){objects.set(id,bytes);},async delete(id){objects.delete(id);}}};
+ const form=new FormData();form.set('author','tester');form.append('files',new File(['photo'],'leaf.jpg',{type:'image/jpeg'}));form.append('files',new File(['worksheet'],'leaves.pdf',{type:'application/pdf'}));
+ const req=new Request('https://example.test/api/post',{method:'POST',headers:{Authorization:'Bearer '+await makeToken(env)},body:form});
+ const response=await createPost({env,request:req});assert.equal(response.status,200);
+ const {id}=await response.json();assert.equal(objects.size,2);
+ for(const filter of ['resource=photos&q=leaf.jpg','resource=files&q=leaves.pdf']) {
+  const data=await(await posts({env,request:await request('posts?'+filter)})).json();assert.deepEqual(data.posts.map(p=>p.id),[id]);
+ }
+ const links=await(await posts({env,request:await request('posts?resource=links')})).json();assert.equal(links.posts.length,0);
+});
+
+test('failed upload leaves no partial post and removes previously uploaded files',async t=>{
+ const DB=database(t);const removed=[];let puts=0;
+ const env={DB,SESSION_SECRET,FILES:{async put(){if(++puts===2)throw new Error('storage failure');},async delete(id){removed.push(id);}}};
+ const form=new FormData();form.append('files',new File(['one'],'one.txt'));form.append('files',new File(['two'],'two.txt'));
+ await assert.rejects(async()=>createPost({env,request:new Request('https://example.test/api/post',{method:'POST',headers:{Authorization:'Bearer '+await makeToken(env)},body:form})}),/storage failure/);
+ assert.equal(DB.sql.prepare('SELECT COUNT(*) AS n FROM posts').get().n,0);assert.equal(removed.length,1);
+});

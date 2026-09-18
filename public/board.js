@@ -23,10 +23,13 @@
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   var state = {
-    openCount: 0, requestId: 0, activeCat: "unfiled", posts: [], nextCursor: null, hasMore: false,
+    requestId: 0, activeCat: "all", posts: [], nextCursor: null, hasMore: false,
     targets: null,     // curriculum destinations, loaded when first needed
     placing: null      // the post being filed
   };
+  var resourceView = new URLSearchParams(location.search).get("view") === "resources";
+  var resourceType = "photos";
+  var search = "";
   var me = LuanaAuth.name();  // reassigned after login on this page
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
@@ -68,6 +71,7 @@
     LuanaUtils.ping("board");
     $("postingAs").textContent = "Posting as " + me;
     restoreDrafts();
+    if (resourceView) { document.querySelector(".composer").hidden = true; document.querySelector(".brand-tag").textContent = "Resources · Photos, files and links shared by the team"; }
     renderTabs();
     loadPosts(true);
   }
@@ -95,15 +99,18 @@
   }
 
   function openFile(fileId) {
+    var previewWindow = window.open("about:blank", "_blank");
+    if (previewWindow) previewWindow.opener = null;
     var t = LuanaAuth.token();
     fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
       .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
       .then(function (blob) {
         var url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
+        if (previewWindow) previewWindow.location.href = url;
+        else { var download = document.createElement("a"); download.href=url; download.download="resource"; download.click(); }
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       })
-      .catch(function () { alert("Couldn't open that file. Try again."); });
+      .catch(function () { if(previewWindow) previewWindow.close(); LuanaUtils.reportError(null,"Could not open that file. Try again."); });
   }
 
   // Blob URLs by file id, so the 30s feed refresh reuses already-downloaded
@@ -147,6 +154,7 @@
   var chosen = [];
   function addFiles(fileList) {
     Array.prototype.forEach.call(fileList, function (f) {
+      if(chosen.length>=20 || f.size>50*1024*1024) { LuanaUtils.reportError(null,"Choose up to 20 files, each under 50 MB."); return; }
       chosen.push({ file: f, url: isImage(f) ? URL.createObjectURL(f) : null });
     });
     renderChosen();
@@ -175,44 +183,20 @@
     });
   }
 
-  function syncComposer() {
-    $("catSelect").hidden = !(state.activeCat === "all" || state.activeCat === "unfiled");
-  }
-
-  function unfiledCount() {
-    return state.openCount;
-  }
-
   function renderTabs() {
     var nav = $("tabs"); nav.innerHTML = "";
-
-    // The inbox: what has been jotted down but not yet put anywhere.
-    var unfiled = state.activeCat === "unfiled";
-    var inbox = document.createElement("button");
-    inbox.className = "tab tab-inbox" + (unfiled ? " active" : "");
-    var n = unfiledCount();
-    inbox.textContent = n ? "Open (" + n + ")" : "Open";
-    inbox.onclick = function () { state.activeCat = "unfiled"; syncComposer(); loadPosts(true); };
-    nav.appendChild(inbox);
-
-    var allActive = state.activeCat === "all";
-    var allBtn = document.createElement("button");
-    allBtn.className = "tab" + (allActive ? " active" : "");
-    if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "#085041"; }
-    allBtn.textContent = "All";
-    allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); loadPosts(true); };
-    nav.appendChild(allBtn);
-    CATS.forEach(function (c) {
-      var active = c.id === state.activeCat;
-      var b = document.createElement("button");
-      b.className = "tab" + (active ? " active" : "");
-      b.style.borderColor = active ? c.color : "";
-      b.style.background = active ? c.soft : "";
-      b.style.color = active ? c.dark : "";
-      b.innerHTML = '<span class="dot" style="background:' + c.color + '"></span>' + c.label;
-      b.onclick = function () { state.activeCat = c.id; syncComposer(); loadPosts(true); };
-      nav.appendChild(b);
+    if (resourceView) {
+      [["photos","Photos"],["files","Files"],["links","Links"]].forEach(function (entry) {
+        var button = document.createElement("button");button.className="tab"+(resourceType===entry[0]?" active":"");button.textContent=entry[1];
+        button.onclick=function(){resourceType=entry[0];loadPosts(true);};nav.appendChild(button);
+      });return;
+    }
+    [["all","Recent shares"],["tasks","Open tasks"]].forEach(function(entry){
+      var button=document.createElement("button");button.className="tab"+(state.activeCat===entry[0]?" active":"");button.textContent=entry[1];
+      button.onclick=function(){state.activeCat=entry[0];loadPosts(true);};nav.appendChild(button);
     });
+
+
   }
 
   function renderFeed() {
@@ -220,7 +204,7 @@
     var items = state.posts
       .filter(function (p) {
         if (state.activeCat === "unfiled") return !p.placed_at;
-        return state.activeCat === "all" || p.category === state.activeCat;
+        return state.activeCat === "all" || state.activeCat === "tasks" || p.category === state.activeCat;
       })
       .sort(function (a, b) { return b.created_at - a.created_at; });
     if (thumbObserver) thumbObserver.disconnect();
@@ -229,7 +213,7 @@
     if (!items.length) {
       $("empty").querySelector("p").textContent = state.activeCat === "unfiled"
         ? "All caught up. New ideas and tasks will appear here."
-        : "Nothing here yet — be the first to post.";
+        : search ? "No matches. Try another name or filename." : resourceView ? "No " + resourceType + " shared yet. Add them from the Staff room." : state.activeCat === "tasks" ? "No open tasks. Use More on a message to make it a task." : "No shares yet. Send a message, photo or file to get started.";
     }
     items.forEach(function (p) { feed.appendChild(card(p)); });
   }
@@ -251,7 +235,7 @@
     var pics = (p.files || []).filter(isImage);
     var docs = (p.files || []).filter(function (f) { return !isImage(f); });
     var picsHtml = pics.length
-      ? '<div class="photo-grid">' + pics.map(function (f) {
+      ? '<div class="photo-grid photo-count-' + Math.min(pics.length,3) + '">' + pics.map(function (f) {
           return '<button class="photo" data-fid="' + esc(f.id) + '" aria-label="' + esc(f.filename) + '"></button>';
         }).join("") + "</div>"
       : "";
@@ -280,12 +264,26 @@
         (p.placed_at
           ? '<span class="filed-pill" title="Filed or completed">✓ ' + esc(p.placed_note || "filed") + "</span>" +
             '<button class="unfile-btn">Reopen</button>'
-          : (p.category === 'curriculum' ? '<button class="place-btn">Add to curriculum</button>' : '') + '<button class="complete-btn">Mark complete</button>') +
+          : (p.text ? '<button class="place-btn">Add to curriculum</button>' : '') + ((p.items || []).length ? '<button class="complete-btn">Mark complete</button>' : '')) +
         '<button class="additem-btn">Add checklist</button>' +
       "</div>" +
-      '<div class="item-add"><input type="text" placeholder="one per line, or paste a list…" /><button>Add</button></div>' +
+      '<div class="item-add"><input type="text" placeholder="What needs doing?" /><button>Add</button></div>' +
       '<div class="comments"></div>';
 
+    var menu = document.createElement("details"); menu.className="post-menu";
+    var summary = document.createElement("summary"); summary.textContent="More"; menu.appendChild(summary);
+    var menuBody = document.createElement("div"); menuBody.className="post-menu-body";menu.appendChild(menuBody);
+    [".edit-btn", ".del-btn", ".place-btn", ".additem-btn", ".unfile-btn"].forEach(function(selector){
+      var action=el.querySelector(selector);if(!action)return;
+      if(selector===".edit-btn")action.textContent="Edit message";
+      if(selector===".del-btn")action.textContent="Delete message";
+      if(selector===".additem-btn")action.textContent=(p.items||[]).length?"Add checklist items":"Make this a task";
+      menuBody.appendChild(action);
+      action.addEventListener("click",function(){menu.open=false;});
+    });
+    el.querySelector(".card-head-right").appendChild(menu);
+    el.querySelector(".cat-pill").remove();
+    if(!p.text)el.querySelector(".card-text").hidden=true;
     el.querySelectorAll(".photo").forEach(function (btn) { if (thumbObserver) thumbObserver.observe(btn); else loadThumb(btn, btn.getAttribute("data-fid")); });
     el.querySelectorAll(".file-chip[data-fid]").forEach(function (btn) {
       btn.onclick = function () { openFile(btn.getAttribute("data-fid")); };
@@ -407,7 +405,7 @@
     var toggle = document.createElement("button");
     toggle.className = "reply-toggle";
     var n = (p.comments || []).length;
-    toggle.innerHTML = "💬 " + (n ? n + " replies — add one" : "reply");
+    toggle.textContent = n ? "Reply (" + n + ")" : "Reply";
     var box = document.createElement("div");
     box.className = "reply-box";
     box.innerHTML = '<input type="text" placeholder="your reply…" /><button>Send</button>';
@@ -537,8 +535,8 @@
   }
 
   function postsQuery() {
-    var filter = state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
-    return "posts?limit=30&counts=1" + filter;
+    var filter = state.activeCat === "tasks" ? "&tasks=1&placed=0" : state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
+    return "posts?limit=30" + filter + (resourceView ? "&resource="+resourceType : "") + (search ? "&q="+encodeURIComponent(search) : "");
   }
 
   function loadPosts(reset) {
@@ -546,7 +544,6 @@
     $("loading").style.display = "block";
     return LuanaAuth.api(postsQuery()).then(function (res) {
       if (requestId !== state.requestId) return;
-      state.openCount = res.open_count;
       $("loading").style.display = "none";
       var incoming = normalizePosts(res.posts || []);
       if (reset) state.posts = incoming; else mergePosts(incoming);
@@ -555,7 +552,7 @@
         state.hasMore = !!res.has_more;
       }
       pruneThumbCache(state.posts);
-      renderTabs();   // the inbox tab carries a count, so it moves with the data
+      renderTabs();
       renderFeed();
       $("loadMore").hidden = !state.hasMore;
       $("loadMore").disabled = false;
@@ -568,7 +565,6 @@
     var requestId = ++state.requestId;
     return LuanaAuth.api(postsQuery() + "&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
       if (requestId !== state.requestId) return;
-      state.openCount = res.open_count;
       renderTabs();
       mergePosts(normalizePosts(res.posts || []));
       state.nextCursor = res.next_cursor || null;
@@ -581,8 +577,8 @@
 
   function post() {
     var text = $("ideaInput").value.trim();
-    if (!text) return;
-    var category = (state.activeCat === "all" || state.activeCat === "unfiled") ? $("catSelect").value : state.activeCat;
+    if (!text && !chosen.length) { LuanaUtils.reportError(null, "Write a message or choose a photo or file."); return; }
+    var category = "general";
     $("postBtn").disabled = true;
     var fd = new FormData();
     fd.append("text", text);
@@ -592,25 +588,40 @@
     if (link) fd.append("link", link);
     chosen.forEach(function (c) { fd.append("files", c.file); });
     var t = LuanaAuth.token();
-    fetch("/api/post", {
-      method: "POST",
-      headers: t ? { Authorization: "Bearer " + t } : {},
-      body: fd
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+    $("uploadStatus").hidden = false;
+    $("uploadStatus").textContent = "Sending…";
+    $("postBtn").textContent = "Sending…";
+    new Promise(function (resolve,reject) {
+      var xhr=new XMLHttpRequest();xhr.open("POST","/api/post");
+      if(t)xhr.setRequestHeader("Authorization","Bearer "+t);
+      xhr.upload.onprogress=function(event){if(event.lengthComputable)$("uploadStatus").textContent="Uploading… "+Math.round(event.loaded/event.total*100)+"%";};
+      xhr.onload=function(){try{resolve({ok:xhr.status>=200&&xhr.status<300,j:JSON.parse(xhr.responseText)});}catch(e){reject(new Error("Could not read the server response. Please try again."));}};
+      xhr.onerror=function(){reject(new Error("Could not connect. Your message and files are still here."));};
+      xhr.send(fd);
+    })
       .then(function (res) {
         if (!res.ok) throw new Error(res.j.error || "Could not post. Please try again.");
         $("ideaInput").value = "";
         delete drafts.composer; saveDrafts();
         clearChosen();
         $("postBtn").disabled = false;
-        LuanaUtils.reportSuccess("Idea posted.");
+        search=""; $("boardSearch").value=""; state.activeCat="all";
+        LuanaUtils.reportSuccess("Shared with the team.");
         return loadPosts(true);
       })
-      .catch(function (e) { $("postBtn").disabled = false; LuanaUtils.reportError(e, "Could not post. Your draft is still here."); });
+      .catch(function (e) { LuanaUtils.reportError(e, "Could not send. Your draft is still here."); })
+      .finally(function () { $("postBtn").disabled = false; $("postBtn").textContent="Send"; $("uploadStatus").hidden=true; });
   }
 
+  document.addEventListener("click", function(event){ document.querySelectorAll(".post-menu[open]").forEach(function(menu){if(!menu.contains(event.target))menu.open=false;}); });
+  document.addEventListener("keydown", function(event){if(event.key==="Escape")document.querySelectorAll(".post-menu[open]").forEach(function(menu){menu.open=false;menu.querySelector("summary").focus();});});
   $("postBtn").onclick = post;
   $("loadMore").onclick = loadOlder;
+  $("choosePhotos").onclick = function () { $("ideaPhotos").click(); };
+  $("chooseFiles").onclick = function () { $("ideaFiles").click(); };
+  $("ideaPhotos").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
+  var searchTimer;
+  $("boardSearch").oninput = function () { search=this.value.trim();clearTimeout(searchTimer);searchTimer=setTimeout(function(){loadPosts(true);},250); };
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
 
@@ -666,6 +677,5 @@
     if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
   });
 
-  syncComposer();
   if (LuanaAuth.isLoggedIn()) showBoard();
 })();

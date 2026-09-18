@@ -11,6 +11,9 @@ export async function onRequestGet({ request, env }) {
   const scope = unplacedOnly ? "placed_at IS NULL" : "";
   const category = url.searchParams.get("category") || "";
   if (category && !["curriculum", "events", "supplies", "general"].includes(category)) return json({ error: "invalid category" }, 400);
+  const resource = url.searchParams.get("resource") || "";
+  if (resource && !["photos", "files", "links"].includes(resource)) return json({error:"invalid resource"},400);
+  const query = (url.searchParams.get("q") || "").trim().slice(0,200);
   const withCounts = url.searchParams.get("counts") === "1";
   const cursor = url.searchParams.get("before") || "";
   const parts = cursor.split("|");
@@ -23,13 +26,19 @@ export async function onRequestGet({ request, env }) {
   const fetchLimit = limit + 1;
   const clauses = [];
   if (scope) clauses.push(scope);
+  if (url.searchParams.get("tasks") === "1") clauses.push("EXISTS (SELECT 1 FROM post_items i WHERE i.post_id = posts.id)");
   if (category) clauses.push("category = ?");
+  if (resource === "photos") clauses.push("EXISTS (SELECT 1 FROM post_files f WHERE f.post_id = posts.id AND f.type LIKE 'image/%')");
+  if (resource === "files") clauses.push("EXISTS (SELECT 1 FROM post_files f WHERE f.post_id = posts.id AND COALESCE(f.type, '') NOT LIKE 'image/%')");
+  if (resource === "links") clauses.push("link_url IS NOT NULL AND link_url != ''");
+  if (query) clauses.push("(instr(lower(text), lower(?)) > 0 OR instr(lower(author), lower(?)) > 0 OR instr(lower(COALESCE(link_title, '')), lower(?)) > 0 OR EXISTS (SELECT 1 FROM post_files f WHERE f.post_id = posts.id AND instr(lower(f.filename), lower(?)) > 0))");
   if (cursor) clauses.push("(created_at < ? OR (created_at = ? AND id < ?))");
   const where = clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "";
   const tail = `${where} ORDER BY created_at DESC, id DESC LIMIT ?`;
   const page = `SELECT id FROM posts${tail}`;
   const postsSql = `SELECT * FROM posts${tail}`;
   const bindings = cursor ? [cursorTime, cursorTime, cursorId, fetchLimit] : [fetchLimit];
+  if (query) bindings.unshift(query, query, query, query);
   if (category) bindings.unshift(category);
   const statement = (sql) => env.DB.prepare(sql).bind(...bindings);
   const [postsRes, commentsRes, filesRes, itemsRes, countsRes] = await env.DB.batch([

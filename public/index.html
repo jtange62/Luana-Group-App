@@ -46,30 +46,28 @@
         </div>
         <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
       </div>
-      <p class="brand-tag">Jot it down now, sort it out later</p>
+      <p class="brand-tag">Staff room · Share with your team</p>
     </header>
 
     <section class="composer">
-      <textarea id="ideaInput" rows="2" aria-label="Your idea" placeholder="Write your idea here…"></textarea>
+      <textarea id="ideaInput" rows="2" aria-label="Message" placeholder="Share something with the team…"></textarea>
       <div id="ideaFileRow" class="file-row">
-        <label class="file-label">📎 Attach
-          <input id="ideaFiles" type="file" multiple hidden />
-        </label>
+        <button id="choosePhotos" type="button" class="file-label">Photos</button>
+        <input id="ideaPhotos" type="file" accept="image/*" multiple hidden />
+        <button id="chooseFiles" type="button" class="file-label">Files</button>
+        <input id="ideaFiles" type="file" multiple hidden />
         <span id="ideaFileList" class="file-chosen"></span>
       </div>
       <div class="composer-row">
         <span id="postingAs" class="posting-as"></span>
-        <select id="catSelect" class="cat-select" aria-label="Category">
-          <option value="curriculum">curriculum</option>
-          <option value="events">events</option>
-          <option value="supplies">supplies</option>
-          <option value="general">general</option>
-        </select>
-        <button id="postBtn" class="btn-primary btn-sm">Post</button>
+<button id="postBtn" class="btn-primary btn-sm">Send</button>
       </div>
     </section>
 
-    <nav id="tabs" class="tabs" aria-label="Categories"></nav>
+    <p id="uploadStatus" role="status" hidden></p>
+    <label class="search-label" for="boardSearch">Search messages and resources</label>
+    <input id="boardSearch" class="board-search" type="search" placeholder="Search messages, people or filenames…" />
+    <nav id="tabs" class="tabs" aria-label="View"></nav>
 
     <main id="feed" class="feed" aria-live="polite"></main>
     <div id="empty" class="empty" hidden>

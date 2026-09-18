@@ -129,10 +129,10 @@ try {
     return response.json();
   };
   const marker = "workflow-" + Date.now();
-  let postId, eventId;
+  let postId, eventId, resourceId;
   try {
     await workflow.goto(origin + "/");
-    await workflow.locator("#catSelect").selectOption("supplies");
+
     await workflow.locator("#ideaInput").fill(marker);
     await workflow.route("**/api/post", route => route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Please try again"})}));
     await workflow.locator("#postBtn").click();
@@ -141,12 +141,12 @@ try {
     await workflow.unroute("**/api/post");
     await workflow.locator("#postBtn").click();
     await workflow.getByText(marker, { exact: true }).waitFor();
-    const records = await api("posts?category=supplies", "GET");
+    const records = await api("posts?category=general", "GET");
     const post = records.posts.find(row => row.text === marker);
-    if (!post) throw new Error("Default inbox ignored selected category");
+    if (!post) throw new Error("Shared message did not appear");
     postId = post.id;
     const card = workflow.locator('[data-post-id="' + postId + '"]');
-    if (await card.locator(".place-btn").count()) throw new Error("Supplies should not offer curriculum filing");
+    if (await card.locator(".complete-btn").count()) throw new Error("Ordinary message should not offer completion");
     await card.locator(".reply-toggle").click();
     await card.locator(".reply-box input").fill("Keep my reply");
     await workflow.locator("#ideaInput").fill("Keep my idea");
@@ -155,13 +155,31 @@ try {
     if (await workflow.locator("#ideaInput").inputValue() !== "Keep my idea") throw new Error("Composer draft lost");
     if (await card.locator(".reply-box input").inputValue() !== "Keep my reply") throw new Error("Reply draft lost");
     await workflow.locator("#ideaInput").fill("");
+    await card.locator("summary").click();
+    await card.getByRole("button",{name:"Make this a task",exact:true}).click();
+    await card.locator(".item-add input").fill("Bring scissors");
+    await card.locator(".item-add button").click();
+    await card.locator(".complete-btn").waitFor();
     await card.locator(".complete-btn").click();
-    await card.waitFor({state:"detached"});
-    await workflow.getByRole("button", {name:"All",exact:true}).click();
-    await card.waitFor();
+    await card.getByText("✓ Completed",{exact:true}).waitFor();
+    await card.locator("summary").click();
     await card.getByRole("button",{name:"Reopen",exact:true}).click();
     await card.locator(".complete-btn").waitFor();
-    console.log("✓ category, completion, reopening and draft recovery");
+    console.log("✓ sharing, task conversion, completion and draft recovery");
+
+    const uploadedResponse = workflow.waitForResponse(response => response.url().endsWith("/api/post") && response.request().method() === "POST");
+    await workflow.locator("#ideaFiles").setInputFiles({name:marker+".txt",mimeType:"text/plain",buffer:Buffer.from("Shared worksheet resource")});
+    await workflow.locator("#ideaPhotos").setInputFiles({name:marker+".png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=","base64")});
+    await workflow.locator("#postBtn").click();
+    const uploaded = await (await uploadedResponse).json();
+    if (!uploaded.id) throw new Error("Caption-free file sharing failed");
+    resourceId = uploaded.id;
+    await workflow.getByRole("link",{name:"Resources",exact:true}).click();
+    await workflow.locator('[data-post-id="'+resourceId+'"] .photo.loaded').waitFor();
+    await workflow.getByRole("button",{name:"Files",exact:true}).click();
+    await workflow.locator("#boardSearch").fill(marker);
+    await workflow.locator('[data-post-id="'+resourceId+'"]').waitFor();
+    console.log("✓ caption-free upload and filename search in Resources");
 
     const today = await workflow.evaluate(() => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); });
     eventId = (await api("event", "POST", {title:marker,calendar:"general",start_date:today,author:"browser-smoke"})).id;
@@ -185,6 +203,7 @@ try {
     }
     console.log("✓ phone and desktop navigation/layout");
   } finally {
+    if (resourceId) await api("post", "DELETE", {id:resourceId,author:"browser-smoke"});
     if (postId) await api("post", "DELETE", {id:postId,author:"browser-smoke"});
     if (eventId) await api("event", "DELETE", {id:eventId,author:"browser-smoke"});
     await workflow.close();
