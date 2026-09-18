@@ -95,14 +95,19 @@
 .tab-inbox.active{background:var(--teal-mid);color:#fff;border-color:var(--teal-mid);}
 
 /* ---------- Filing an idea into the curriculum ---------- */
-.card-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:10px;}
-.place-btn,.additem-btn,.unfile-btn{border:1px solid var(--line);background:var(--sand);
-  border-radius:999px;padding:6px 12px;font:600 12.5px Inter,sans-serif;color:var(--teal-mid);}
-.place-btn:hover,.additem-btn:hover,.unfile-btn:hover{background:var(--sand-2);}
-.additem-btn{color:var(--muted);}
-.unfile-btn{color:var(--muted);font-weight:500;}
-.filed-pill{font:600 12px Inter,sans-serif;color:#0C7657;background:var(--teal-soft);
-  border-radius:999px;padding:5px 11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.card-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:12px 0;}
+.card-actions button{display:flex;align-items:center;justify-content:center;min-width:0;min-height:44px;
+  border:1px solid var(--line);border-radius:12px;padding:9px 10px;background:var(--card);
+  font:600 13px/1.35 Inter,sans-serif;color:var(--teal-mid);text-align:center;overflow-wrap:anywhere;}
+.card-actions button:hover{background:var(--sand-2);}
+.card-actions .place-btn{grid-column:1 / -1;background:var(--teal-soft);border-color:transparent;}
+.card-actions .additem-btn,.card-actions .unfile-btn{color:var(--muted);}
+.filed-pill{grid-column:1 / -1;font:600 12px/1.5 Inter,sans-serif;color:var(--teal-mid);background:var(--teal-soft);
+  border-radius:12px;padding:8px 11px;overflow-wrap:anywhere;}
+.card .reply-toggle{min-height:40px;padding:6px 0;font-size:13px;}
+.card .comments{padding-top:6px;}
+.card .item-list:empty{display:none;}
+.card .edit-btn,.card .del-btn{min-width:32px;min-height:36px;}
 
 /* ---------- Checklist on a post ---------- */
 .item-list{display:flex;flex-direction:column;gap:2px;margin-top:8px;}

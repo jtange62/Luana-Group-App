@@ -280,8 +280,8 @@
         (p.placed_at
           ? '<span class="filed-pill" title="Filed or completed">✓ ' + esc(p.placed_note || "filed") + "</span>" +
             '<button class="unfile-btn">Reopen</button>'
-          : (p.category === 'curriculum' ? '<button class="place-btn">📚 Add to curriculum</button>' : '') + '<button class="complete-btn place-btn-style">Mark complete</button>') +
-        '<button class="additem-btn">☑ Add a list</button>' +
+          : (p.category === 'curriculum' ? '<button class="place-btn">Add to curriculum</button>' : '') + '<button class="complete-btn">Mark complete</button>') +
+        '<button class="additem-btn">Add checklist</button>' +
       "</div>" +
       '<div class="item-add"><input type="text" placeholder="one per line, or paste a list…" /><button>Add</button></div>' +
       '<div class="comments"></div>';

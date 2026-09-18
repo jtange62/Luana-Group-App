@@ -130,7 +130,6 @@ a.brand:active{opacity:.7;}
 .modal .field-label { font-size:13px;color:var(--ink); }
 .modal input:not([type=checkbox]),.modal select { min-height:44px; }
 .modal-actions,.form-actions { gap:10px; }
-.place-btn-style { border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--teal-mid);padding:9px 12px;font:inherit;font-size:13px;min-height:44px; }
 @media(min-width:960px) {
   body[data-page=calendar] #app,body[data-page=curriculum] #app,body[data-page=students] #app,body[data-page=tools] #app { max-width:1040px; }
   body[data-page=calendar] .day-cell { min-height:86px; }
