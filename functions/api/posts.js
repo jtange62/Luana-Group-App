@@ -9,6 +9,9 @@ export async function onRequestGet({ request, env }) {
   // ?placed=0 is the board's inbox: ideas that have not been filed anywhere yet.
   const unplacedOnly = url.searchParams.get("placed") === "0";
   const scope = unplacedOnly ? "placed_at IS NULL" : "";
+  const category = url.searchParams.get("category") || "";
+  if (category && !["curriculum", "events", "supplies", "general"].includes(category)) return json({ error: "invalid category" }, 400);
+  const withCounts = url.searchParams.get("counts") === "1";
   const cursor = url.searchParams.get("before") || "";
   const parts = cursor.split("|");
   const cursorTime = cursor ? Number(parts[0]) : 0;
@@ -20,23 +23,27 @@ export async function onRequestGet({ request, env }) {
   const fetchLimit = limit + 1;
   const clauses = [];
   if (scope) clauses.push(scope);
+  if (category) clauses.push("category = ?");
   if (cursor) clauses.push("(created_at < ? OR (created_at = ? AND id < ?))");
   const where = clauses.length ? ` WHERE ${clauses.join(" AND ")}` : "";
   const tail = `${where} ORDER BY created_at DESC, id DESC LIMIT ?`;
   const page = `SELECT id FROM posts${tail}`;
   const postsSql = `SELECT * FROM posts${tail}`;
   const bindings = cursor ? [cursorTime, cursorTime, cursorId, fetchLimit] : [fetchLimit];
+  if (category) bindings.unshift(category);
   const statement = (sql) => env.DB.prepare(sql).bind(...bindings);
-  const [postsRes, commentsRes, filesRes, itemsRes] = await env.DB.batch([
+  const [postsRes, commentsRes, filesRes, itemsRes, countsRes] = await env.DB.batch([
     statement(postsSql),
     statement(`SELECT * FROM comments WHERE post_id IN (${page}) ORDER BY created_at ASC`),
     statement(`SELECT * FROM post_files WHERE post_id IN (${page}) ORDER BY created_at ASC`),
     statement(`SELECT * FROM post_items WHERE post_id IN (${page}) ORDER BY created_at ASC`),
+    ...(withCounts ? [env.DB.prepare("SELECT COUNT(*) AS open_count FROM posts WHERE placed_at IS NULL")] : []),
   ]);
+  const counts = withCounts ? { open_count: Number(countsRes?.results?.[0]?.open_count || 0) } : {};
   const rows = postsRes.results || [];
   const hasMore = rows.length > limit;
   const posts = rows.slice(0, limit);
-  if (posts.length === 0) return json({ posts: [], has_more: false, next_cursor: null });
+  if (posts.length === 0) return json({ ...counts, posts: [], has_more: false, next_cursor: null });
 
   const commentsByPost = {};
   (commentsRes.results || []).forEach((c) => {
@@ -65,5 +72,5 @@ export async function onRequestGet({ request, env }) {
     p.items = itemsByPost[p.id] || [];
   });
   const last = posts[posts.length - 1];
-  return json({ posts, has_more: hasMore, next_cursor: hasMore ? `${last.created_at}|${last.id}` : null });
+  return json({ ...counts, posts, has_more: hasMore, next_cursor: hasMore ? `${last.created_at}|${last.id}` : null });
 }

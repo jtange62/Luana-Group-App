@@ -42,7 +42,7 @@
   function eventsOn(ymd) {
     var d = parseYMD(ymd);
     return sortEvents(state.events.filter(function (ev) {
-      return (ev.calendar || "students") === state.calendar && occursOn(ev, d);
+      return (ev.calendar || "students") !== "students" && occursOn(ev, d);
     }));
   }
 
@@ -117,7 +117,7 @@
       var dots = "";
       if (evs.length) {
         var seen = {}, colors = [];
-        evs.forEach(function (ev) { var c = eventColor(ev); if (!seen[c]) { seen[c] = 1; colors.push(c); } });
+        evs.forEach(function () { var c = EVENT_COLOR; if (!seen[c]) { seen[c] = 1; colors.push(c); } });
         dots = '<span class="dots">' + colors.slice(0, 4).map(function (c) {
           return '<span class="dot" style="background:' + c + '"></span>';
         }).join("") + "</span>";
@@ -295,11 +295,14 @@
     return { from: fmtYMD(from), to: fmtYMD(to) };
   }
 
+  var eventsRequestId = 0;
   function loadEvents() {
+    var requestId = ++eventsRequestId;
     $("loading").style.display = "block";
     var range = eventRange();
     return LuanaAuth.api("events?from=" + range.from + "&to=" + range.to).then(function (res) {
       $("loading").style.display = "none";
+      if (requestId !== eventsRequestId) return;
       state.events = res.events || [];
       render();
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load events."); });

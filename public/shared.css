@@ -119,3 +119,23 @@ a.brand:active{opacity:.7;}
 .footer-label{font-size:11px;font-weight:700;color:var(--hint);letter-spacing:.06em;text-transform:uppercase;margin:0 0 11px;}
 .drive-tile .tile-icon{background:var(--teal-soft);}
 .drive-tile:hover{box-shadow:var(--shadow-lift);}
+
+/* Shared navigation stays within reach on phones and desktops. */
+#app { padding-bottom:calc(88px + env(safe-area-inset-bottom)); }
+.app-nav { position:fixed;bottom:0;left:50%;transform:translateX(-50%);z-index:40;display:flex;gap:4px;width:min(100%,620px);padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);box-shadow:0 -4px 18px rgba(27,77,74,.06); }
+.app-nav a { flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:12px;text-decoration:none;font-size:14px;font-weight:600;color:var(--muted); }
+.app-nav a:hover { background:var(--sand-2); }
+.app-nav a[aria-current] { background:var(--teal-soft);color:var(--teal-mid); }
+.app-toast { bottom:calc(86px + env(safe-area-inset-bottom)); }
+.modal .field-label { font-size:13px;color:var(--ink); }
+.modal input:not([type=checkbox]),.modal select { min-height:44px; }
+.modal-actions,.form-actions { gap:10px; }
+.place-btn-style { border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--teal-mid);padding:9px 12px;font:inherit;font-size:13px;min-height:44px; }
+@media(min-width:960px) {
+  body[data-page=calendar] #app,body[data-page=curriculum] #app,body[data-page=students] #app,body[data-page=tools] #app { max-width:1040px; }
+  body[data-page=calendar] .day-cell { min-height:86px; }
+  body[data-page=curriculum] .month-list,body[data-page=students] .stu-list { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start; }
+  body[data-page=tools] .tool-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .app-nav { border:1px solid var(--line);border-bottom:0;border-radius:18px 18px 0 0; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { transition:none !important;scroll-behavior:auto !important; } }

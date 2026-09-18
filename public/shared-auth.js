@@ -32,7 +32,7 @@
       });
     },
 
-    signOut: function () { del(TOKEN_KEY); del(NAME_KEY); },
+    signOut: function () { del(TOKEN_KEY); del(NAME_KEY); try { sessionStorage.removeItem("luana_board_drafts"); sessionStorage.removeItem("luana_place_target"); } catch (e) {} },
 
     // Send a request to the hub API with the auth header attached.
     // On 401 it signs out and bounces to the hub login.

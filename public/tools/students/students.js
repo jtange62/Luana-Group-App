@@ -1,3 +1,5 @@
+import { SUMMER_WEEKS } from "/school-settings.js";
+
 (function () {
   "use strict";
 
@@ -12,6 +14,9 @@
   var $ = function (id) { return document.getElementById(id); };
   var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
   var esc = LuanaUtils.esc;
+  document.querySelector("#ssFields .day-chips").innerHTML = SUMMER_WEEKS.map(function (week) {
+    return '<button type="button" class="day-chip" data-week="' + esc(week.id) + '">' + esc(week.label) + '</button>';
+  }).join("");
 
   function daysArr(d) { return d ? String(d).split(",").map(Number).filter(function (n) { return n >= 0 && n <= 6; }) : []; }
 
@@ -117,7 +122,8 @@
       '<span class="d-value">' + esc(s.allergies) + "</span></div>";
     html += detailRow("Notes", s.notes);
     if (s.program === "Summer School") {
-      var SS_DATES = { "1": "Week 1 · 7/27–7/31", "2": "Week 2 · 8/3–8/7", "3": "Week 3 · 8/17–8/21" };
+      var SS_DATES = {};
+      SUMMER_WEEKS.forEach(function (week) { SS_DATES[week.id] = week.label; });
       var weeksLabel = s.ss_weeks
         ? s.ss_weeks.split(",").map(function (w) { return SS_DATES[w] || ("Week " + w); }).join("\n")
         : "—";

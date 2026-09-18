@@ -95,6 +95,27 @@
     });
   });
 
+  // One navigation and form-label treatment across every staff page.
+  var navigation = document.createElement("nav");
+  navigation.className = "app-nav";
+  navigation.setAttribute("aria-label", "Staff tools");
+  var path = location.pathname;
+  var links = [["/", "Ideas"], ["/tools/today/", "Today"], ["/tools/curriculum/", "Curriculum"], ["/tools/", "More"]];
+  links.forEach(function (entry) {
+    var link = document.createElement("a");
+    link.href = entry[0]; link.textContent = entry[1];
+    var active = path === entry[0] || (entry[1] === "More" && ["/tools/students/", "/tools/calendar/", "/tools/website/"].indexOf(path) !== -1);
+    if (active) link.setAttribute("aria-current", "page");
+    navigation.appendChild(link);
+  });
+  var navHost = document.getElementById("board") || document.getElementById("app");
+  if (navHost) navHost.appendChild(navigation);
+  document.body.dataset.page = path.split("/").filter(Boolean).pop() || "ideas";
+  document.querySelectorAll("label.field-label:not([for])").forEach(function (label) {
+    var control = label.nextElementSibling;
+    if (control && control.id && /^(INPUT|TEXTAREA|SELECT)$/.test(control.tagName)) label.htmlFor = control.id;
+  });
+
   var focusable = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
   var lastOutsideFocus = document.activeElement;
   var modalOpeners = new WeakMap();
@@ -140,7 +161,11 @@
       var modal = mutation.target;
       if (!modal.classList.contains("modal")) return;
       prepareModal(modal);
-      if (!modal.hidden) modalOpeners.set(modal, lastOutsideFocus);
+      if (!modal.hidden) {
+        modalOpeners.set(modal, lastOutsideFocus);
+        var firstControl = Array.from(modal.querySelectorAll(focusable)).find(function (item) { return item.offsetParent !== null; });
+        (firstControl || modal).focus();
+      }
       else {
         var opener = modalOpeners.get(modal);
         if (opener && opener.isConnected) opener.focus();

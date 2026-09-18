@@ -5,6 +5,8 @@
 // events, lessons) and left the client to stitch them together. Today is the
 // page staff open first, so it gets one query batch and one payload.
 
+import { summerWeekOn } from "../../public/school-settings.js";
+
 const STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
 const WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MONTHS = ["January", "February", "March", "April", "May", "June",
@@ -35,8 +37,12 @@ function occursOn(event, date) {
 
 // A student attends on this weekday. "x" marks a one-off trial placeholder,
 // which never belongs to the regular schedule.
-function attendsOn(student, weekday) {
+function attendsOn(student, weekday, ymd) {
   if (!student.days || student.days === "x") return false;
+  if (student.program === "Summer School") {
+    const week = summerWeekOn(ymd);
+    if (!week || !String(student.ss_weeks || "").split(",").includes(week.id)) return false;
+  }
   return student.days.split(",").map(Number).indexOf(weekday) !== -1;
 }
 
@@ -49,7 +55,7 @@ export async function buildToday(DB, ymd) {
 
   const [studentsRes, marksRes, trialsRes, eventsRes, themesRes] = await DB.batch([
     DB.prepare(
-      "SELECT id, name, program, days, allergies FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
+      "SELECT id, name, program, days, allergies, ss_weeks FROM students WHERE active = 1 ORDER BY program, name COLLATE NOCASE"
     ),
     DB.prepare("SELECT student_id, status FROM attendance WHERE date = ?").bind(ymd),
     DB.prepare("SELECT id, name, program FROM trials WHERE date = ? ORDER BY created_at").bind(ymd),
@@ -95,8 +101,8 @@ export async function buildToday(DB, ymd) {
     inProgram.forEach((student) => {
       const status = marks[student.id] || "";
       const row = { id: student.id, name: student.name, status, allergies: student.allergies || "" };
-      if (attendsOn(student, weekday)) expected.push(row);
-      else if (GUEST_STATUSES.indexOf(status) !== -1) guests.push(row);
+      if (attendsOn(student, weekday, ymd)) expected.push(row);
+      else if (GUEST_STATUSES.indexOf(status) !== -1 || status === "present" || status === "late") guests.push(row);
     });
 
     const trials = trialsFor[program] || [];

@@ -790,8 +790,9 @@
     return LuanaAuth.api("lessons?kind=theme").then(function (res) { state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
-    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(state.program))
-      .then(function (res) { state.weeks = res.weeks || []; });
+    var program = state.program;
+    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(program))
+      .then(function (res) { if (program === state.program) state.weeks = res.weeks || []; });
   }
   // Re-render whichever view is showing (day view also slots theme/week data).
   function rerender() { render(); }

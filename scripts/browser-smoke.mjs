@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -34,13 +34,14 @@ async function waitForServer() {
   throw new Error("Local Wrangler server did not start");
 }
 
-await run("wrangler d1 execute luana-board --local --file schema.sql");
-const server = spawn(
+const externalServer = process.env.LUANA_TEST_EXISTING_SERVER === "1";
+if (!externalServer) await run("wrangler d1 execute luana-board --local --file schema.sql");
+const server = externalServer ? null : spawn(
   "wrangler pages dev public --port 8791 --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret",
   { shell: true, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] }
 );
-server.stdout.on("data", () => {});
-server.stderr.on("data", () => {});
+server?.stdout.on("data", () => {});
+server?.stderr.on("data", () => {});
 
 let browser;
 try {
@@ -120,10 +121,78 @@ try {
   await navigationPage.waitForURL(origin + "/");
   console.log("✓ back navigation");
   await navigationPage.close();
+  // Exercise real staff journeys with temporary local-only records.
+  const workflow = await context.newPage();
+  const api = async (route, method, body) => {
+    const response = await fetch(origin + "/api/" + route, { method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
+    if (!response.ok) throw new Error(route + ": " + await response.text());
+    return response.json();
+  };
+  const marker = "workflow-" + Date.now();
+  let postId, eventId;
+  try {
+    await workflow.goto(origin + "/");
+    await workflow.locator("#catSelect").selectOption("supplies");
+    await workflow.locator("#ideaInput").fill(marker);
+    await workflow.route("**/api/post", route => route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Please try again"})}));
+    await workflow.locator("#postBtn").click();
+    await workflow.getByRole("alert").filter({hasText:"Please try again"}).waitFor();
+    if (await workflow.locator("#ideaInput").inputValue() !== marker) throw new Error("Failed submission lost draft");
+    await workflow.unroute("**/api/post");
+    await workflow.locator("#postBtn").click();
+    await workflow.getByText(marker, { exact: true }).waitFor();
+    const records = await api("posts?category=supplies", "GET");
+    const post = records.posts.find(row => row.text === marker);
+    if (!post) throw new Error("Default inbox ignored selected category");
+    postId = post.id;
+    const card = workflow.locator('[data-post-id="' + postId + '"]');
+    if (await card.locator(".place-btn").count()) throw new Error("Supplies should not offer curriculum filing");
+    await card.locator(".reply-toggle").click();
+    await card.locator(".reply-box input").fill("Keep my reply");
+    await workflow.locator("#ideaInput").fill("Keep my idea");
+    await workflow.reload();
+    await workflow.locator(".reply-box input").filter({visible:true}).first().waitFor();
+    if (await workflow.locator("#ideaInput").inputValue() !== "Keep my idea") throw new Error("Composer draft lost");
+    if (await card.locator(".reply-box input").inputValue() !== "Keep my reply") throw new Error("Reply draft lost");
+    await workflow.locator("#ideaInput").fill("");
+    await card.locator(".complete-btn").click();
+    await card.waitFor({state:"detached"});
+    await workflow.getByRole("button", {name:"All",exact:true}).click();
+    await card.waitFor();
+    await card.getByRole("button",{name:"Reopen",exact:true}).click();
+    await card.locator(".complete-btn").waitFor();
+    console.log("✓ category, completion, reopening and draft recovery");
+
+    const today = await workflow.evaluate(() => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); });
+    eventId = (await api("event", "POST", {title:marker,calendar:"general",start_date:today,author:"browser-smoke"})).id;
+    await workflow.goto(origin + "/tools/calendar/");
+    await workflow.locator("#dayEvents").getByText(marker,{exact:true}).waitFor();
+    await workflow.locator('[data-view="week"]').click();
+    await workflow.locator("#view").getByText(marker,{exact:true}).waitFor();
+    await workflow.locator('[data-view="agenda"]').click();
+    await workflow.locator("#view").getByText(marker,{exact:true}).waitFor();
+    console.log("✓ saved calendar event appears in month, week and agenda");
+
+    mkdirSync(".wrangler/review", {recursive:true});
+    for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
+      await workflow.setViewportSize(viewport);
+      for (const route of ["/", "/tools/curriculum/", "/tools/students/", "/tools/calendar/"]) {
+        await workflow.goto(origin+route);
+        await workflow.locator(".app-nav").waitFor();
+        await workflow.screenshot({path:".wrangler/review/"+(route.split("/").filter(Boolean).pop() || "ideas")+"-"+viewport.width+".png",fullPage:true});
+        if (await workflow.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error("Horizontal overflow: " + route);
+      }
+    }
+    console.log("✓ phone and desktop navigation/layout");
+  } finally {
+    if (postId) await api("post", "DELETE", {id:postId,author:"browser-smoke"});
+    if (eventId) await api("event", "DELETE", {id:eventId,author:"browser-smoke"});
+    await workflow.close();
+  }
   console.log("Browser smoke checks passed.");
 } finally {
   if (browser) await browser.close();
-  if (process.platform === "win32") {
+  if (!server) { /* existing local preview remains running */ } else if (process.platform === "win32") {
     spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
   } else {
     try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }

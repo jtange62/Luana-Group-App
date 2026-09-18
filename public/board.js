@@ -23,7 +23,7 @@
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   var state = {
-    activeCat: "unfiled", posts: [], nextCursor: null, hasMore: false,
+    openCount: 0, requestId: 0, activeCat: "unfiled", posts: [], nextCursor: null, hasMore: false,
     targets: null,     // curriculum destinations, loaded when first needed
     placing: null      // the post being filed
   };
@@ -34,12 +34,40 @@
 
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
 
+  // Text drafts survive tab changes, refreshes and navigation in this browser tab.
+  var drafts = {};
+  function saveDrafts() {
+    try { sessionStorage.setItem("luana_board_drafts", JSON.stringify({ name: me, values: drafts })); } catch (e) {}
+  }
+  function clearDraft(id, field) {
+    if (drafts[id]) delete drafts[id][field];
+    saveDrafts();
+  }
+  function restoreDrafts() {
+    try { var saved = JSON.parse(sessionStorage.getItem("luana_board_drafts") || "null"); drafts = saved && saved.name === me ? saved.values : {}; } catch (e) { drafts = {}; }
+    $("ideaInput").value = drafts.composer || "";
+  }
+  $("ideaInput").addEventListener("input", function () { drafts.composer = this.value; saveDrafts(); });
+  $("feed").addEventListener("input", function (event) {
+    var card = event.target.closest("[data-post-id]");
+    if (!card) return;
+    var field = event.target.matches(".edit-ta") ? "edit" : event.target.closest(".reply-box") ? "reply" : event.target.closest(".item-add") ? "items" : null;
+    if (!field) return;
+    var id = card.dataset.postId;
+    drafts[id] = drafts[id] || {}; drafts[id][field] = event.target.value; saveDrafts();
+  });
+  window.addEventListener("beforeunload", function (event) {
+    if (!chosen.length) return;
+    event.preventDefault(); event.returnValue = "";
+  });
+
   // ---------- Login gate ----------
   function showBoard() {
     $("gate").style.display = "none";
     $("board").hidden = false;
     LuanaUtils.ping("board");
     $("postingAs").textContent = "Posting as " + me;
+    restoreDrafts();
     renderTabs();
     loadPosts(true);
   }
@@ -81,6 +109,10 @@
   // Blob URLs by file id, so the 30s feed refresh reuses already-downloaded
   // images instead of re-fetching every photo on each poll.
   var thumbCache = {};
+  var pendingThumbs = {};
+  var thumbObserver = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(function (entries) {
+    entries.forEach(function (entry) { if (entry.isIntersecting) { thumbObserver.unobserve(entry.target); loadThumb(entry.target, entry.target.dataset.fid); } });
+  }, {rootMargin:"240px"}) : null;
   function pruneThumbCache(posts) {
     var live = {};
     posts.forEach(function (post) {
@@ -103,14 +135,12 @@
   function loadThumb(btn, fileId) {
     if (thumbCache[fileId]) { applyThumb(btn, thumbCache[fileId]); return; }
     var t = LuanaAuth.token();
-    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
-      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        thumbCache[fileId] = url;
-        applyThumb(btn, url);
-      })
-      .catch(function () { btn.textContent = "🖼️"; });
+    if (!pendingThumbs[fileId]) pendingThumbs[fileId] = fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
+      .then(function (blob) { var url = URL.createObjectURL(blob); thumbCache[fileId] = url; return url; })
+      .finally(function () { delete pendingThumbs[fileId]; });
+    pendingThumbs[fileId].then(function (url) { if (btn.isConnected) applyThumb(btn, url); })
+      .catch(function () { btn.textContent = "Preview unavailable"; });
   }
 
   // ---------- Composer file staging ----------
@@ -150,7 +180,7 @@
   }
 
   function unfiledCount() {
-    return state.posts.filter(function (p) { return !p.placed_at; }).length;
+    return state.openCount;
   }
 
   function renderTabs() {
@@ -161,8 +191,8 @@
     var inbox = document.createElement("button");
     inbox.className = "tab tab-inbox" + (unfiled ? " active" : "");
     var n = unfiledCount();
-    inbox.textContent = n ? "Not filed (" + n + ")" : "Not filed";
-    inbox.onclick = function () { state.activeCat = "unfiled"; syncComposer(); renderTabs(); renderFeed(); };
+    inbox.textContent = n ? "Open (" + n + ")" : "Open";
+    inbox.onclick = function () { state.activeCat = "unfiled"; syncComposer(); loadPosts(true); };
     nav.appendChild(inbox);
 
     var allActive = state.activeCat === "all";
@@ -170,7 +200,7 @@
     allBtn.className = "tab" + (allActive ? " active" : "");
     if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "#085041"; }
     allBtn.textContent = "All";
-    allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); renderTabs(); renderFeed(); };
+    allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); loadPosts(true); };
     nav.appendChild(allBtn);
     CATS.forEach(function (c) {
       var active = c.id === state.activeCat;
@@ -180,7 +210,7 @@
       b.style.background = active ? c.soft : "";
       b.style.color = active ? c.dark : "";
       b.innerHTML = '<span class="dot" style="background:' + c.color + '"></span>' + c.label;
-      b.onclick = function () { state.activeCat = c.id; syncComposer(); renderTabs(); renderFeed(); };
+      b.onclick = function () { state.activeCat = c.id; syncComposer(); loadPosts(true); };
       nav.appendChild(b);
     });
   }
@@ -193,11 +223,12 @@
         return state.activeCat === "all" || p.category === state.activeCat;
       })
       .sort(function (a, b) { return b.created_at - a.created_at; });
+    if (thumbObserver) thumbObserver.disconnect();
     feed.innerHTML = "";
     $("empty").hidden = items.length > 0;
     if (!items.length) {
       $("empty").querySelector("p").textContent = state.activeCat === "unfiled"
-        ? "Everything has been filed. Anything new you jot down shows up here."
+        ? "All caught up. New ideas and tasks will appear here."
         : "Nothing here yet — be the first to post.";
     }
     items.forEach(function (p) { feed.appendChild(card(p)); });
@@ -207,6 +238,7 @@
     var c = cat(p.category);
     var el = document.createElement("article");
     el.className = "card";
+    el.dataset.postId = p.id;
     var preview = "";
     if (p.link_url) {
       preview =
@@ -246,15 +278,15 @@
       '<div class="item-list"></div>' +
       '<div class="card-actions">' +
         (p.placed_at
-          ? '<span class="filed-pill" title="Already added to the curriculum">✓ ' + esc(p.placed_note || "filed") + "</span>" +
-            '<button class="unfile-btn">put back</button>'
-          : '<button class="place-btn">📚 Send to curriculum</button>') +
+          ? '<span class="filed-pill" title="Filed or completed">✓ ' + esc(p.placed_note || "filed") + "</span>" +
+            '<button class="unfile-btn">Reopen</button>'
+          : (p.category === 'curriculum' ? '<button class="place-btn">📚 Add to curriculum</button>' : '') + '<button class="complete-btn place-btn-style">Mark complete</button>') +
         '<button class="additem-btn">☑ Add a list</button>' +
       "</div>" +
       '<div class="item-add"><input type="text" placeholder="one per line, or paste a list…" /><button>Add</button></div>' +
       '<div class="comments"></div>';
 
-    el.querySelectorAll(".photo").forEach(function (btn) { loadThumb(btn, btn.getAttribute("data-fid")); });
+    el.querySelectorAll(".photo").forEach(function (btn) { if (thumbObserver) thumbObserver.observe(btn); else loadThumb(btn, btn.getAttribute("data-fid")); });
     el.querySelectorAll(".file-chip[data-fid]").forEach(function (btn) {
       btn.onclick = function () { openFile(btn.getAttribute("data-fid")); };
     });
@@ -271,6 +303,7 @@
         ta.focus();
       };
       editBox.querySelector(".edit-cancel").onclick = function () {
+        clearDraft(p.id, "edit");
         editBox.classList.remove("open");
         cardText.style.display = "";
       };
@@ -280,8 +313,8 @@
         if (!txt) return;
         ta.disabled = true;
         LuanaAuth.api("post", { method: "PATCH", body: JSON.stringify({ id: p.id, author: me, text: txt }) })
-          .then(function () { return loadPosts(true); })
-          .catch(function () { ta.disabled = false; });
+          .then(function () { clearDraft(p.id, "edit"); return loadPosts(true); })
+          .catch(function (e) { ta.disabled = false; LuanaUtils.reportError(e, "Could not save your edit."); });
       };
     }
 
@@ -341,7 +374,7 @@
       if (!txt) return;
       input.disabled = true;
       LuanaAuth.api("post-item", { method: "POST", body: JSON.stringify({ post_id: p.id, text: txt }) })
-        .then(function () { return loadPosts(true); })
+        .then(function () { clearDraft(p.id, "items"); return loadPosts(true); })
         .catch(function (e) { input.disabled = false; LuanaUtils.reportError(e, "Couldn't add that."); });
     }
     addBox.querySelector("button").onclick = addItems;
@@ -349,8 +382,16 @@
 
     var placeBtn = el.querySelector(".place-btn");
     if (placeBtn) placeBtn.onclick = function () { openPlace(p); };
+    var completeBtn = el.querySelector(".complete-btn");
+    if (completeBtn) completeBtn.onclick = function () {
+      completeBtn.disabled = true;
+      LuanaAuth.api("post-place", { method: "POST", body: JSON.stringify({ post_id: p.id, action: "complete" }) })
+        .then(function () { LuanaUtils.reportSuccess("Marked complete."); return loadPosts(true); })
+        .catch(function (e) { completeBtn.disabled = false; LuanaUtils.reportError(e, "Couldn't complete this idea."); });
+    };
     var unfileBtn = el.querySelector(".unfile-btn");
     if (unfileBtn) unfileBtn.onclick = function () {
+      if (p.placed_note !== "Completed" && !confirm("Reopen this idea? Text already added to the curriculum will stay there. Filing it again will add another copy.")) return;
       LuanaAuth.api("post-place", { method: "DELETE", body: JSON.stringify({ post_id: p.id }) })
         .then(function () { return loadPosts(true); })
         .catch(function (e) { LuanaUtils.reportError(e, "Couldn't move that back."); });
@@ -377,11 +418,18 @@
       if (!txt) return;
       input.disabled = true;
       LuanaAuth.api("comment", { method: "POST", body: JSON.stringify({ post_id: p.id, author: me, text: txt }) })
-        .then(function () { return loadPosts(true); })
-        .catch(function () { input.disabled = false; });
+        .then(function () { clearDraft(p.id, "reply"); return loadPosts(true); })
+        .catch(function (e) { input.disabled = false; LuanaUtils.reportError(e, "Could not send your reply."); });
     };
     cwrap.appendChild(toggle);
     cwrap.appendChild(box);
+    var draft = drafts[p.id] || {};
+    [["edit", ".edit-box", ".edit-ta"], ["reply", ".reply-box", "input"], ["items", ".item-add", "input"]].forEach(function (entry) {
+      if (!draft[entry[0]]) return;
+      var panel = el.querySelector(entry[1]); panel.classList.add("open");
+      panel.querySelector(entry[2]).value = draft[entry[0]];
+      if (entry[0] === "edit") cardText.style.display = "none";
+    });
     return el;
   }
 
@@ -406,6 +454,13 @@
         });
       });
     });
+    var preferred;
+    try { preferred = sessionStorage.getItem("luana_place_target"); } catch (e) {}
+    if (preferred && Array.from(sel.options).some(function (option) { return option.value === preferred; })) sel.value = preferred;
+    else {
+      var current = (state.targets || []).find(function (theme) { return Number(theme.month) === new Date().getMonth() + 1; });
+      if (current) sel.value = "theme:" + current.id;
+    }
     fillFields();
   }
 
@@ -414,7 +469,7 @@
     var type = value.split(":")[0];
     var sel = $("placeField");
     sel.innerHTML = "";
-    (PLACE_FIELDS[type] || []).forEach(function (f) { sel.appendChild(new Option(f, f)); });
+    (PLACE_FIELDS[type] || []).forEach(function (f) { sel.appendChild(new Option({activities:"Add activities",vocab:"Add vocabulary",phonics:"Add phonics",song:"Add song",questions:"Add questions",notes:"Add notes"}[f] || f, f)); });
   }
 
   function openPlace(post) {
@@ -424,7 +479,7 @@
     $("placePreview").textContent = post.text.length > 120 ? post.text.slice(0, 120) + "…" : post.text;
     $("placeModal").hidden = false;
 
-    if (state.targets) { fillTargets(); return; }
+
     $("placeTarget").innerHTML = "<option>Loading…</option>";
     LuanaAuth.api("curriculum-targets").then(function (res) {
       state.targets = res.themes || [];
@@ -449,6 +504,7 @@
     var field = $("placeField").value;
     if (!post || parts.length !== 2 || !field) return;
 
+    try { sessionStorage.setItem("luana_place_target", value); } catch (e) {}
     var label = $("placeTarget").selectedOptions[0].textContent.replace(/^\s*↳\s*/, "").trim() + " · " + field;
     $("placeGo").disabled = true;
     LuanaAuth.api("post-place", { method: "POST", body: JSON.stringify({
@@ -480,9 +536,17 @@
       .sort(function (a, b) { return b.created_at - a.created_at || String(b.id).localeCompare(String(a.id)); });
   }
 
+  function postsQuery() {
+    var filter = state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
+    return "posts?limit=30&counts=1" + filter;
+  }
+
   function loadPosts(reset) {
+    var requestId = ++state.requestId;
     $("loading").style.display = "block";
-    return LuanaAuth.api("posts?limit=30").then(function (res) {
+    return LuanaAuth.api(postsQuery()).then(function (res) {
+      if (requestId !== state.requestId) return;
+      state.openCount = res.open_count;
       $("loading").style.display = "none";
       var incoming = normalizePosts(res.posts || []);
       if (reset) state.posts = incoming; else mergePosts(incoming);
@@ -494,13 +558,18 @@
       renderTabs();   // the inbox tab carries a count, so it moves with the data
       renderFeed();
       $("loadMore").hidden = !state.hasMore;
+      $("loadMore").disabled = false;
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load ideas."); });
   }
 
   function loadOlder() {
     if (!state.hasMore || !state.nextCursor) return;
     $("loadMore").disabled = true;
-    return LuanaAuth.api("posts?limit=30&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
+    var requestId = ++state.requestId;
+    return LuanaAuth.api(postsQuery() + "&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
+      if (requestId !== state.requestId) return;
+      state.openCount = res.open_count;
+      renderTabs();
       mergePosts(normalizePosts(res.posts || []));
       state.nextCursor = res.next_cursor || null;
       state.hasMore = !!res.has_more;
@@ -513,7 +582,7 @@
   function post() {
     var text = $("ideaInput").value.trim();
     if (!text) return;
-    var category = state.activeCat === "all" ? $("catSelect").value : state.activeCat;
+    var category = (state.activeCat === "all" || state.activeCat === "unfiled") ? $("catSelect").value : state.activeCat;
     $("postBtn").disabled = true;
     var fd = new FormData();
     fd.append("text", text);
@@ -529,14 +598,15 @@
       body: fd
     }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
       .then(function (res) {
-        if (!res.ok) { $("postBtn").disabled = false; return; }
+        if (!res.ok) throw new Error(res.j.error || "Could not post. Please try again.");
         $("ideaInput").value = "";
+        delete drafts.composer; saveDrafts();
         clearChosen();
         $("postBtn").disabled = false;
         LuanaUtils.reportSuccess("Idea posted.");
         return loadPosts(true);
       })
-      .catch(function () { $("postBtn").disabled = false; });
+      .catch(function (e) { $("postBtn").disabled = false; LuanaUtils.reportError(e, "Could not post. Your draft is still here."); });
   }
 
   $("postBtn").onclick = post;
@@ -556,10 +626,9 @@
     if (!LuanaAuth.isLoggedIn() || document.hidden) return;
     // Don't re-render (and wipe) a reply or idea someone is mid-typing,
     // or staged file attachments that haven't been posted yet.
-    var ae = document.activeElement;
-    var typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") && ae.value;
-    if (typing || chosen.length) return;
-    loadPosts(false);
+    var typing = $("ideaInput").value.trim() || document.querySelector(".reply-box.open, .edit-box.open, .item-add.open, .modal:not([hidden])");
+    if (typing || chosen.length || state.hasMore || state.posts.length > 30 || $("postBtn").disabled) return;
+    loadPosts(true);
   }, 30000);
 
   // ---------- Lightbox ----------
