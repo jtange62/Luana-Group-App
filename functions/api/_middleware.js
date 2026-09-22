@@ -1,4 +1,4 @@
-import { json, sessionUser, bearer } from "./_helpers.js";
+import { json, sessionUser, bearer, safeEqual } from "./_helpers.js";
 
 function requestId(request) {
   const supplied = request.headers.get("x-request-id") || "";
@@ -11,7 +11,8 @@ export async function onRequest(context) {
   try {
     const path=new URL(context.request.url).pathname;
     let request=context.request,user=null;
-    if(context.env?.AUTH_MODE==='accounts' && !['/api/login','/api/health','/api/account-setup'].includes(path)){
+    const summaryService=path==='/api/summary' && request.method==='GET' && context.env?.SUMMARY_TOKEN && await safeEqual(bearer(request)||'',context.env.SUMMARY_TOKEN);
+    if(context.env?.AUTH_MODE==='accounts' && !summaryService && !['/api/login','/api/health','/api/account-setup'].includes(path)){
       user=await sessionUser(context.env,bearer(request));
       if(!user?.id)return json({error:'unauthorized'},401);
       if(user.must_change && path!=='/api/account')return json({error:'Change your temporary password first.',password_change_required:true},403);
