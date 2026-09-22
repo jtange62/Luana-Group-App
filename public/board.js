@@ -30,7 +30,7 @@
   var resourceView = new URLSearchParams(location.search).get("view") === "resources";
   var resourceType = "photos";
   var search = "";
-  var me = LuanaAuth.name();  // reassigned after login on this page
+  var me = "";  // set in showBoard(), which only runs once signed in
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
   var isImage = LuanaUtils.isImage, firstUrl = LuanaUtils.firstUrl, linkify = LuanaUtils.linkify;
@@ -64,27 +64,10 @@
     event.preventDefault(); event.returnValue = "";
   });
 
-  // ---------- Login gate ----------
-  // The markup ships in "accounts" shape (username + password), which is what
-  // AUTH_MODE is set to. This only has to undo that for a legacy shared-password
-  // deployment, so there is no flash of the wrong form in the normal case.
-  var loginMode=null;
-  function applyLoginMode(mode){
-    var accounts=mode==="accounts";
-    loginMode=mode;
-    $("username").hidden=$("usernameLabel").hidden=!accounts;
-    $("gateName").hidden=$("gateNameLabel").hidden=accounts;
-    $("loginHint").textContent=accounts
-      ?"Sign in with your staff username and password."
-      :"Staff tools — enter the shared password to continue";
-    $("pwLabel").textContent=accounts?"Password":"Staff password";
-    $("pwInput").placeholder=accounts?"Your password":"Enter the shared password";
-    $("enterBtn").disabled=false;
-  }
-  fetch("/api/login").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
-    applyLoginMode(data.mode);
-  }).catch(function(){$("gateError").textContent="Could not load sign-in. Refresh to retry.";$("gateError").hidden=false;});
+  // ---------- Entry point ----------
+  // gate.js loads this script once there is a session and then calls start().
   function showBoard() {
+    me = LuanaAuth.name();
     $("gate").style.display = "none";
     $("board").hidden = false;
     LuanaUtils.ping("board");
@@ -96,30 +79,6 @@
     if(!resourceView)loadSchoolOverview();
     renderTabs();
     loadPosts(true);
-  }
-
-  function enter() {
-    var pw = $("pwInput").value;
-    var name = $("gateName").value.trim();
-    var err = $("gateError");
-    err.hidden = true;
-    var username=$("username").value.trim();
-    if(!loginMode)return;
-    if (!pw || (loginMode==="accounts"?!username:!name)) { err.textContent = loginMode==="accounts"?"Enter your username and password.":"Enter both the password and your name."; err.hidden = false; return; }
-    $("enterBtn").disabled = true;
-    LuanaAuth.login(pw, name, username).then(function (res) {
-      $("enterBtn").disabled = false;
-      if (!res.ok) {
-        err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error;
-        err.hidden = false; return;
-      }
-      me = LuanaAuth.name();
-      showBoard();
-    }).catch(function () {
-      $("enterBtn").disabled = false;
-      err.textContent = "Couldn't reach the server. Try again.";
-      err.hidden = false;
-    });
   }
 
   function loadSchoolOverview(){
@@ -649,10 +608,6 @@
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
 
-  $("enterBtn").onclick = enter;
-  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") {if(loginMode==="accounts")enter();else $("gateName").focus();} });
-  $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
-
   $("placeCancel").onclick = closePlace;
   $("placeGo").onclick = doPlace;
   $("placeTarget").onchange = fillFields;
@@ -701,5 +656,6 @@
     if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
   });
 
-  if (LuanaAuth.isLoggedIn()) showBoard();
+  // gate.js owns the sign-in screen and starts us once a session exists.
+  window.LuanaBoard = { start: showBoard };
 })();
