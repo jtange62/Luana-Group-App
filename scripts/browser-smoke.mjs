@@ -35,9 +35,15 @@ async function waitForServer() {
 }
 
 const externalServer = process.env.LUANA_TEST_EXISTING_SERVER === "1";
-if (!externalServer) await run("wrangler d1 execute luana-board --local --file schema.sql");
+// Its own D1 directory, like browser-accounts.mjs. Sharing the default
+// .wrangler/state meant any demo data left there could fail assertions such as
+// "no closure is visible for this class" — a data failure that reads exactly
+// like a code regression.
+const scratch = ".wrangler/smoke-tests";
+mkdirSync(scratch, { recursive: true });
+if (!externalServer) await run(`wrangler d1 execute luana-board --local --persist-to ${scratch}/state --file schema.sql`);
 const server = externalServer ? null : spawn(
-  "wrangler pages dev public --port 8791 --binding AUTH_MODE=shared --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret",
+  `wrangler pages dev public --port 8791 --persist-to ${scratch}/state --binding AUTH_MODE=shared --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret`,
   { shell: true, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] }
 );
 server?.stdout.on("data", () => {});

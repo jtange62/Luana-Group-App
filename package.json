@@ -10,10 +10,13 @@
     "test:accounts": "node scripts/browser-accounts.mjs",
     "backup:d1": "node scripts/backup-d1.mjs --remote",
     "backup:d1:local": "node scripts/backup-d1.mjs --local",
-    "backup:r2": "node scripts/backup-r2.mjs"
+    "backup:r2": "node scripts/backup-r2.mjs",
+    "format": "prettier --write \"**/*.{js,mjs,css,json,md,html}\"",
+    "format:check": "prettier --check \"**/*.{js,mjs,css,json,md,html}\""
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
-    "playwright-core": "^1.61.1"
+    "playwright-core": "^1.61.1",
+    "prettier": "^3.4.2"
   }
 }

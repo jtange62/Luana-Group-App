@@ -24,15 +24,15 @@
   <!-- Login gate -->
   <main id="gate" class="gate">
     <div class="gate-card">
-      <div class="gate-logo"><img src="/icons/luana-logo-transparent.png" width="1404" height="1238" fetchpriority="high" alt="Luana English School" /></div>
+      <div class="gate-logo"><img src="/icons/login-logo-320.png" srcset="/icons/login-logo-320.png 320w, /icons/login-logo-480.png 480w" sizes="160px" width="320" height="282" fetchpriority="high" alt="Luana English School" /></div>
       <h1 class="gate-title">Luana Group App</h1>
-      <p class="gate-sub" id="loginHint">Staff tools — enter the password to continue</p>
-      <label class="gate-label" id="usernameLabel" for="username" hidden>Username</label>
-      <input id="username" type="text" autocomplete="username" hidden />
-      <label class="gate-label" for="pwInput">Staff password</label>
-      <input id="pwInput" type="password" placeholder="Enter the shared password" autocomplete="current-password" />
-      <label class="gate-label" id="gateNameLabel" for="gateName">Your name</label>
-      <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" />
+      <p class="gate-sub" id="loginHint">Sign in with your staff username and password.</p>
+      <label class="gate-label" id="usernameLabel" for="username">Username</label>
+      <input id="username" type="text" autocomplete="username" />
+      <label class="gate-label" id="pwLabel" for="pwInput">Password</label>
+      <input id="pwInput" type="password" placeholder="Your password" autocomplete="current-password" />
+      <label class="gate-label" id="gateNameLabel" for="gateName" hidden>Your name</label>
+      <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" hidden />
       <button id="enterBtn" class="btn-primary" disabled>Open staff tools</button>
       <p id="gateError" class="gate-error" hidden></p>
     </div>

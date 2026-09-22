@@ -47,6 +47,37 @@ export function bearer(request) {
   return h.startsWith("Bearer ") ? h.slice(7) : null;
 }
 
+// ---------- Authorization ----------
+//
+// `_middleware.js` is the enforcement point: it rejects unauthenticated calls,
+// applies the admin-only policy, and hands routes the signed-in user on
+// `context.data.user`. The per-route `requireAuth` below is deliberate
+// defence-in-depth — one shared implementation instead of the copy of this
+// check that each route used to carry — so a route stays closed even if it is
+// ever reached without the middleware.
+
+// Returns a 401 Response when the caller is not signed in, otherwise null.
+export async function requireAuth(env, request) {
+  return (await verifyToken(env, bearer(request)))
+    ? null
+    : json({ error: "unauthorized" }, 401);
+}
+
+// Resource-level ownership. Admins may act on any row; everyone else only on
+// rows they authored. Legacy shared-password deployments have no accounts to
+// compare against, so `user` is absent there and the check stays permissive —
+// exactly the behaviour those routes had before.
+//
+//   const denied = await requireOwner(context, { table: "submissions", id });
+//   if (denied) return denied;
+export async function requireOwner({ env, data }, { table, id, column = "author" }) {
+  const row = await env.DB.prepare(`SELECT ${column} AS owner FROM ${table} WHERE id = ?`).bind(id).first();
+  if (!row) return json({ error: "not found" }, 404);
+  const user = data && data.user;
+  if (!user || user.role === "admin") return null;
+  return row.owner === user.name ? null : json({ error: "forbidden" }, 403);
+}
+
 async function hmac(secret, message) {
   if (!secret) throw new Error("SESSION_SECRET is not configured");
   const key = await crypto.subtle.importKey(

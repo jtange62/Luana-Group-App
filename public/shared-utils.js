@@ -78,10 +78,42 @@
     } catch (e) {}
   }
 
+  // ---------- Shared vocabulary ----------
+  // The program list, month and weekday names and the YYYY-MM-DD helpers were
+  // defined separately in calendar.js, curriculum.js, today.js and students.js.
+  // Four copies of the same list is four places to edit when the school adds a
+  // program. Tools alias these locally so their call sites stay as they were.
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var MONTHS = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+  var MONTHS_SHORT = MONTHS.map(function (m) { return m.slice(0, 3); });
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+
+  // Japanese public holidays. An 83KB file that both the Calendar and the
+  // Student Calendar need; this loads it at most once per page and hands every
+  // caller the same parsed result.
+  var holidayRequest = null;
+  function holidays() {
+    if (!holidayRequest) {
+      holidayRequest = fetch("/tools/calendar/holidays.json")
+        .then(function (r) { if (!r.ok) throw new Error("Holiday data unavailable"); return r.json(); })
+        .catch(function (error) { holidayRequest = null; throw error; });
+    }
+    return holidayRequest;
+  }
+
   global.LuanaUtils = {
     esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
     firstUrl: firstUrl, linkify: linkify, reportError: reportError,
-    reportSuccess: reportSuccess, ping: ping
+    reportSuccess: reportSuccess, ping: ping,
+    PROGRAMS: PROGRAMS, MONTHS: MONTHS, MONTHS_SHORT: MONTHS_SHORT, WEEKDAYS: WEEKDAYS,
+    pad: pad, fmtYMD: fmtYMD, parseYMD: parseYMD, addDays: addDays,
+    holidays: holidays
   };
 
   if (!global.document) return;
@@ -114,6 +146,25 @@
   document.querySelectorAll("label.field-label:not([for])").forEach(function (label) {
     var control = label.nextElementSibling;
     if (control && control.id && /^(INPUT|TEXTAREA|SELECT)$/.test(control.tagName)) label.htmlFor = control.id;
+  });
+
+  // A scrolling chip row (programs, filters) gives no sign that more classes sit
+  // off the right edge. Wrap each one and flag it while it overflows so the CSS
+  // can fade the trailing edge.
+  document.querySelectorAll(".tabs").forEach(function (tabs) {
+    var wrap = document.createElement("div");
+    wrap.className = "tabs-wrap";
+    tabs.parentNode.insertBefore(wrap, tabs);
+    wrap.appendChild(tabs);
+    function sync() {
+      var more = tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 8;
+      if (more) wrap.setAttribute("data-overflow", "");
+      else wrap.removeAttribute("data-overflow");
+    }
+    tabs.addEventListener("scroll", sync, { passive: true });
+    window.addEventListener("resize", sync);
+    if (window.MutationObserver) new MutationObserver(sync).observe(tabs, { childList: true });
+    sync();
   });
 
   var focusable = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";

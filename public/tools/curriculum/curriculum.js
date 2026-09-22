@@ -5,7 +5,7 @@
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("curriculum");
 
-  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var PROGRAMS = LuanaUtils.PROGRAMS;
   // Weekly "focus questions" are an After School–only field.
   var QUESTIONS_PROGRAM = "After School";
   function questionsOn() { return state.program === QUESTIONS_PROGRAM; }
@@ -18,8 +18,7 @@
   function monthsFor(program) {
     return PROGRAM_MONTHS[program] || [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
   }
-  var MONTHS = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
+  var MONTHS = LuanaUtils.MONTHS;
 
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
@@ -43,13 +42,11 @@
     openDayField: {}    // "weekId|date|kind" keys with a day sub-section expanded
   };
 
-  // ---------- Dates (copied from calendar.js — keep in sync) ----------
+  // ---------- Dates (shared with the other tools via LuanaUtils) ----------
   try{var remembered=JSON.parse(sessionStorage.getItem("luana_curriculum_position"));if(remembered){if(PROGRAMS.includes(remembered.program))state.program=remembered.program;if(Number.isInteger(remembered.year)&&remembered.year>=2025&&remembered.year<=2100)year=remembered.year;}}catch(e){}
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  function pad(n) { return n < 10 ? "0" + n : "" + n; }
-  function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-  function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  var WEEKDAYS = LuanaUtils.WEEKDAYS;
+  var pad = LuanaUtils.pad, fmtYMD = LuanaUtils.fmtYMD,
+      parseYMD = LuanaUtils.parseYMD, addDays = LuanaUtils.addDays;
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
   function shortDate(ymd) { var d = parseYMD(ymd); return MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate(); }
 
@@ -146,11 +143,8 @@
 
   // Attachments are auth-gated, so fetch the blob before opening it.
   function openFile(fileId) {
-    var t = LuanaAuth.token();
-    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
-      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
+    LuanaAuth.fileUrl(fileId)
+      .then(function (url) {
         window.open(url, "_blank");
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       })
@@ -247,6 +241,23 @@
       })(m, l);
       wrap.appendChild(card);
     }
+    revealCurrentMonth();
+  }
+
+  // The school year starts in April, so on a normal visit the current month sits
+  // several screens down. Bring it into view once per page load — but never fight
+  // a scroll position the staff member has already chosen.
+  var revealedCurrentMonth = false;
+  function revealCurrentMonth() {
+    if (revealedCurrentMonth || window.scrollY > 40) return;
+    var current = $("months").querySelector(".month-card.is-current");
+    if (!current) return;
+    revealedCurrentMonth = true;
+    requestAnimationFrame(function () {
+      var top = current.getBoundingClientRect().top + window.scrollY - 12;
+      var motion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+      window.scrollTo({ top: Math.max(0, top), behavior: motion ? "auto" : "smooth" });
+    });
   }
 
   // ---------- Weeks ----------
@@ -610,7 +621,6 @@
     msg.textContent = "Copying…";
 
     var wks = weeksFor(lesson.id);
-    var t = LuanaAuth.token();
     var chain = Promise.resolve();
     targets.forEach(function (p) {
       chain = chain.then(function () {
@@ -625,11 +635,7 @@
         fd.append("vocab", lesson.vocab || "");
         fd.append("activities", lesson.activities || "");
         fd.append("phonics", lesson.phonics || "");
-        return fetch("/api/lesson", {
-          method: "POST",
-          headers: t ? { Authorization: "Bearer " + t } : {},
-          body: fd
-        }).then(function (r) { return r.json(); }).then(function (res) {
+        return LuanaAuth.upload("lesson", fd).then(function (res) {
           if (!res || !res.id) throw new Error("copy failed");
           var wchain = Promise.resolve();
           wks.forEach(function (w) {
@@ -710,14 +716,7 @@
     fd.append("lessonId", lessonId);
     fd.append("author", me);
     chosenFiles.forEach(function (f) { fd.append("files", f); });
-    var t = LuanaAuth.token();
-    return fetch("/api/lesson-file", {
-      method: "POST",
-      headers: t ? { Authorization: "Bearer " + t } : {},
-      body: fd
-    }).then(function (r) {
-      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "upload failed"); });
-    });
+    return LuanaAuth.upload("lesson-file", fd).then(function () {});
   }
 
   function save() {
@@ -777,17 +776,14 @@
     fd.append("kind", "theme");
     chosenFiles.forEach(function (f) { fd.append("files", f); });
 
-    var t = LuanaAuth.token();
-    fetch("/api/lesson", {
-      method: "POST",
-      headers: t ? { Authorization: "Bearer " + t } : {},
-      body: fd
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
-      .then(function (res) {
-        if (!res.ok) { msg.textContent = res.j.error || "Couldn't save."; $("saveBtn").disabled = false; return; }
-        closeModal(); return loadAll();
-      })
-      .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
+    LuanaAuth.upload("lesson", fd)
+      .then(function () { closeModal(); return loadAll(); })
+      .catch(function (e) {
+        // upload() rejects with the server's own message, so surface that
+        // rather than always blaming the connection.
+        msg.textContent = (e && e.message) || "Couldn't save.";
+        $("saveBtn").disabled = false;
+      });
   }
 
   // ---------- Data ----------

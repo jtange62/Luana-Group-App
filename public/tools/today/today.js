@@ -4,7 +4,9 @@
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("today");
   var $ = function(id){return document.getElementById(id);}, esc=LuanaUtils.esc;
-  var CLASSES=["Preschool","Kinder","After School","Summer School"];
+  var CLASSES=LuanaUtils.PROGRAMS;
+  // Aliased before first use: these replaced function declarations, which hoist.
+  var ymd=LuanaUtils.fmtYMD,date=LuanaUtils.parseYMD;
   var MARKS=[["present","P","Present"],["absent","A","Absent"],["late","L","Late"]];
   var KINDS={makeup:"Makeup",trial:"Trial",other:"Extra visit"};
   var state={date:ymd(new Date()),view:"month",program:"",days:[],request:0,students:[],bookingRequest:0};
@@ -26,6 +28,16 @@
     return (day.events||[]).filter(function(e){return !program || !e.program || e.program==="General" || e.program===program;})
       .concat((holidays[day.date]||[]).map(function(name){return {title:name,holiday:true};}));
   }
+  // Staff shifts and meetings carry no `program`, so they matched every class and
+  // were repeated verbatim in the Preschool, Kinder and After School cells for
+  // the same date. In the week grid each cell is one class's day, so only things
+  // that affect that class belong there — closures and public holidays. The staff
+  // context still shows in the Day view and on the staff room's overview.
+  function affectsClasses(e){return !!e.holiday || e.event_type==="closure" || (e.calendar||"general")!=="staff";}
+  function cellEvents(day,program){
+    var events=contextEvents(day,program);
+    return state.view==="week" ? events.filter(affectsClasses) : events;
+  }
   function eventMarkup(events){
     if(state.view==="month"){
       var closed=events.some(function(e){return e.event_type==="closure";}),holiday=events.some(function(e){return e.holiday;});
@@ -34,9 +46,6 @@
     }
     return events.map(function(e){return '<span class="plan-event'+(e.event_type==="closure"?' plan-closure':'')+'">'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span>';}).join("");
   }
-  function pad(n){return String(n).padStart(2,"0");}
-  function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
-  function date(value){var p=value.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
   function shift(value,n){var d=date(value);d.setDate(d.getDate()+n);return ymd(d);}
   function today(){return ymd(new Date());}
   function range(){
@@ -45,8 +54,30 @@
     if(state.view==="week"){var first=shift(state.date,-((d.getDay()+6)%7));return {from:first,to:shift(first,6)};}
     return {from:ymd(new Date(d.getFullYear(),d.getMonth(),1)),to:ymd(new Date(d.getFullYear(),d.getMonth()+1,0))};
   }
+  // Month and day headings read as prose ("Thursday, September 24, 2026"), so the
+  // week heading should too rather than falling back to raw ISO dates.
+  function periodLabel(r){
+    if(state.view==="month")return date(state.date).toLocaleDateString("en",{month:"long",year:"numeric"});
+    if(r.from===r.to)return date(state.date).toLocaleDateString("en",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+    var from=date(r.from),to=date(r.to),sameMonth=from.getMonth()===to.getMonth()&&from.getFullYear()===to.getFullYear();
+    return from.toLocaleDateString("en",{day:"numeric",month:"long"})
+      +" – "+to.toLocaleDateString("en",sameMonth?{day:"numeric"}:{day:"numeric",month:"long"})
+      +", "+to.getFullYear();
+  }
+
   function group(day,program){return day.programs.find(function(g){return g.program===program;})||{program:program,expected:[],guests:[],trials:[],counts:{},theme:null};}
-  function rows(g){return g.expected.concat(g.guests).concat(g.trials.map(function(t){return Object.assign({},t,{kind:"trial",legacy_trial:true,status:""});}));}
+  // `trials` (migration 003) and `attendance_visits` (migration 022) both model a
+  // one-off visit, and the roster concatenated them blind — so a child booked in
+  // the newer table who also had a legacy trials row was listed twice on the same
+  // day. Rows already covered by a booked visit are dropped.
+  function rows(g){
+    var booked={};
+    g.guests.forEach(function(v){ if(v.name) booked[String(v.name).trim().toLowerCase()]=true; });
+    var legacy=g.trials
+      .filter(function(t){ return !booked[String(t.name||"").trim().toLowerCase()]; })
+      .map(function(t){return Object.assign({},t,{kind:"trial",legacy_trial:true,status:""});});
+    return g.expected.concat(g.guests).concat(legacy);
+  }
   function planned(g){return rows(g).filter(function(row){return row.status!=="absent";}).length;}
   function classes(){
     if(state.program)return [state.program];
@@ -69,7 +100,7 @@
     $("dayToday").hidden=state.date===today();
     $("dayPrev").setAttribute("aria-label","Previous "+state.view);$("dayNext").setAttribute("aria-label","Next "+state.view);
     document.querySelectorAll("[data-view]").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.view===state.view));});
-    $("periodLabel").textContent=state.view==="month"?date(state.date).toLocaleDateString("en",{month:"long",year:"numeric"}):r.from===r.to?date(state.date).toLocaleDateString("en",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):r.from+" — "+r.to;
+    $("periodLabel").textContent=periodLabel(r);
     $("register").hidden=state.view!=="day";$("planner").hidden=state.view==="day";
     $("dayCount").hidden=state.view!=="day";
     document.querySelector(".today-footer").hidden=state.view!=="day";
@@ -143,7 +174,7 @@
         var label=state.view==="month"?String(date(day.date).getDate()):date(day.date).toLocaleDateString("en",{weekday:"short",month:"short",day:"numeric"});
         cell.innerHTML='<strong>'+esc(label)+'</strong>'+(count?'<span class="plan-count">'+count+'<span class="count-caption"> expected</span></span>':'');
         cell.setAttribute("aria-label",(program||"All classes")+", "+day.pretty+", "+count+" expected. Open day");
-        var events=contextEvents(day,program);
+        var events=cellEvents(day,program);
         cell.innerHTML+=eventMarkup(events);
         if(events.length)cell.setAttribute("aria-label",cell.getAttribute("aria-label")+". "+events.map(function(e){return e.title;}).join(". "));
         if(state.view==="week"){
@@ -223,7 +254,7 @@
   yearSummary.onclick=function(){LuanaAuth.api("year-summary?school_year="+LuanaYear.current(state.date)).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
   $("schoolYearControl").querySelector(".school-year-bar").appendChild(yearSummary);
   var holidayStatus="Loading Japanese public holidays…";
-  fetch("/tools/calendar/holidays.json").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
+  LuanaUtils.holidays().then(function(data){
     data.holidays.forEach(function(h){(holidays[h.date]||(holidays[h.date]=[])).push(h.name);});
     holidayStatus="Japanese public holidays available through "+data.to+". Holidays do not automatically close classes.";
     if(state.days.length)render();

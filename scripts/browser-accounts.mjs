@@ -15,7 +15,10 @@ let browser;
 async function api(path,method='GET',body,token){return fetch(origin+'/api/'+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},...(body?{body:JSON.stringify(body)}:{})});}
 try{
  for(let i=0;i<60;i++){try{if((await fetch(origin)).ok)break;}catch{}await new Promise(r=>setTimeout(r,500));}
- const chrome=['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe','C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe','/usr/bin/google-chrome','/usr/bin/chromium'].find(existsSync);
+ // Same resolution order as browser-smoke.mjs, including LUANA_CHROME_PATH so
+ // this suite can run on a machine where Chrome lives somewhere else (CI, WSL).
+ const chrome=[process.env.LUANA_CHROME_PATH,'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe','C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe','/usr/bin/google-chrome','/usr/bin/google-chrome-stable','/usr/bin/chromium'].find((path)=>path&&existsSync(path));
+ if(!chrome)throw new Error('No supported system Chrome/Edge executable was found');
  browser=await chromium.launch({executablePath:chrome,headless:true});
  const page=await browser.newPage({viewport:{width:390,height:844}});
  await page.goto(origin);
@@ -53,7 +56,12 @@ try{
  assert.equal((await api('login','POST',{username:'admin',password:changed})).status,429);
  console.log('Account browser checks passed: forced password change, staff creation, verified authors, audit, roles, disable, reset, rate limits.');
 }finally{
- await browser?.close();
- if(process.platform==='win32')spawnSync('taskkill',['/pid',String(server.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
- else process.kill(-server.pid,'SIGTERM');
+ await browser?.close().catch(()=>{});
+ // A teardown that throws replaces the real failure with its own stack, which
+ // is how a dead server here looked like "kill ESRCH" instead of the assertion
+ // that actually failed.
+ try{
+  if(process.platform==='win32')spawnSync('taskkill',['/pid',String(server.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});
+  else process.kill(-server.pid,'SIGTERM');
+ }catch(error){if(error.code!=='ESRCH')console.error('Could not stop the test server:',error.message);}
 }

@@ -1,0 +1,5 @@
+node_modules
+.wrangler
+backups
+public/tools/calendar/holidays.json
+package-lock.json

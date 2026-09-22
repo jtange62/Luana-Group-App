@@ -1,4 +1,4 @@
-import { json, verifyToken, bearer, clean } from "./_helpers.js";
+import { json, verifyToken, bearer, clean, requireOwner } from "./_helpers.js";
 
 function cleanDate(raw) {
   const v = clean(raw, 10);
@@ -76,7 +76,8 @@ export async function onRequestPatch({ request, env }) {
 
 // Delete a week and its retro comments. Weeks are lightweight sub-items of a
 // shared theme, so any signed-in teacher may remove one.
-export async function onRequestDelete({ request, env }) {
+export async function onRequestDelete(context) {
+  const { request, env } = context;
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
   let body;
@@ -84,6 +85,11 @@ export async function onRequestDelete({ request, env }) {
 
   const id = clean(body.id, 60);
   if (!id) return json({ error: "missing id" }, 400);
+
+  // Deleting a week takes every teacher's reflection notes and day plans with
+  // it, so only its author or an administrator may do that.
+  const denied = await requireOwner(context, { table: "curriculum_weeks", id });
+  if (denied) return denied;
 
   await env.DB.batch([
     env.DB.prepare("DELETE FROM week_comments WHERE week_id = ?").bind(id),

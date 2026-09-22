@@ -1,7 +1,11 @@
 :root{
   --sand:#FFFDF7;--sand-2:#F4EEDF;--teal:#0F8268;--teal-soft:#E2F6EE;--teal-mid:#0C7657;
   --coral:#E8714A;--coral-dark:#993C1D;--gold:#D4A24C;--gold-soft:#FAEEDA;--gold-dark:#854F0B;
-  --ink:#2B2B28;--muted:#6B6A63;--hint:#767469;--line:rgba(27,77,74,0.14);--card:#fff;
+  /* Secondary text sits on five different backgrounds (white, sand, sand-2,
+     teal-soft, gold-soft). The old values cleared 4.5:1 on white but dropped to
+     4.06:1 on the tinted cards, which failed the curriculum field labels. These
+     hold >=5:1 everywhere while keeping ink > muted > hint as the hierarchy. */
+  --ink:#2B2B28;--muted:#5F5C54;--hint:#67655D;--line:rgba(27,77,74,0.14);--card:#fff;
   --radius:18px;--radius-sm:12px;--radius-lg:24px;
   color-scheme:light;  /* always light — the app mirrors the light-only website */
   --shadow:0 2px 10px -4px rgba(27,77,74,0.16);
@@ -44,7 +48,9 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   box-shadow:0 6px 16px -6px rgba(153,60,29,0.55);transition:filter .12s,transform .08s,box-shadow .12s;}
 .btn-primary:hover{filter:brightness(1.04);}
 .btn-primary:active{transform:scale(.96) translateY(1px);box-shadow:0 3px 10px -6px rgba(153,60,29,0.55);}
-.btn-sm{width:auto;height:44px;padding:0 22px;font-size:15px;}
+/* flex-shrink:0 + nowrap keep these from folding onto two lines when they sit
+   next to a flexible search field on a narrow phone. */
+.btn-sm{width:auto;height:44px;padding:0 18px;font-size:15px;white-space:nowrap;flex-shrink:0;}
 
 /* ---------- Topbar ---------- */
 .topbar{position:sticky;top:0;z-index:20;padding:14px 0 10px;}
@@ -61,6 +67,12 @@ a.brand:active{opacity:.7;}
 .brand-tag{margin:6px 0 0;color:var(--muted);font-size:13px;font-weight:500;}
 .back-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);text-decoration:none;margin:2px 0 0;}
 .back-link:hover{color:var(--teal-mid);}
+/* The two calendars link to each other. Styled as muted, undecorated text these
+   read as subtitles, so people never discover the other view. */
+.cross-link{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:13px;
+  font-weight:600;color:var(--teal-mid);text-decoration:underline;text-underline-offset:3px;}
+.cross-link::after{content:"→";text-decoration:none;font-weight:400;}
+.cross-link:hover{color:var(--teal);}
 .icon-btn{width:38px;height:38px;border-radius:50%;border:none;
   background:var(--card);color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;
   box-shadow:var(--shadow);transition:transform .08s;}
@@ -73,6 +85,9 @@ a.brand:active{opacity:.7;}
 .topbar a.back-btn .back-arrow{font-size:22px;line-height:1;}
 .back-btn:hover{background:var(--sand-2);}
 .back-btn:active{transform:scale(.92);}
+/* Back + wordmark + a text button do not fit a 390px header, so the wordmark
+   drops to the mark alone until there is room for it. */
+@media (max-width:479px){ .brand-compact .brand-name{display:none;} }
 
 /* ---------- Photo lightbox ---------- */
 .lightbox{position:fixed;inset:0;background:#000;z-index:200;display:flex;
@@ -132,6 +147,84 @@ a.brand:active{opacity:.7;}
 .modal .field-label { font-size:13px;color:var(--ink); }
 .modal input:not([type=checkbox]),.modal select { min-height:44px; }
 .modal-actions,.form-actions { gap:10px; }
+
+/* Tall forms scroll inside the sheet, so the primary action would otherwise sit
+   below the fold — on a 390x844 phone the student form put Save ~95px past the
+   bottom edge. Docking the action row keeps Save and Cancel on screen while the
+   fields above it scroll. Every .modal-card uses 18px of horizontal padding, so
+   the negative margins let the bar span the full width of the sheet. */
+.modal-card .modal-actions,.modal-card .form-actions {
+  position:sticky;bottom:0;z-index:1;margin:8px -18px 0;
+  padding:10px 18px;background:var(--card);border-top:1px solid var(--line);
+}
+/* With the bar docked, the sheet's own bottom padding would leave a strip of
+   scrolling content showing beneath it. */
+.modal-card:has(.modal-actions),.modal-card:has(.form-actions){ padding-bottom:0; }
+.modal-card .modal-actions,.modal-card .form-actions{
+  padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  box-shadow:0 -6px 14px -10px rgba(27,77,74,.35);
+}
+/* Curriculum's sheet is a centred dialog that does not scroll internally. */
+body[data-page=curriculum] .modal-card .form-actions { border-top:none;background:none;box-shadow:none; }
+body[data-page=curriculum] .modal-card:has(.form-actions){ padding-bottom:20px; }
+
+/* ---------- Touch targets ----------
+   WCAG 2.5.5 asks for 44x44; several controls sat at 19-34px, and the smallest
+   were the destructive ones. Each tool's own stylesheet loads after this file,
+   so these are scoped under #app to make the floor stick without !important.
+   Links inside a sentence are exempt and are left alone. */
+#app .tab,#app .seg-btn,#app .nav-btn,#app .today-btn,#app .done-btn,#app .cm-edit,
+#app .link-btn,#app .btn-ghost,#app .btn-danger,#app .cm-week-add,#app .back-btn,
+#app .brand,#app .item,#app .reply-toggle,#app .cm-toggle,#app .cm-reply-toggle,
+#app .post-menu summary,#app .post-menu-body button,#app .view-modes button,
+#app .search,#app .board-search,#app .topbar-inner #signOut { min-height:44px; }
+#app .btn-ghost,#app .btn-danger { height:auto; }
+#app .nav-btn,#app .icon-btn { width:44px;height:44px; }
+#app .view-modes button,#app .post-menu summary { display:flex;align-items:center;justify-content:center; }
+#app .reply-toggle,#app .cm-toggle,#app .cm-reply-toggle { display:inline-flex;align-items:center; }
+.tabs { gap:8px; }
+
+/* Icon-only buttons keep their compact look — a 44px square delete control next
+   to a checkbox would dominate the row — and gain the hit area through an
+   invisible overlay instead. These are mostly destructive, so a mis-tap is the
+   expensive kind. */
+#app .item-x,#app .del-btn,#app .edit-btn,#app .cm-copy,
+#app .cm-week-edit,#app .cm-week-del,
+#app .cm-day-edit,#app .cm-day-del,#app .cm-comment-del { position:relative; }
+#app .item-x::after,#app .del-btn::after,#app .edit-btn::after,#app .cm-copy::after,
+#app .cm-week-edit::after,#app .cm-week-del::after,
+#app .cm-day-edit::after,#app .cm-day-del::after,#app .cm-comment-del::after {
+  content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:44px;height:44px;border-radius:50%;
+}
+/* Inside the More menu these are full-width rows, so the overlay would spill. */
+#app .post-menu-body .del-btn::after,#app .post-menu-body .edit-btn::after { display:none; }
+#app .cm-edit { min-width:44px; }
+#app .reply-box input { height:44px; }
+#app .composer textarea,#app .reply-box input { min-height:44px; }
+#app .completed-filter label { display:inline-flex;align-items:center;gap:8px;min-height:44px; }
+#app .reply-toggle { min-width:44px; }
+
+/* The route to account and staff management was a plain underlined line of text
+   under five large tiles; give it the weight of a destination. */
+.footer-link { display:inline-flex;align-items:center;gap:8px;min-height:44px;
+  font-size:15px;font-weight:600;color:var(--teal-mid);text-decoration:none;
+  background:var(--card);border:1px solid var(--line);border-radius:999px;
+  padding:0 18px;box-shadow:var(--shadow); }
+.footer-link:hover { background:var(--sand-2); }
+
+/* A horizontal chip row that overflows gives no hint that it scrolls; fade the
+   trailing edge so the hidden classes are discoverable. */
+.tabs { position:relative;scrollbar-width:none;scroll-snap-type:x proximity; }
+.tabs::-webkit-scrollbar { display:none; }
+.tab { scroll-snap-align:start; }
+.tabs-wrap { position:relative; }
+.tabs-wrap::after {
+  content:"";position:absolute;top:0;right:0;bottom:12px;width:28px;pointer-events:none;
+  background:linear-gradient(to right,rgba(255,253,247,0),var(--sand));opacity:0;transition:opacity .15s;
+}
+.tabs-wrap[data-overflow]::after { opacity:1; }
+
 @media(min-width:960px) {
   body[data-page=calendar] #app,body[data-page=curriculum] #app,body[data-page=students] #app,body[data-page=tools] #app { max-width:1040px; }
   body[data-page=calendar] .day-cell { min-height:86px; }

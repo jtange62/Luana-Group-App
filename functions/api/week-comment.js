@@ -1,4 +1,4 @@
-import { json, verifyToken, bearer, clean } from "./_helpers.js";
+import { json, verifyToken, bearer, clean, requireOwner } from "./_helpers.js";
 
 // Add a retro note to a curriculum week.
 export async function onRequestPost({ request, env }) {
@@ -26,7 +26,8 @@ export async function onRequestPost({ request, env }) {
 
 // Delete a comment. Retro notes are shared working notes, so any signed-in
 // teacher may remove one — same policy as week/block deletion.
-export async function onRequestDelete({ request, env }) {
+export async function onRequestDelete(context) {
+  const { request, env } = context;
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
   let body;
@@ -34,6 +35,10 @@ export async function onRequestDelete({ request, env }) {
 
   const id = clean(body.id, 60);
   if (!id) return json({ error: "missing id" }, 400);
+
+  // A reflection note belongs to the teacher who wrote it.
+  const denied = await requireOwner(context, { table: "week_comments", id });
+  if (denied) return denied;
 
   await env.DB.prepare("DELETE FROM week_comments WHERE id = ?").bind(id).run();
   return json({ ok: true });

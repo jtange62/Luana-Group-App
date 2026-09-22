@@ -5,9 +5,11 @@
   LuanaUtils.ping("calendar");
 
   var EVENT_COLOR = "#E8714A";
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var MONTHS = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
+  // Aliased before first use: these replaced function declarations, which hoist.
+  var pad = LuanaUtils.pad, fmtYMD = LuanaUtils.fmtYMD,
+      parseYMD = LuanaUtils.parseYMD, addDays = LuanaUtils.addDays;
+  var WEEKDAYS = LuanaUtils.WEEKDAYS;
+  var MONTHS = LuanaUtils.MONTHS;
 
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
@@ -20,10 +22,6 @@
     view: "month", events: [], holidays: [], editingId: null
   };
 
-  function pad(n) { return n < 10 ? "0" + n : "" + n; }
-  function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-  function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function startOfWeek(d) { return addDays(d, -d.getDay()); }
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
 
@@ -368,7 +366,7 @@
   $("weekdays").innerHTML = WEEKDAYS.map(function (w) { return "<span>" + w + "</span>"; }).join("");
   var yearControl=LuanaYear.mount($("schoolYearControl"),LuanaYear.current(state.selected),function(year){state.selected=year+"-04-01";state.year=year;state.month=3;loadEvents();});
   loadEvents();
-  fetch("./holidays.json").then(function (response) { if (!response.ok) throw new Error("Holiday data unavailable"); return response.json(); }).then(function (data) {
+  LuanaUtils.holidays().then(function (data) {
     state.holidays = data.holidays.map(function (h) { return {id:"holiday-"+h.date,title:h.name,start_date:h.date,calendar:"general",recur:"none",holiday:true,notes:"Japanese public holiday"}; });
     $("holidayInfo").firstChild.textContent = "Japanese public holidays through " + data.to.slice(0,4) + " · ";
     render();

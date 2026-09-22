@@ -6,7 +6,7 @@ var SUMMER_WEEKS = [];
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("students");
 
-  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var PROGRAMS = LuanaUtils.PROGRAMS;
   // Weekday chips in school order (Mon→Sun); value is JS getDay() index.
   var WEEKDAY_CHIPS = [["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]];
   var WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -45,7 +45,7 @@ var SUMMER_WEEKS = [];
     if (!birthday) return "";
     var p = String(birthday).split("-");
     if (p.length !== 3) return birthday;
-    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var MONTHS = LuanaUtils.MONTHS_SHORT;
     return MONTHS[+p[1] - 1] + " " + (+p[2]) + ", " + p[0];
   }
 
@@ -100,7 +100,9 @@ var SUMMER_WEEKS = [];
           '<span class="stu-name">' + esc(s.name) + "</span>" +
           '<span class="stu-meta">' + esc(meta) + "</span>" +
         "</span>" +
-        (s.allergies ? '<span class="stu-flag" title="Has allergy / medical note">⚠️</span>' : "") +
+        // A bare ⚠️ carried the app's one safety-critical signal with no label,
+        // and screen readers announce it as "warning sign". Say what it means.
+        (s.allergies ? '<span class="stu-flag">Allergy</span>' : "") +
         '<span class="stu-arrow">›</span>';
       row.onclick = function () { openDetail(s); };
       list.appendChild(row);

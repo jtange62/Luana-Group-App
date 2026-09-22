@@ -65,12 +65,24 @@
   });
 
   // ---------- Login gate ----------
+  // The markup ships in "accounts" shape (username + password), which is what
+  // AUTH_MODE is set to. This only has to undo that for a legacy shared-password
+  // deployment, so there is no flash of the wrong form in the normal case.
   var loginMode=null;
-  fetch("/api/login").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
-    loginMode=data.mode;$("username").hidden=$("usernameLabel").hidden=loginMode!=="accounts";
-    $("gateName").hidden=$("gateNameLabel").hidden=loginMode==="accounts";
-    $("loginHint").textContent=loginMode==="accounts"?"Sign in with your staff username and password.":"Staff tools — enter the password to continue";
+  function applyLoginMode(mode){
+    var accounts=mode==="accounts";
+    loginMode=mode;
+    $("username").hidden=$("usernameLabel").hidden=!accounts;
+    $("gateName").hidden=$("gateNameLabel").hidden=accounts;
+    $("loginHint").textContent=accounts
+      ?"Sign in with your staff username and password."
+      :"Staff tools — enter the shared password to continue";
+    $("pwLabel").textContent=accounts?"Password":"Staff password";
+    $("pwInput").placeholder=accounts?"Your password":"Enter the shared password";
     $("enterBtn").disabled=false;
+  }
+  fetch("/api/login").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
+    applyLoginMode(data.mode);
   }).catch(function(){$("gateError").textContent="Could not load sign-in. Refresh to retry.";$("gateError").hidden=false;});
   function showBoard() {
     $("gate").style.display = "none";
@@ -123,11 +135,8 @@
   function openFile(fileId) {
     var previewWindow = window.open("about:blank", "_blank");
     if (previewWindow) previewWindow.opener = null;
-    var t = LuanaAuth.token();
-    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
-      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
+    LuanaAuth.fileUrl(fileId)
+      .then(function (url) {
         if (previewWindow) previewWindow.location.href = url;
         else { var download = document.createElement("a"); download.href=url; download.download="resource"; download.click(); }
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
@@ -163,10 +172,8 @@
   }
   function loadThumb(btn, fileId) {
     if (thumbCache[fileId]) { applyThumb(btn, thumbCache[fileId]); return; }
-    var t = LuanaAuth.token();
-    if (!pendingThumbs[fileId]) pendingThumbs[fileId] = fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
-      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
-      .then(function (blob) { var url = URL.createObjectURL(blob); thumbCache[fileId] = url; return url; })
+    if (!pendingThumbs[fileId]) pendingThumbs[fileId] = LuanaAuth.fileUrl(fileId)
+      .then(function (url) { thumbCache[fileId] = url; return url; })
       .finally(function () { delete pendingThumbs[fileId]; });
     pendingThumbs[fileId].then(function (url) { if (btn.isConnected) applyThumb(btn, url); })
       .catch(function () { btn.textContent = "Preview unavailable"; });
@@ -610,20 +617,13 @@
     var link = firstUrl(text);
     if (link) fd.append("link", link);
     chosen.forEach(function (c) { fd.append("files", c.file); });
-    var t = LuanaAuth.token();
     $("uploadStatus").hidden = false;
     $("uploadStatus").textContent = "Sending…";
     $("postBtn").textContent = "Sending…";
-    new Promise(function (resolve,reject) {
-      var xhr=new XMLHttpRequest();xhr.open("POST","/api/post");
-      if(t)xhr.setRequestHeader("Authorization","Bearer "+t);
-      xhr.upload.onprogress=function(event){if(event.lengthComputable)$("uploadStatus").textContent="Uploading… "+Math.round(event.loaded/event.total*100)+"%";};
-      xhr.onload=function(){try{resolve({ok:xhr.status>=200&&xhr.status<300,j:JSON.parse(xhr.responseText)});}catch(e){reject(new Error("Could not read the server response. Please try again."));}};
-      xhr.onerror=function(){reject(new Error("Could not connect. Your message and files are still here."));};
-      xhr.send(fd);
+    LuanaAuth.upload("post", fd, function (percent) {
+      $("uploadStatus").textContent = "Uploading… " + percent + "%";
     })
-      .then(function (res) {
-        if (!res.ok) throw new Error(res.j.error || "Could not post. Please try again.");
+      .then(function () {
         $("ideaInput").value = "";
         delete drafts.composer; saveDrafts();
         clearChosen();

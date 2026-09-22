@@ -5,7 +5,11 @@
  $("signOut").onclick=function(){LuanaAuth.signOut();location.href="/";};
  function load(){return LuanaAuth.api("account").then(function(data){
    user=data.user;localStorage.setItem("luana_name",user.name);
-   $("identity").textContent=user.name+" · "+user.username;
+   // name and username are often the same for the bootstrap administrator, and
+   // "jtange · jtange" reads like a bug — say what each part is instead.
+   $("identity").textContent=user.name===user.username
+     ?"Signed in as "+user.username+" · "+(user.role==="admin"?"Administrator":"Staff")
+     :"Signed in as "+user.name+" ("+user.username+") · "+(user.role==="admin"?"Administrator":"Staff");
    $("admin").hidden=user.role!=="admin"||!!user.must_change;
    if(user.must_change)message("Change your temporary password to open staff tools.");
    if(user.role==="admin"&&!user.must_change)return loadStaff();
@@ -27,7 +31,9 @@
    });
    var areas={account:"password",staff:"staff access",event:"school event",students:"student profile",attendance:"attendance",visits:"student visit",post:"staff message",comment:"reply",lesson:"curriculum"};
    var actions={POST:"Saved",PATCH:"Updated",PUT:"Updated",DELETE:"Removed"};
-   $("audit").innerHTML="";data.audit.forEach(function(entry){var li=document.createElement("li"),area=entry.path.replace("/api/","");li.textContent=new Date(entry.created_at).toLocaleString()+" · "+entry.username+" · "+(actions[entry.action]||"Changed")+" "+(areas[area]||area.replaceAll("-"," "));$("audit").appendChild(li);});
+   $("audit").innerHTML="";
+   if(!data.audit.length){var none=document.createElement("li");none.className="empty-note";none.textContent="No changes recorded yet.";$("audit").appendChild(none);}
+   data.audit.forEach(function(entry){var li=document.createElement("li"),area=entry.path.replace("/api/","");li.textContent=new Date(entry.created_at).toLocaleString()+" · "+entry.username+" · "+(actions[entry.action]||"Changed")+" "+(areas[area]||area.replaceAll("-"," "));$("audit").appendChild(li);});
  });}
  $("passwordForm").onsubmit=async function(e){
    e.preventDefault();if($("newPassword").value!==$("confirmPassword").value){message("New passwords do not match.");return;}

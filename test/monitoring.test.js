@@ -2,12 +2,24 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { onRequest as monitor } from "../functions/api/_middleware.js";
 import { onRequestGet as health } from "../functions/api/health.js";
+import { makeToken } from "../functions/api/_helpers.js";
+
+const SESSION_SECRET = "test-only-session-secret-that-is-long-enough";
+const env = { SESSION_SECRET };
+
+// The middleware refuses anything unauthenticated, so these plumbing tests have
+// to present a real session.
+async function signedRequest(url, init = {}) {
+  const headers = new Headers(init.headers || {});
+  headers.set("Authorization", `Bearer ${await makeToken(env)}`);
+  return new Request(url, { ...init, headers });
+}
 
 test("API middleware adds a request ID to successful responses", async () => {
   const data = {};
   const response = await monitor({
-    request: new Request("https://example.test/api/posts", { headers: { "x-request-id": "test-request-123" } }),
-    data,
+    request: await signedRequest("https://example.test/api/posts", { headers: { "x-request-id": "test-request-123" } }),
+    env, data,
     next: async () => new Response("ok"),
   });
   assert.equal(response.headers.get("x-request-id"), "test-request-123");
@@ -19,7 +31,7 @@ test("API middleware sanitizes uncaught errors", async () => {
   console.error = () => {};
   try {
     const response = await monitor({
-      request: new Request("https://example.test/api/posts"), data: {},
+      request: await signedRequest("https://example.test/api/posts"), env, data: {},
       next: async () => { throw new Error("secret database detail"); },
     });
     assert.equal(response.status, 500);
