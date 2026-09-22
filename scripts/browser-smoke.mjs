@@ -236,6 +236,9 @@ try {
   try {
     planningStudent=(await api("students","POST",{name:"Planning student "+marker,program:"Preschool",days:"1"})).id;
     await attendancePage.goto(origin+"/tools/today/");
+    await attendancePage.locator('[data-view="week"][aria-pressed="true"]').waitFor();
+    await attendancePage.locator("#planner .week-grid").first().waitFor();
+    await attendancePage.getByRole("button",{name:"Day",exact:true}).click();
     await attendancePage.locator("#selectedDate").fill("2026-09-22");
     await attendancePage.locator("#selectedDate").dispatchEvent("change");
     await attendancePage.locator("#addVisit").click();

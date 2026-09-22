@@ -7,8 +7,8 @@
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-<title>Register — Luana Group App</title>
-<meta name="description" content="Daily register for Luana English School." />
+<title>Student Calendar — Luana Group App</title>
+<meta name="description" content="Student attendance and visit planning by day, week and month for Luana English School." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -26,7 +26,7 @@
       </a>
       <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
     </div>
-    <p class="brand-tag" id="dayLabel">Register</p>
+    <p class="brand-tag" id="dayLabel">Student Calendar</p>
   </header>
   <div id="schoolYearControl"></div>
 
@@ -35,7 +35,7 @@
       <label for="selectedDate">Choose a date</label><input id="selectedDate" type="date" />
       <label for="classFilter">Class</label><select id="classFilter"><option value="">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
     </div>
-    <nav id="viewModes" class="view-modes" aria-label="Attendance view"><button data-view="day" aria-pressed="true">Day</button><button data-view="week" aria-pressed="false">Week</button><button data-view="month" aria-pressed="false">Month</button></nav>
+    <nav id="viewModes" class="view-modes" aria-label="Student calendar view"><button data-view="day" aria-pressed="false">Day</button><button data-view="week" aria-pressed="true">Week</button><button data-view="month" aria-pressed="false">Month</button></nav>
     <div class="daybar">
       <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
       <p id="dayCount" class="day-count" aria-live="polite">—</p>

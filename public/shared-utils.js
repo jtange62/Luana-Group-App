@@ -100,7 +100,7 @@
   navigation.className = "app-nav";
   navigation.setAttribute("aria-label", "Staff tools");
   var path = location.pathname;
-  var links = [["/", "Staff room"], ["/tools/today/", "Today"], ["/?view=resources", "Resources"], ["/tools/curriculum/", "Plans"], ["/tools/", "More"]];
+  var links = [["/", "Staff room"], ["/tools/today/", "Student Calendar"], ["/?view=resources", "Resources"], ["/tools/curriculum/", "Plans"], ["/tools/", "More"]];
   links.forEach(function (entry) {
     var link = document.createElement("a");
     link.href = entry[0]; link.textContent = entry[1];

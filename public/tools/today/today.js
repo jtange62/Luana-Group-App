@@ -7,7 +7,7 @@
   var CLASSES=["Preschool","Kinder","After School","Summer School"];
   var MARKS=[["present","P","Present"],["absent","A","Absent"],["late","L","Late"]];
   var KINDS={makeup:"Makeup",trial:"Trial",other:"Extra visit"};
-  var state={date:ymd(new Date()),view:"day",program:"",days:[],request:0,students:[],bookingRequest:0};
+  var state={date:ymd(new Date()),view:"week",program:"",days:[],request:0,students:[],bookingRequest:0};
   function pad(n){return String(n).padStart(2,"0");}
   function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function date(value){var p=value.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
@@ -29,7 +29,7 @@
   function openDay(value,program){state.view="day";if(program){state.program=program;$("classFilter").value=program;}go(value);}
   function render(){
     var r=range();$("selectedDate").value=state.date;
-    $("dayLabel").textContent="Attendance & planning";
+    $("dayLabel").textContent="Student Calendar";
     $("dayToday").hidden=state.date===today();
     $("dayPrev").setAttribute("aria-label","Previous "+state.view);$("dayNext").setAttribute("aria-label","Next "+state.view);
     document.querySelectorAll("[data-view]").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.view===state.view));});
