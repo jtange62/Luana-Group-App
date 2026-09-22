@@ -236,9 +236,11 @@ try {
   try {
     planningStudent=(await api("students","POST",{name:"Planning student "+marker,program:"Preschool",days:"1"})).id;
     await attendancePage.goto(origin+"/tools/today/");
-    await attendancePage.locator('[data-view="week"][aria-pressed="true"]').waitFor();
-    await attendancePage.locator("#planner .week-grid").first().waitFor();
+    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
+    await attendancePage.locator("#planner .month-grid").waitFor();
+    if(await attendancePage.locator("#planner .month-grid").count()!==1 || await attendancePage.locator("#planner table").count())throw new Error("Expected one monthly calendar without a comparison table");
     await attendancePage.getByRole("button",{name:"Day",exact:true}).click();
+    await attendancePage.locator(".calendar-options summary").click();
     await attendancePage.locator("#selectedDate").fill("2026-09-22");
     await attendancePage.locator("#selectedDate").dispatchEvent("change");
     await attendancePage.locator("#addVisit").click();
@@ -276,9 +278,20 @@ try {
     await attendancePage.locator("#loading").waitFor({state:"hidden"});
     await attendancePage.locator(".plan-closure").first().waitFor();
     await attendancePage.locator(".plan-event").filter({hasText:"Holiday"}).first().waitFor();
-    const preschoolCalendar=attendancePage.locator(".planner-class").filter({has:attendancePage.getByRole("heading",{name:"Preschool",exact:true})});
-    if(await preschoolCalendar.locator(".plan-closure").count())throw new Error("Kinder closure leaked into Preschool");
-    await attendancePage.getByRole("button",{name:/Kinder, Tuesday, 22 September/}).click();
+    if(await attendancePage.locator("#planner .plan-day").count()!==30)throw new Error("September should have one cell per day");
+    await attendancePage.getByRole("button",{name:"Next month",exact:true}).click();
+    await attendancePage.getByRole("heading",{name:"October 2026",exact:true}).waitFor();
+    if(await attendancePage.locator("#planner .plan-day").count()!==31)throw new Error("October should have 31 days");
+    await attendancePage.getByRole("button",{name:"Previous month",exact:true}).click();
+    await attendancePage.getByRole("heading",{name:"September 2026",exact:true}).waitFor();
+    await attendancePage.locator(".calendar-options summary").click();
+    await attendancePage.locator("#selectedDate").fill("2026-09-22");
+    await attendancePage.locator("#selectedDate").dispatchEvent("change");
+    await attendancePage.locator("#loading").waitFor({state:"hidden"});
+    await attendancePage.locator("#classFilter").selectOption("Preschool");
+    if(await attendancePage.locator(".plan-closure").count())throw new Error("Kinder closure leaked into Preschool");
+    await attendancePage.locator("#classFilter").selectOption("");
+    await attendancePage.getByRole("button",{name:/All classes, Tuesday, 22 September/}).click();
     await attendancePage.locator("#overviewBack").waitFor();
     await attendancePage.reload();
     await attendancePage.locator("#overviewBack").click();
@@ -317,6 +330,7 @@ try {
   await yearPage.getByRole("heading",{name:"April 2027",exact:true}).waitFor();
   await yearPage.getByRole("heading",{name:"March 2028",exact:true}).waitFor();
   await yearPage.goto(origin+"/tools/today/");
+  await yearPage.locator(".calendar-options summary").click();
   await yearPage.getByRole("combobox",{name:"School year",exact:true}).selectOption("2027");
   await yearPage.waitForFunction(()=>document.querySelector("#selectedDate").value==="2027-04-01");
   await yearPage.locator("#selectedDate").fill("2027-03-31");

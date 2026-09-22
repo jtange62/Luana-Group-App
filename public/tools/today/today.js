@@ -7,8 +7,8 @@
   var CLASSES=["Preschool","Kinder","After School","Summer School"];
   var MARKS=[["present","P","Present"],["absent","A","Absent"],["late","L","Late"]];
   var KINDS={makeup:"Makeup",trial:"Trial",other:"Extra visit"};
-  var state={date:ymd(new Date()),view:"week",program:"",days:[],request:0,students:[],bookingRequest:0};
-  var positionKey="luana_student_calendar",overview=null,holidays={};
+  var state={date:ymd(new Date()),view:"month",program:"",days:[],request:0,students:[],bookingRequest:0};
+  var positionKey="luana_student_calendar_v2",overview=null,holidays={};
   function validPosition(p){return p && ["day","week","month"].includes(p.view) && typeof p.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && ymd(date(p.date))===p.date && (p.program==="" || CLASSES.includes(p.program));}
   try {
     var saved=JSON.parse(sessionStorage.getItem(positionKey));
@@ -30,7 +30,7 @@
     if(state.view==="month"){
       var closed=events.some(function(e){return e.event_type==="closure";}),holiday=events.some(function(e){return e.holiday;});
       var count=events.filter(function(e){return !e.holiday && e.event_type!=="closure";}).length;
-      return (closed?'<span class="plan-event plan-closure">Closed</span>':"")+(holiday?'<span class="plan-event">Holiday</span>':"")+(count?'<span class="plan-event">'+count+' event'+(count===1?'':'s')+'</span>':"");
+      return (closed?'<span class="plan-event plan-closure">'+(state.program?'Closed':'Closure')+'</span>':"")+(holiday?'<span class="plan-event">Holiday</span>':"")+(count?'<span class="plan-event">'+count+' event'+(count===1?'':'s')+'</span>':"");
     }
     return events.map(function(e){return '<span class="plan-event'+(e.event_type==="closure"?' plan-closure':'')+'">'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span>';}).join("");
   }
@@ -71,7 +71,9 @@
     document.querySelectorAll("[data-view]").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.view===state.view));});
     $("periodLabel").textContent=state.view==="month"?date(state.date).toLocaleDateString("en",{month:"long",year:"numeric"}):r.from===r.to?date(state.date).toLocaleDateString("en",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):r.from+" — "+r.to;
     $("register").hidden=state.view!=="day";$("planner").hidden=state.view==="day";
-    $("markLegend").hidden=false;$("markLegend").textContent=state.view==="day"?"P = Present · A = Absent · L = Late. Tap a selected mark to clear it.":"Expected students exclude known absences. Tap a day to see names and update attendance.";$("digestBtn").hidden=state.view!=="day";
+    $("dayCount").hidden=state.view!=="day";
+    document.querySelector(".today-footer").hidden=state.view!=="day";
+    $("markLegend").hidden=false;$("markLegend").textContent=state.view==="day"?"P = Present · A = Absent · L = Late. Tap a selected mark to clear it.":"Expected students · Select a date for names and attendance.";$("digestBtn").hidden=state.view!=="day";
     $("empty").hidden=true;$("alerts").hidden=true;$("onToday").hidden=true;
     if(state.view==="day")renderDay(state.days[0]);else renderPeriod();
   }
@@ -117,46 +119,36 @@
     return row;
   }
   function renderPeriod(){
-    $("dayCount").textContent=state.view==="week"?"Week at a glance":"Month at a glance";
     var wrap=$("planner");wrap.innerHTML="";
-    if(!state.program){
-      var comparison=document.createElement("section");comparison.className="class-comparison";
-      comparison.innerHTML='<h2>All classes at a glance</h2><p>Expected students by date. Select a count to open that class.</p>';
-      var scroll=document.createElement("div");scroll.className="comparison-scroll";scroll.tabIndex=0;scroll.setAttribute("role","region");scroll.setAttribute("aria-label","Expected attendance comparison");
-      var table=document.createElement("table");
-      table.innerHTML='<caption>'+esc($("periodLabel").textContent)+'</caption><thead><tr><th scope="col">Class</th>'+state.days.map(function(day){return '<th scope="col">'+esc(day.date.slice(5))+'</th>';}).join("")+'</tr></thead>';
-      var body=document.createElement("tbody");
-      classes().forEach(function(program){var row=document.createElement("tr");row.innerHTML='<th scope="row">'+esc(program)+'</th>';
-        state.days.forEach(function(day){var cell=document.createElement("td"),count=planned(group(day,program)),closed=contextEvents(day,program).some(function(e){return e.event_type==="closure";});
-          var b=button(String(count)+(closed?" · Closed":""),function(){openDay(day.date,program);},"comparison-count");
-          b.setAttribute("aria-label",program+", "+day.date+", "+count+" expected"+(closed?", closed":""));cell.appendChild(b);row.appendChild(cell);});body.appendChild(row);});
-      table.appendChild(body);scroll.appendChild(table);comparison.appendChild(scroll);wrap.appendChild(comparison);
-    }
-    classes().forEach(function(program){
-      var section=document.createElement("section");section.className="planner-class";
-      var heading=document.createElement("h2");heading.className="class-name";heading.textContent=program;section.appendChild(heading);
-      section.appendChild(button("Add makeup / trial",function(){openVisit(program);},"btn-ghost add-class-visit"));
+      if(!state.days.length)return;
       var grid=document.createElement("div");grid.className=state.view==="month"?"month-grid":"week-grid";
+      grid.setAttribute("role","group");grid.setAttribute("aria-label",$("periodLabel").textContent+" · "+(state.program||"All classes"));
       if(state.view==="month"){
         ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(name){var label=document.createElement("span");label.className="weekday-label";label.textContent=name;grid.appendChild(label);});
         for(var i=0;i<(date(state.days[0].date).getDay()+6)%7;i++)grid.appendChild(document.createElement("span"));
       }
       state.days.forEach(function(day){
-        var g=group(day,program),list=rows(g),visitors=list.filter(function(s){return tag(s);});
-        var cell=button("",function(){openDay(day.date,program);},"plan-day"+(day.date===today()?" is-today":""));
+        var list=classes().flatMap(function(program){return rows(group(day,program));});
+        var count=list.filter(function(s){return s.status!=="absent";}).length;
+        var cell=button("",function(){openDay(day.date,state.program);},"plan-day"+(day.date===today()?" is-today":"")+(count?"":" is-empty"));
+        if(day.date===today())cell.setAttribute("aria-current","date");
         var label=state.view==="month"?String(date(day.date).getDate()):date(day.date).toLocaleDateString("en",{weekday:"short",month:"short",day:"numeric"});
-        cell.innerHTML='<strong>'+esc(label)+'</strong><span class="plan-count">'+planned(g)+' expected</span>';
-        cell.setAttribute("aria-label",program+", "+day.pretty+", "+planned(g)+" expected. Open day");
-        var events=contextEvents(day,program);
+        cell.innerHTML='<strong>'+esc(label)+'</strong>'+(count?'<span class="plan-count">'+count+'<span class="count-caption"> expected</span></span>':'');
+        cell.setAttribute("aria-label",(state.program||"All classes")+", "+day.pretty+", "+count+" expected. Open day");
+        var events=contextEvents(day,state.program);
         cell.innerHTML+=eventMarkup(events);
         if(events.length)cell.setAttribute("aria-label",cell.getAttribute("aria-label")+". "+events.map(function(e){return e.title;}).join(". "));
         if(state.view==="week"){
           cell.innerHTML+=list.map(function(s){return '<span class="plan-name'+(s.status==="absent"?' is-absent':'')+'">'+esc(s.name)+(tag(s)?' · '+esc(tag(s)):'')+(s.status==="absent"?' · Absent':'')+'</span>';}).join("");
           if(!list.length)cell.innerHTML+='<span class="plan-name">No students</span>';
-        }else if(visitors.length){cell.innerHTML+='<span class="plan-extra">+'+visitors.length+' visits</span>';}
+        }
         grid.appendChild(cell);
-      });section.appendChild(grid);wrap.appendChild(section);
-    });
+      });
+      if(state.view==="month"){
+        var trailing=(7-date(state.days[state.days.length-1].date).getDay())%7;
+        for(var j=0;j<trailing;j++)grid.appendChild(document.createElement("span"));
+      }
+      wrap.appendChild(grid);
   }
   function setMark(student,status,row){
     var selected=state.date;
