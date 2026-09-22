@@ -48,7 +48,12 @@
   function group(day,program){return day.programs.find(function(g){return g.program===program;})||{program:program,expected:[],guests:[],trials:[],counts:{},theme:null};}
   function rows(g){return g.expected.concat(g.guests).concat(g.trials.map(function(t){return Object.assign({},t,{kind:"trial",legacy_trial:true,status:""});}));}
   function planned(g){return rows(g).filter(function(row){return row.status!=="absent";}).length;}
-  function classes(){return state.program?[state.program]:CLASSES;}
+  function classes(){
+    if(state.program)return [state.program];
+    return CLASSES.filter(function(program){
+      return program!=="Summer School" || state.days.some(function(day){return rows(group(day,program)).length>0;});
+    });
+  }
   function tag(row){return KINDS[row.kind||row.status]||"";}
   function button(text,action,className){var b=document.createElement("button");b.type="button";b.textContent=text;b.className=className||"btn-ghost";b.onclick=action;return b;}
   function go(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;state.date=value;load();}
@@ -121,7 +126,7 @@
       var table=document.createElement("table");
       table.innerHTML='<caption>'+esc($("periodLabel").textContent)+'</caption><thead><tr><th scope="col">Class</th>'+state.days.map(function(day){return '<th scope="col">'+esc(day.date.slice(5))+'</th>';}).join("")+'</tr></thead>';
       var body=document.createElement("tbody");
-      CLASSES.forEach(function(program){var row=document.createElement("tr");row.innerHTML='<th scope="row">'+esc(program)+'</th>';
+      classes().forEach(function(program){var row=document.createElement("tr");row.innerHTML='<th scope="row">'+esc(program)+'</th>';
         state.days.forEach(function(day){var cell=document.createElement("td"),count=planned(group(day,program)),closed=contextEvents(day,program).some(function(e){return e.event_type==="closure";});
           var b=button(String(count)+(closed?" · Closed":""),function(){openDay(day.date,program);},"comparison-count");
           b.setAttribute("aria-label",program+", "+day.date+", "+count+" expected"+(closed?", closed":""));cell.appendChild(b);row.appendChild(cell);});body.appendChild(row);});
