@@ -232,7 +232,7 @@ try {
   }
 
   const attendancePage = await context.newPage();
-  let planningStudent, makeupId, trialId;
+  let planningStudent, makeupId, trialId, planningClosure;
   try {
     planningStudent=(await api("students","POST",{name:"Planning student "+marker,program:"Preschool",days:"1"})).id;
     await attendancePage.goto(origin+"/tools/today/");
@@ -265,6 +265,29 @@ try {
     trialId=(await(await trialResponse).json()).id;
     await attendancePage.getByRole("button",{name:"Absent — Trial child "+marker,exact:true}).click();
     await attendancePage.locator('.mark.on-absent').waitFor();
+    planningClosure=(await api("event","POST",{title:"Planning closure "+marker,calendar:"general",event_type:"closure",program:"Kinder",start_date:"2026-09-22",end_date:"2026-09-24",author:"browser-smoke"})).id;
+    await attendancePage.locator("#classFilter").selectOption("");
+    await attendancePage.getByRole("button",{name:"Month",exact:true}).click();
+    await attendancePage.locator("#loading").waitFor({state:"hidden"});
+    await attendancePage.locator(".plan-closure").first().waitFor();
+    await attendancePage.locator(".plan-event").filter({hasText:"Holiday"}).first().waitFor();
+    const preschoolCalendar=attendancePage.locator(".planner-class").filter({has:attendancePage.getByRole("heading",{name:"Preschool",exact:true})});
+    if(await preschoolCalendar.locator(".plan-closure").count())throw new Error("Kinder closure leaked into Preschool");
+    await attendancePage.getByRole("button",{name:/Kinder, Tuesday, 22 September/}).click();
+    await attendancePage.locator("#overviewBack").waitFor();
+    await attendancePage.reload();
+    await attendancePage.locator("#overviewBack").click();
+    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
+    if(await attendancePage.locator("#classFilter").inputValue()!=="")throw new Error("Overview did not restore all classes");
+    if(await attendancePage.locator("#selectedDate").inputValue()!=="2026-09-22")throw new Error("Overview lost selected date");
+    await attendancePage.locator("#eventsLink").click();
+    await attendancePage.waitForURL("**/tools/calendar/?date=2026-09-22");
+    await attendancePage.locator('.ev-title').filter({hasText:"Planning closure "+marker}).first().waitFor();
+    await attendancePage.getByRole("link",{name:"Student Calendar — attendance & visits"}).click();
+    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
+    await attendancePage.locator("#planner .month-grid").first().waitFor();
+    if(await attendancePage.locator("#selectedDate").inputValue()!=="2026-09-22")throw new Error("Calendar position was not remembered");
+    console.log("✓ calendar overview return, reload, remembered position, scoped closures, holidays and Events link");
     for(const width of [390,1280]){
       await attendancePage.setViewportSize({width,height:900});
       for(const view of ["day","week","month"]){
@@ -278,6 +301,7 @@ try {
   } finally {
     if(makeupId)await api("visits","DELETE",{id:makeupId});
     if(trialId)await api("visits","DELETE",{id:trialId});
+    if(planningClosure)await api("event","DELETE",{id:planningClosure,author:"browser-smoke"});
     if(planningStudent)await api("students","DELETE",{id:planningStudent});
     await attendancePage.close();
   }

@@ -13,6 +13,8 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc;
   var now = new Date();
+  var requestedDate=new URLSearchParams(location.search).get("date");
+  if(requestedDate && /^\d{4}-\d{2}-\d{2}$/.test(requestedDate) && fmtYMD(parseYMD(requestedDate))===requestedDate)now=parseYMD(requestedDate);
   var state = {
     year: now.getFullYear(), month: now.getMonth(), selected: fmtYMD(now),
     view: "month", events: [], holidays: [], editingId: null

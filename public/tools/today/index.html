@@ -36,6 +36,11 @@
       <label for="classFilter">Class</label><select id="classFilter"><option value="">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
     </div>
     <nav id="viewModes" class="view-modes" aria-label="Student calendar view"><button data-view="day" aria-pressed="false">Day</button><button data-view="week" aria-pressed="true">Week</button><button data-view="month" aria-pressed="false">Month</button></nav>
+    <div class="planning-links">
+      <button id="overviewBack" class="btn-ghost" hidden>Back to overview</button>
+      <a id="eventsLink" href="/tools/calendar/">School events &amp; closures</a>
+    </div>
+    <p id="holidayNote" class="mark-legend"></p>
     <div class="daybar">
       <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
       <p id="dayCount" class="day-count" aria-live="polite">—</p>
@@ -59,7 +64,7 @@
     <p id="empty" class="empty" hidden></p>
 
     <section id="onToday" class="on-today" hidden aria-labelledby="onTodayHead">
-      <h2 id="onTodayHead" class="section-head">On today</h2>
+      <h2 id="onTodayHead" class="section-head">Events &amp; holidays for this day</h2>
       <ul id="onTodayList" class="event-list"></ul>
     </section>
   </main>

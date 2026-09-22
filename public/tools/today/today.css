@@ -118,6 +118,11 @@
 .plan-name{font-size:12px;overflow-wrap:anywhere;}
 .plan-name.is-absent{color:var(--muted);text-decoration:line-through;}
 .plan-extra{font-size:10px;color:var(--gold-dark);}
+.planning-links{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0;}
+.planning-links a{color:var(--teal);font-size:13px;padding:10px 0;}
+.plan-event{display:block;font-size:11px;line-height:1.35;overflow-wrap:anywhere;max-width:100%;color:var(--teal);}
+.plan-closure{font-weight:600;color:#a63737;}
+.month-grid .plan-event{font-size:10px;text-align:center;}
 .month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px;}
 .month-grid .plan-day{padding:5px 3px;min-height:70px;align-items:center;}
 .month-grid .plan-count{font-size:10px;line-height:1.3;}

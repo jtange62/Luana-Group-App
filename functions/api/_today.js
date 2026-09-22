@@ -160,9 +160,10 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
   });
 
   const events = (eventsRes.results || [])
-    .filter((event) => (event.calendar || "students") !== "students" && occursOn(event, date))
+    .filter((event) => ((event.calendar || "students") !== "students" || event.event_type === "closure") && occursOn(event, date))
     .map((event) => ({
       id: event.id,
+      event_type: event.event_type || "event",
       title: (event.event_type === "closure" ? "Closed — " : "") + event.title,
       calendar: event.calendar || "general",
       program: event.program || "",

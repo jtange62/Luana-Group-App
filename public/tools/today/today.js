@@ -8,6 +8,27 @@
   var MARKS=[["present","P","Present"],["absent","A","Absent"],["late","L","Late"]];
   var KINDS={makeup:"Makeup",trial:"Trial",other:"Extra visit"};
   var state={date:ymd(new Date()),view:"week",program:"",days:[],request:0,students:[],bookingRequest:0};
+  var positionKey="luana_student_calendar",overview=null,holidays={};
+  function validPosition(p){return p && ["day","week","month"].includes(p.view) && typeof p.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && ymd(date(p.date))===p.date && (p.program==="" || CLASSES.includes(p.program));}
+  try {
+    var saved=JSON.parse(sessionStorage.getItem(positionKey));
+    if(validPosition(saved)){state.date=saved.date;state.view=saved.view;state.program=saved.program;}
+    if(saved && validPosition(saved.overview) && saved.overview.view!=="day")overview=saved.overview;
+  } catch(e){}
+  function position(){return {date:state.date,view:state.view,program:state.program};}
+  function remember(){try{sessionStorage.setItem(positionKey,JSON.stringify(Object.assign(position(),{overview:overview})));}catch(e){}}
+  function contextEvents(day,program){
+    return (day.events||[]).filter(function(e){return !program || !e.program || e.program==="General" || e.program===program;})
+      .concat((holidays[day.date]||[]).map(function(name){return {title:name,holiday:true};}));
+  }
+  function eventMarkup(events){
+    if(state.view==="month"){
+      var closed=events.some(function(e){return e.event_type==="closure";}),holiday=events.some(function(e){return e.holiday;});
+      var count=events.filter(function(e){return !e.holiday && e.event_type!=="closure";}).length;
+      return (closed?'<span class="plan-event plan-closure">Closed</span>':"")+(holiday?'<span class="plan-event">Holiday</span>':"")+(count?'<span class="plan-event">'+count+' event'+(count===1?'':'s')+'</span>':"");
+    }
+    return events.map(function(e){return '<span class="plan-event'+(e.event_type==="closure"?' plan-closure':'')+'">'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span>';}).join("");
+  }
   function pad(n){return String(n).padStart(2,"0");}
   function ymd(d){return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());}
   function date(value){var p=value.split("-").map(Number);return new Date(p[0],p[1]-1,p[2]);}
@@ -26,9 +47,14 @@
   function tag(row){return KINDS[row.kind||row.status]||"";}
   function button(text,action,className){var b=document.createElement("button");b.type="button";b.textContent=text;b.className=className||"btn-ghost";b.onclick=action;return b;}
   function go(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;state.date=value;load();}
-  function openDay(value,program){state.view="day";if(program){state.program=program;$("classFilter").value=program;}go(value);}
+  function openDay(value,program){if(state.view!=="day")overview=position();state.view="day";if(program){state.program=program;}go(value);}
   function render(){
     var r=range();$("selectedDate").value=state.date;
+    $("classFilter").value=state.program;
+    $("overviewBack").hidden=state.view!=="day" || !overview;
+    $("overviewBack").textContent=overview?"‹ Back to "+overview.view+" overview":"Back to overview";
+    $("eventsLink").href="/tools/calendar/?date="+state.date;
+    $("holidayNote").textContent=holidayStatus;
     $("dayLabel").textContent="Student Calendar";
     $("dayToday").hidden=state.date===today();
     $("dayPrev").setAttribute("aria-label","Previous "+state.view);$("dayNext").setAttribute("aria-label","Next "+state.view);
@@ -57,8 +83,9 @@
     });
     $("alerts").hidden=!allergyRows.length;
     $("alertsList").innerHTML=allergyRows.map(function(s){return '<li><strong>'+esc(s.name)+'</strong> — '+esc(s.allergies)+'</li>';}).join("");
-    $("onToday").hidden=!day.events.length;
-    $("onTodayList").innerHTML=day.events.map(function(e){return '<li><span class="event-time">'+esc(e.start_time||"All day")+'</span><span>'+esc(e.title)+'</span></li>';}).join("");
+    var events=contextEvents(day,state.program);
+    $("onToday").hidden=!events.length;
+    $("onTodayList").innerHTML=events.map(function(e){return '<li><span class="event-time">'+esc(e.start_time||"All day")+'</span><span>'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span></li>';}).join("");
   }
   function studentRow(student){
     var row=document.createElement("div");row.className="student";
@@ -92,6 +119,9 @@
         var label=state.view==="month"?String(date(day.date).getDate()):date(day.date).toLocaleDateString("en",{weekday:"short",month:"short",day:"numeric"});
         cell.innerHTML='<strong>'+esc(label)+'</strong><span class="plan-count">'+planned(g)+' expected</span>';
         cell.setAttribute("aria-label",program+", "+day.pretty+", "+planned(g)+" expected. Open day");
+        var events=contextEvents(day,program);
+        cell.innerHTML+=eventMarkup(events);
+        if(events.length)cell.setAttribute("aria-label",cell.getAttribute("aria-label")+". "+events.map(function(e){return e.title;}).join(". "));
         if(state.view==="week"){
           cell.innerHTML+=list.map(function(s){return '<span class="plan-name'+(s.status==="absent"?' is-absent':'')+'">'+esc(s.name)+(tag(s)?' · '+esc(tag(s)):'')+(s.status==="absent"?' · Absent':'')+'</span>';}).join("");
           if(!list.length)cell.innerHTML+='<span class="plan-name">No students</span>';
@@ -114,6 +144,7 @@
     LuanaAuth.api(student.legacy_trial?"trials":"visits",{method:"DELETE",body:JSON.stringify({id:student.visit_id||student.id})}).then(load).catch(function(e){LuanaUtils.reportError(e,"Could not cancel the visit.");});
   }
   function load(){
+    remember();
     yearControl.set(LuanaYear.current(state.date));
     var request=++state.request,r=range();state.days=[];
     $("selectedDate").value=state.date;$("loading").style.display="block";$("digestBtn").disabled=true;
@@ -148,8 +179,9 @@
   }
   $("signOut").onclick=function(){LuanaAuth.signOut();location.href="/";};
   $("selectedDate").onchange=function(){if(this.value)go(this.value);};
-  $("classFilter").onchange=function(){state.program=this.value;if(state.days.length)render();};
-  $("viewModes").onclick=function(e){var b=e.target.closest("[data-view]");if(b){state.view=b.dataset.view;load();}};
+  $("classFilter").onchange=function(){state.program=this.value;remember();if(state.days.length)render();};
+  $("viewModes").onclick=function(e){var b=e.target.closest("[data-view]");if(b){if(b.dataset.view==="day" && state.view!=="day")overview=position();else if(b.dataset.view!=="day")overview=null;state.view=b.dataset.view;load();}};
+  $("overviewBack").onclick=function(){if(!overview)return;state.date=overview.date;state.view=overview.view;state.program=overview.program;overview=null;load().then(function(){document.querySelector('[data-view="'+state.view+'"]').focus();});};
   $("dayPrev").onclick=function(){step(-1);};$("dayNext").onclick=function(){step(1);};$("dayToday").onclick=function(){go(today());};
   $("addVisit").onclick=function(){openVisit();};$("visitKind").onchange=syncVisit;$("visitCancel").onclick=closeVisit;$("visitSave").onclick=saveVisit;
   $("visitDate").onchange=loadVisitStudents;
@@ -161,5 +193,11 @@
   var yearSummary=document.createElement("button");yearSummary.className="btn-ghost";yearSummary.textContent="School-year summary";
   yearSummary.onclick=function(){LuanaAuth.api("year-summary?school_year="+LuanaYear.current(state.date)).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
   $("schoolYearControl").querySelector(".school-year-bar").appendChild(yearSummary);
+  var holidayStatus="Loading Japanese public holidays…";
+  fetch("/tools/calendar/holidays.json").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
+    data.holidays.forEach(function(h){(holidays[h.date]||(holidays[h.date]=[])).push(h.name);});
+    holidayStatus="Japanese public holidays available through "+data.to+". Holidays do not automatically close classes.";
+    if(state.days.length)render();
+  }).catch(function(){holidayStatus="Public holidays could not be loaded. School events and attendance are still available.";if(state.days.length)render();});
   load();
 })();
