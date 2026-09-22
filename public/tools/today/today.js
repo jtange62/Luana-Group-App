@@ -120,22 +120,30 @@
   }
   function renderPeriod(){
     var wrap=$("planner");wrap.innerHTML="";
-      if(!state.days.length)return;
+    if(!state.days.length)return;
+    var programs=state.view==="week"?classes():[state.program];
+    programs.forEach(function(program){
+      var section=wrap;
+      if(state.view==="week"){
+        section=document.createElement("section");section.className="planner-class";
+        var heading=document.createElement("h2");heading.className="class-name";heading.textContent=program;
+        section.appendChild(heading);wrap.appendChild(section);
+      }
       var grid=document.createElement("div");grid.className=state.view==="month"?"month-grid":"week-grid";
-      grid.setAttribute("role","group");grid.setAttribute("aria-label",$("periodLabel").textContent+" · "+(state.program||"All classes"));
+      grid.setAttribute("role","group");grid.setAttribute("aria-label",$("periodLabel").textContent+" · "+(program||"All classes"));
       if(state.view==="month"){
         ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(name){var label=document.createElement("span");label.className="weekday-label";label.textContent=name;grid.appendChild(label);});
         for(var i=0;i<(date(state.days[0].date).getDay()+6)%7;i++)grid.appendChild(document.createElement("span"));
       }
       state.days.forEach(function(day){
-        var list=classes().flatMap(function(program){return rows(group(day,program));});
+        var list=(program?[program]:classes()).flatMap(function(p){return rows(group(day,p));});
         var count=list.filter(function(s){return s.status!=="absent";}).length;
-        var cell=button("",function(){openDay(day.date,state.program);},"plan-day"+(day.date===today()?" is-today":"")+(count?"":" is-empty"));
+        var cell=button("",function(){openDay(day.date,program);},"plan-day"+(day.date===today()?" is-today":"")+(count?"":" is-empty"));
         if(day.date===today())cell.setAttribute("aria-current","date");
         var label=state.view==="month"?String(date(day.date).getDate()):date(day.date).toLocaleDateString("en",{weekday:"short",month:"short",day:"numeric"});
         cell.innerHTML='<strong>'+esc(label)+'</strong>'+(count?'<span class="plan-count">'+count+'<span class="count-caption"> expected</span></span>':'');
-        cell.setAttribute("aria-label",(state.program||"All classes")+", "+day.pretty+", "+count+" expected. Open day");
-        var events=contextEvents(day,state.program);
+        cell.setAttribute("aria-label",(program||"All classes")+", "+day.pretty+", "+count+" expected. Open day");
+        var events=contextEvents(day,program);
         cell.innerHTML+=eventMarkup(events);
         if(events.length)cell.setAttribute("aria-label",cell.getAttribute("aria-label")+". "+events.map(function(e){return e.title;}).join(". "));
         if(state.view==="week"){
@@ -148,7 +156,8 @@
         var trailing=(7-date(state.days[state.days.length-1].date).getDay())%7;
         for(var j=0;j<trailing;j++)grid.appendChild(document.createElement("span"));
       }
-      wrap.appendChild(grid);
+      section.appendChild(grid);
+    });
   }
   function setMark(student,status,row){
     var selected=state.date;
