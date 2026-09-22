@@ -118,6 +118,15 @@
 .plan-name{font-size:12px;overflow-wrap:anywhere;}
 .plan-name.is-absent{color:var(--muted);text-decoration:line-through;}
 .plan-extra{font-size:10px;color:var(--gold-dark);}
+.student-profile-link{display:block;font-size:12px;color:var(--teal);padding:5px 0;}
+.class-comparison{background:var(--card);padding:14px;border-radius:18px;margin-top:18px;}
+.class-comparison h2{font-size:18px;margin:0;}.class-comparison p{font-size:13px;}
+.comparison-scroll{overflow:auto;max-width:100%;}
+.comparison-scroll table{border-collapse:collapse;font-size:12px;width:100%;}
+.comparison-scroll caption{text-align:left;margin-bottom:8px;}
+.comparison-scroll th,.comparison-scroll td{padding:4px;border:1px solid var(--line);}
+.comparison-scroll th[scope=row]{position:sticky;left:0;background:var(--card);min-width:90px;}
+.comparison-count{min-width:46px;min-height:44px;border:0;border-radius:8px;background:var(--teal-soft);color:var(--ink);font:inherit;cursor:pointer;}
 .planning-links{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:12px 0;}
 .planning-links a{color:var(--teal);font-size:13px;padding:10px 0;}
 .plan-event{display:block;font-size:11px;line-height:1.35;overflow-wrap:anywhere;max-width:100%;color:var(--teal);}

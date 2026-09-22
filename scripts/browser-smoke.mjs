@@ -252,6 +252,11 @@ try {
     await attendancePage.locator("#classFilter").selectOption("Kinder");
     await attendancePage.getByRole("button",{name:"Present — Planning student "+marker,exact:true}).click();
     await attendancePage.locator('.mark.on-present').waitFor();
+    await attendancePage.locator('.student').filter({hasText:"Planning student "+marker}).getByRole("link",{name:"Profile & history"}).click();
+    await attendancePage.locator("#detail").waitFor();
+    await attendancePage.getByRole("heading",{name:"Recent attendance"}).waitFor();
+    await attendancePage.getByRole("link",{name:"Return to Student Calendar"}).click();
+    await attendancePage.locator('.mark.on-present').waitFor();
     await attendancePage.getByRole("button",{name:"Week",exact:true}).click();
     await attendancePage.locator('.plan-name').filter({hasText:"Planning student "+marker+" · Makeup"}).waitFor();
     await attendancePage.getByRole("button",{name:"Month",exact:true}).click();

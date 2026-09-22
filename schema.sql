@@ -297,5 +297,17 @@ CREATE INDEX IF NOT EXISTS idx_lessons_school_year ON lessons(school_year,kind,p
 CREATE INDEX IF NOT EXISTS idx_students_school_year ON students(school_year,active,program);
 CREATE TABLE IF NOT EXISTS school_year_copies (school_year INTEGER NOT NULL, kind TEXT NOT NULL, PRIMARY KEY(school_year,kind));
 
+CREATE TABLE IF NOT EXISTS staff_accounts (
+ id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE,
+ name TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('admin','staff')),
+ password_hash TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1,
+ version INTEGER NOT NULL DEFAULT 1, must_change INTEGER NOT NULL DEFAULT 1, created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS staff_audit (
+ id TEXT PRIMARY KEY, staff_id TEXT NOT NULL, username TEXT NOT NULL,
+ action TEXT NOT NULL, path TEXT NOT NULL, created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_staff_audit_time ON staff_audit(created_at DESC);
+
 CREATE TABLE IF NOT EXISTS summer_weeks (school_year INTEGER NOT NULL, id TEXT NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL, PRIMARY KEY(school_year,id));
 INSERT OR IGNORE INTO summer_weeks VALUES (2026,'1','2026-07-27','2026-07-31'),(2026,'2','2026-08-03','2026-08-07'),(2026,'3','2026-08-17','2026-08-21');

@@ -12,23 +12,34 @@ export function json(data, status = 200) {
 
 // Very small signed-token scheme: we don't need user accounts, just proof that
 // the visitor knew the staff password. Token = base64(expiry).HMAC(expiry).
-export async function makeToken(env) {
+export async function makeToken(env, user) {
   const expiry = Date.now() + 1000 * 60 * 60 * 24 * 30; // 30 days
-  const payload = String(expiry);
+  const payload = user ? JSON.stringify({exp:Date.now()+1000*60*60*12,sub:user.id,v:user.version}) : String(expiry);
   const sig = await hmac(env.SESSION_SECRET, payload);
   return btoa(payload) + "." + sig;
 }
 
 export async function verifyToken(env, token) {
+  return !!(await sessionUser(env,token));
+}
+
+export async function sessionUser(env, token) {
   if (!token) return false;
   const parts = token.split(".");
   if (parts.length !== 2) return false;
   let payload;
   try { payload = atob(parts[0]); } catch { return false; }
-  const expiry = Number(payload);
-  if (!expiry || Date.now() > expiry) return false;
   const expected = await hmac(env.SESSION_SECRET, payload);
-  return timingSafeEqual(expected, parts[1]);
+  if(!timingSafeEqual(expected,parts[1]))return false;
+  if(payload.startsWith('{')){
+    let claim;try{claim=JSON.parse(payload);}catch{return false;}
+    if(!Number.isFinite(claim.exp)||Date.now()>claim.exp||typeof claim.sub!=='string'||!Number.isInteger(claim.v))return false;
+    const user=await env.DB.prepare('SELECT id,username,name,role,active,version,must_change FROM staff_accounts WHERE id=?').bind(claim.sub).first();
+    return user && user.active===1 && user.version===claim.v ? user : false;
+  }
+  if(env.AUTH_MODE==='accounts')return false;
+  const expiry=Number(payload);
+  return expiry && Date.now()<=expiry ? {id:null,role:'legacy'} : false;
 }
 
 export function bearer(request) {

@@ -1,0 +1,5 @@
+main{padding:16px 0 100px;}h1{font-size:20px;}h2{font-size:18px;}
+form{background:var(--card);padding:18px;border-radius:18px;margin:16px 0;}
+label{display:block;margin:12px 0 4px;}input{width:100%;padding:12px;border:1px solid var(--line);border-radius:8px;}
+form button{margin-top:14px;}#staffList article{padding:14px;border-bottom:1px solid var(--line);}
+#staffList button{min-height:44px;margin:5px;padding:8px;}#audit{font-size:13px;overflow-wrap:anywhere;}#message{color:var(--teal);}

@@ -44,6 +44,7 @@
   };
 
   // ---------- Dates (copied from calendar.js — keep in sync) ----------
+  try{var remembered=JSON.parse(sessionStorage.getItem("luana_curriculum_position"));if(remembered){if(PROGRAMS.includes(remembered.program))state.program=remembered.program;if(Number.isInteger(remembered.year)&&remembered.year>=2025&&remembered.year<=2100)year=remembered.year;}}catch(e){}
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
   function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -161,6 +162,7 @@
   }
 
   function render() {
+    try{sessionStorage.setItem("luana_curriculum_position",JSON.stringify({program:state.program,year:year}));}catch(e){}
     var months = monthsFor(state.program);
     $("progHint").textContent = months.length === 12
       ? "Monthly plan for " + state.program + " — tap a month to set its theme, song, vocab, activities and phonics."

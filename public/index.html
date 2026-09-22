@@ -26,12 +26,14 @@
     <div class="gate-card">
       <div class="gate-logo"><img src="/icons/luana-logo-transparent.png" width="1404" height="1238" fetchpriority="high" alt="Luana English School" /></div>
       <h1 class="gate-title">Luana Group App</h1>
-      <p class="gate-sub">Staff tools — enter the password to continue</p>
+      <p class="gate-sub" id="loginHint">Staff tools — enter the password to continue</p>
+      <label class="gate-label" id="usernameLabel" for="username" hidden>Username</label>
+      <input id="username" type="text" autocomplete="username" hidden />
       <label class="gate-label" for="pwInput">Staff password</label>
       <input id="pwInput" type="password" placeholder="Enter the shared password" autocomplete="current-password" />
-      <label class="gate-label" for="gateName">Your name</label>
+      <label class="gate-label" id="gateNameLabel" for="gateName">Your name</label>
       <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" />
-      <button id="enterBtn" class="btn-primary">Open staff tools</button>
+      <button id="enterBtn" class="btn-primary" disabled>Open staff tools</button>
       <p id="gateError" class="gate-error" hidden></p>
     </div>
   </main>
@@ -49,6 +51,8 @@
       <p class="brand-tag">Staff room · Share with your team</p>
     </header>
 
+    <section id="schoolOverview" class="school-overview" hidden aria-labelledby="schoolOverviewHeading"><h2 id="schoolOverviewHeading">School at a glance</h2><div id="schoolOverviewBody" aria-live="polite"></div></section>
+    <details id="resourceGuide" hidden><summary>Where to find and share files</summary><p>These are photos, files and links from staff messages. <a href="/tools/curriculum/">Curriculum</a> holds files attached to teaching plans. <a href="/tools/website/">Website inbox</a> is for publication requests. Link to an existing resource in your message when it is already shared.</p></details>
     <section class="composer">
       <textarea id="ideaInput" rows="2" aria-label="Message" placeholder="Share something with the team…"></textarea>
       <div id="ideaFileRow" class="file-row">
@@ -76,7 +80,7 @@
       <p>Nothing here yet — be the first to post.</p>
     </div>
     <div id="loading" class="loading">Loading…</div>
-    <button id="loadMore" class="load-more" hidden>Load older ideas</button>
+    <button id="loadMore" class="load-more" hidden>Load older messages</button>
 
 </div>
 

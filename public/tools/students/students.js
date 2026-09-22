@@ -15,6 +15,12 @@ var SUMMER_WEEKS = [];
   var year = LuanaYear.current();
   var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
   var esc = LuanaUtils.esc;
+  var params=new URLSearchParams(location.search),detailRequest=0,pendingStudent=params.get("student");
+  var referenceDate=params.get("date")||new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate))referenceDate=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+  try{var saved=JSON.parse(sessionStorage.getItem("luana_roster_position"));if(saved){if(Number.isInteger(saved.year)&&saved.year>=2025&&saved.year<=2100)year=saved.year;if(["All"].concat(PROGRAMS).includes(saved.program))state.program=saved.program;if(typeof saved.search==="string")state.search=saved.search;}}catch(e){}
+  if(/^20\d{2}$/.test(params.get("school_year")||""))year=Number(params.get("school_year"));
+  $("search").value=state.search;
   function renderSummerChips(){document.querySelector("#ssFields .day-chips").innerHTML = SUMMER_WEEKS.map(function (week) {
     return '<button type="button" class="day-chip" data-week="' + esc(week.id) + '">' + esc(week.label) + '</button>';
   }).join("");}
@@ -74,6 +80,7 @@ var SUMMER_WEEKS = [];
   }
 
   function render() {
+    try{sessionStorage.setItem("luana_roster_position",JSON.stringify({year:year,program:state.program,search:state.search}));}catch(e){}
     renderTabs();
     $("summerSettings").hidden=state.program!=="Summer School";
     var list = $("list"); list.innerHTML = "";
@@ -135,9 +142,16 @@ var SUMMER_WEEKS = [];
     html += detailRow("Photo consent", s.photo_ok ? "Yes — OK to post photos" : "No — do not post photos");
     $("detailBody").innerHTML = html;
     $("detail").hidden = false;
+    var request=++detailRequest,activity=document.createElement("section");activity.className="student-activity";activity.setAttribute("aria-live","polite");
+    activity.textContent="Loading attendance and visits…";$("detailBody").appendChild(activity);
+    LuanaAuth.api("student-history?id="+encodeURIComponent(s.id)+"&date="+referenceDate).then(function(data){
+      if(request!==detailRequest)return;
+      function list(rows){return rows.length?'<ul>'+rows.map(function(row){return '<li><a href="/tools/today/?date='+encodeURIComponent(row.date)+'&view=day&program='+encodeURIComponent(row.program||s.program)+'">'+esc(row.date)+'</a> · '+esc(row.kind)+' · '+esc(row.status||"Booked")+(row.marked_by?' · '+esc(row.marked_by):"")+'</li>';}).join("")+'</ul>':'<p>None recorded.</p>';}
+      activity.innerHTML='<p><a href="/tools/today/">Return to Student Calendar</a></p><h3>Upcoming booked visits</h3><p>From '+esc(referenceDate)+' · up to 30 visits. Regular class days are shown above.</p>'+list(data.visits)+'<h3>Recent attendance</h3><p>Latest 30 marks through '+esc(referenceDate)+'. Unmarked days are not absences.</p>'+list(data.history);
+    }).catch(function(){if(request===detailRequest)activity.textContent="Could not load attendance and visits. Reopen the profile to retry.";});
   }
 
-  function closeDetail() { $("detail").hidden = true; }
+  function closeDetail() { detailRequest++;$("detail").hidden = true; }
 
   // ---------- Summer school fields ----------
   function syncSSFields() {
@@ -288,6 +302,7 @@ var SUMMER_WEEKS = [];
       $("loading").style.display = "none";
       state.students = res.students || [];
       render();
+      if(pendingStudent){var selected=state.students.find(function(s){return s.id===pendingStudent;});pendingStudent=null;if(selected)openDetail(selected);else LuanaUtils.reportError(null,"Student profile is not active in this school year.");}
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load students."); });
   }
 

@@ -7,6 +7,7 @@ import { onRequestPost as place } from '../functions/api/post-place.js';
 import { onRequestGet as posts } from '../functions/api/posts.js';
 import { onRequestDelete as deleteEvent } from '../functions/api/event.js';
 import { buildToday } from '../functions/api/_today.js';
+import {onRequestGet as studentHistory} from '../functions/api/student-history.js';
 
 function database(t) {
   const sql = new DatabaseSync(':memory:');
@@ -35,6 +36,16 @@ function database(t) {
   };
 }
 const SESSION_SECRET = 'workflow-test-secret';
+test('student history is authenticated, isolated to one student and does not double-count a booked visit',async t=>{
+ const DB=database(t),env={DB,SESSION_SECRET};
+ DB.sql.prepare("INSERT INTO students(id,name,program,created_at) VALUES ('a','Aiko','Kinder',1),('b','Ben','Kinder',1)").run();
+ DB.sql.prepare("INSERT INTO attendance(id,student_id,date,status,created_at) VALUES ('a1','a','2026-09-22','present',1),('b1','b','2026-09-22','absent',1)").run();
+ DB.sql.prepare("INSERT INTO attendance_visits(id,student_id,name,program,date,kind,status,created_at) VALUES ('v','a','Aiko','Kinder','2026-09-22','makeup','late',1)").run();
+ const response=await studentHistory({env,request:await request('student-history?id=a&date=2026-09-22')});
+ const data=await response.json();assert.equal(data.history.length,1);assert.equal(data.history[0].status,'late');assert.equal(data.visits.length,1);
+ assert.equal((await studentHistory({env,request:new Request('https://example.test/api/student-history?id=a&date=2026-09-22')})).status,401);
+ assert.equal((await studentHistory({env,request:await request('student-history?id=a&date=bad')})).status,400);
+});
 async function request(path, body) {
   return new Request('https://example.test/api/' + path, {
     method: body ? 'POST' : 'GET', headers: { Authorization: 'Bearer ' + await makeToken({SESSION_SECRET}), 'Content-Type': 'application/json' },

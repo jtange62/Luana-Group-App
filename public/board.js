@@ -38,7 +38,7 @@
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
 
   // Text drafts survive tab changes, refreshes and navigation in this browser tab.
-  var drafts = {};
+  var drafts = {},openReplies={};
   function saveDrafts() {
     try { sessionStorage.setItem("luana_board_drafts", JSON.stringify({ name: me, values: drafts })); } catch (e) {}
   }
@@ -65,6 +65,13 @@
   });
 
   // ---------- Login gate ----------
+  var loginMode=null;
+  fetch("/api/login").then(function(r){if(!r.ok)throw new Error();return r.json();}).then(function(data){
+    loginMode=data.mode;$("username").hidden=$("usernameLabel").hidden=loginMode!=="accounts";
+    $("gateName").hidden=$("gateNameLabel").hidden=loginMode==="accounts";
+    $("loginHint").textContent=loginMode==="accounts"?"Sign in with your staff username and password.":"Staff tools — enter the password to continue";
+    $("enterBtn").disabled=false;
+  }).catch(function(){$("gateError").textContent="Could not load sign-in. Refresh to retry.";$("gateError").hidden=false;});
   function showBoard() {
     $("gate").style.display = "none";
     $("board").hidden = false;
@@ -73,18 +80,22 @@
     restoreDrafts();
     if (resourceView) { document.querySelector(".composer").hidden = true; document.querySelector(".brand-tag").textContent = "Resources · Photos, files and links shared by the team"; }
     $("completedFilter").hidden = resourceView;
+    $("resourceGuide").hidden=!resourceView;
+    if(!resourceView)loadSchoolOverview();
     renderTabs();
     loadPosts(true);
   }
 
   function enter() {
-    var pw = $("pwInput").value.trim();
+    var pw = $("pwInput").value;
     var name = $("gateName").value.trim();
     var err = $("gateError");
     err.hidden = true;
-    if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
+    var username=$("username").value.trim();
+    if(!loginMode)return;
+    if (!pw || (loginMode==="accounts"?!username:!name)) { err.textContent = loginMode==="accounts"?"Enter your username and password.":"Enter both the password and your name."; err.hidden = false; return; }
     $("enterBtn").disabled = true;
-    LuanaAuth.login(pw, name).then(function (res) {
+    LuanaAuth.login(pw, name, username).then(function (res) {
       $("enterBtn").disabled = false;
       if (!res.ok) {
         err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error;
@@ -97,6 +108,16 @@
       err.textContent = "Couldn't reach the server. Try again.";
       err.hidden = false;
     });
+  }
+
+  function loadSchoolOverview(){
+    var date=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
+    $("schoolOverview").hidden=false;$("schoolOverviewBody").textContent="Loading today's school overview…";
+    LuanaAuth.api("today?date="+date).then(function(day){
+      var expected=day.programs.reduce(function(total,g){return total+g.expected.concat(g.guests).filter(function(s){return s.status!=="absent";}).length+g.trials.length;},0);
+      $("schoolOverviewBody").innerHTML='<p>'+esc(day.pretty)+' · '+expected+' expected · '+day.totals.unmarked+' attendance marks pending</p><p><a href="/tools/today/?date='+date+'&view=day">Open today’s attendance</a> · <a href="/tools/today/?date='+date+'&view=week">Plan the week</a></p>'+
+        (day.events.length?'<ul>'+day.events.map(function(e){return '<li>'+esc(e.start_time||"All day")+' · '+esc(e.title)+'</li>';}).join("")+'</ul>':'<p>No school events recorded for today.</p>');
+    }).catch(function(){$("schoolOverviewBody").innerHTML='<p>Overview unavailable. <a href="/tools/today/">Open Student Calendar</a> or refresh to retry.</p>';});
   }
 
   function openFile(fileId) {
@@ -408,9 +429,9 @@
     var n = (p.comments || []).length;
     toggle.textContent = n ? "Reply (" + n + ")" : "Reply";
     var box = document.createElement("div");
-    box.className = "reply-box";
+    box.className = "reply-box"+(openReplies[p.id]?" open":"");
     box.innerHTML = '<input type="text" placeholder="your reply…" /><button>Send</button>';
-    toggle.onclick = function () { box.classList.toggle("open"); if (box.classList.contains("open")) box.querySelector("input").focus(); };
+    toggle.onclick = function () { box.classList.toggle("open");openReplies[p.id]=box.classList.contains("open"); if (openReplies[p.id]) box.querySelector("input").focus(); };
     box.querySelector("button").onclick = function () {
       var input = box.querySelector("input");
       var txt = input.value.trim();
@@ -629,7 +650,7 @@
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
 
   $("enterBtn").onclick = enter;
-  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("gateName").focus(); });
+  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") {if(loginMode==="accounts")enter();else $("gateName").focus();} });
   $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
 
   $("placeCancel").onclick = closePlace;

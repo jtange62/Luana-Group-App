@@ -15,6 +15,11 @@
     if(validPosition(saved)){state.date=saved.date;state.view=saved.view;state.program=saved.program;}
     if(saved && validPosition(saved.overview) && saved.overview.view!=="day")overview=saved.overview;
   } catch(e){}
+  var query=new URLSearchParams(location.search);
+  if(query.has("date")){
+    var requested={date:query.get("date"),view:query.get("view")||"day",program:query.get("program")||""};
+    if(validPosition(requested)){state.date=requested.date;state.view=requested.view;state.program=requested.program;overview=null;}
+  }
   function position(){return {date:state.date,view:state.view,program:state.program};}
   function remember(){try{sessionStorage.setItem(positionKey,JSON.stringify(Object.assign(position(),{overview:overview})));}catch(e){}}
   function contextEvents(day,program){
@@ -90,6 +95,11 @@
   function studentRow(student){
     var row=document.createElement("div");row.className="student";
     var label=document.createElement("div");label.className="student-name";label.textContent=student.name;
+    if(!student.legacy_trial && (!student.visit_id || student.student_id)){
+      var profile=document.createElement("a");profile.className="student-profile-link";profile.textContent="Profile & history";
+      profile.href="/tools/students/?student="+encodeURIComponent(student.student_id||student.id)+"&school_year="+LuanaYear.current(state.date)+"&date="+state.date;
+      label.appendChild(profile);
+    }
     if(tag(student)){var badge=document.createElement("span");badge.className="guest-tag";badge.textContent=tag(student);label.appendChild(badge);}
     if(student.notes){var notes=document.createElement("small");notes.className="visit-notes";notes.textContent=student.notes;label.appendChild(notes);}
     if(student.allergies){var alert=document.createElement("small");alert.className="visit-notes";alert.textContent="Allergy: "+student.allergies;label.appendChild(alert);}
@@ -104,6 +114,19 @@
   function renderPeriod(){
     $("dayCount").textContent=state.view==="week"?"Week at a glance":"Month at a glance";
     var wrap=$("planner");wrap.innerHTML="";
+    if(!state.program){
+      var comparison=document.createElement("section");comparison.className="class-comparison";
+      comparison.innerHTML='<h2>All classes at a glance</h2><p>Expected students by date. Select a count to open that class.</p>';
+      var scroll=document.createElement("div");scroll.className="comparison-scroll";scroll.tabIndex=0;scroll.setAttribute("role","region");scroll.setAttribute("aria-label","Expected attendance comparison");
+      var table=document.createElement("table");
+      table.innerHTML='<caption>'+esc($("periodLabel").textContent)+'</caption><thead><tr><th scope="col">Class</th>'+state.days.map(function(day){return '<th scope="col">'+esc(day.date.slice(5))+'</th>';}).join("")+'</tr></thead>';
+      var body=document.createElement("tbody");
+      CLASSES.forEach(function(program){var row=document.createElement("tr");row.innerHTML='<th scope="row">'+esc(program)+'</th>';
+        state.days.forEach(function(day){var cell=document.createElement("td"),count=planned(group(day,program)),closed=contextEvents(day,program).some(function(e){return e.event_type==="closure";});
+          var b=button(String(count)+(closed?" · Closed":""),function(){openDay(day.date,program);},"comparison-count");
+          b.setAttribute("aria-label",program+", "+day.date+", "+count+" expected"+(closed?", closed":""));cell.appendChild(b);row.appendChild(cell);});body.appendChild(row);});
+      table.appendChild(body);scroll.appendChild(table);comparison.appendChild(scroll);wrap.appendChild(comparison);
+    }
     classes().forEach(function(program){
       var section=document.createElement("section");section.className="planner-class";
       var heading=document.createElement("h2");heading.className="class-name";heading.textContent=program;section.appendChild(heading);

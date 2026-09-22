@@ -122,7 +122,7 @@ export function shapeDay(ymd, studentsRes, marksRes, trialsRes, eventsRes, theme
 
     visits.filter(visit => visit.program === program).forEach(visit => {
       const student = students.find(row => row.id === visit.student_id);
-      guests.push({id: visit.student_id || visit.id, visit_id:visit.id, name:student?.name || visit.name, status:visit.status, kind:visit.kind, notes:visit.notes, allergies:student?.allergies || ""});
+      guests.push({id: visit.student_id || visit.id, student_id:visit.student_id, visit_id:visit.id, name:student?.name || visit.name, status:visit.status, kind:visit.kind, notes:visit.notes, allergies:student?.allergies || ""});
     });
     const trials = trialsFor[program] || [];
     if (!expected.length && !guests.length && !trials.length) return;
