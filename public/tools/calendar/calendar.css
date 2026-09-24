@@ -5,6 +5,8 @@
 .seg-btn{flex:1;border:none;background:none;color:var(--muted);font-size:13.5px;font-weight:500;
   padding:7px 10px;border-radius:999px;white-space:nowrap;transition:all .12s;}
 .seg-btn.active{background:var(--card);color:var(--teal);font-weight:600;box-shadow:0 1px 2px rgba(27,77,74,0.12);}
+.seg-cal{margin:4px 0 10px;}
+.seg-cal .seg-btn{font-size:12.5px;padding-left:6px;padding-right:6px;}
 .section-help{margin:-4px 4px 10px;color:var(--muted);font-size:12.5px;line-height:1.4;}
 .seg-view{flex:1;}
 .view-bar{display:flex;align-items:center;gap:8px;padding:0 0 12px;}
@@ -49,6 +51,10 @@
 .ev-time{font-size:12.5px;font-weight:600;color:var(--muted);}
 .ev-repeat{font-size:11px;color:var(--hint);}
 .ev-title{font-size:14.5px;font-weight:600;margin:1px 0 4px;word-break:break-word;}
+.ev-chip{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;}
+.ev-lesson{display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:12.5px;color:var(--teal-mid);
+  background:var(--teal-soft);border:none;border-radius:999px;padding:5px 11px;cursor:pointer;text-align:left;}
+.ev-lesson:hover{filter:brightness(.97);}
 .ev-notes{font-size:13px;color:var(--muted);margin-top:5px;white-space:pre-wrap;word-break:break-word;}
 .ev-edit{border:none;background:none;color:var(--hint);font-size:13px;cursor:pointer;padding:2px 4px;border-radius:4px;}
 .ev-edit:hover{background:var(--sand-2);color:var(--teal-mid);}
@@ -66,6 +72,87 @@
 .agenda-view{display:flex;flex-direction:column;gap:16px;padding-bottom:40px;}
 .agenda-group{display:flex;flex-direction:column;gap:8px;}
 .agenda-date{font-size:13px;font-weight:600;color:var(--teal-mid);border-bottom:0.5px solid var(--line);padding-bottom:4px;}
+
+/* Attendance (Students) */
+.attendance{padding-bottom:40px;}
+.att-datebar{display:flex;align-items:center;gap:8px;padding:4px 0 12px;}
+.att-date{flex:1;text-align:center;}
+.seg-class{display:grid;grid-template-columns:1fr 1fr;gap:7px;background:none;padding:0;margin-bottom:14px;}
+.seg-class .seg-btn{border:0.5px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:11px;padding:13px 8px;font-size:14px;box-shadow:none;}
+.seg-class .seg-btn.active{background:var(--teal-soft);color:var(--teal-mid);border-color:var(--teal-mid);box-shadow:none;}
+.seg-attview{margin-bottom:12px;}
+.att-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+
+/* Week attendance overview */
+.week-att-day{border:0.5px solid var(--line);border-radius:var(--radius-sm);background:var(--card);padding:9px 11px;margin-bottom:10px;}
+.week-att-day.is-today{border-color:var(--teal-mid);}
+.week-att-head{font-size:13px;font-weight:600;color:var(--teal);margin-bottom:7px;}
+.week-att-day .roster-row{background:var(--sand);margin-top:6px;}
+.week-att-day .week-none{margin:0;color:var(--hint);font-size:13px;}
+
+/* Whole-school overview grid */
+.overview{overflow-x:auto;padding-bottom:40px;}
+.ov-grid{display:grid;gap:5px;min-width:max-content;}
+.ov-colhead{font-size:12px;font-weight:700;color:var(--teal);text-align:center;padding:5px 2px;}
+.ov-rowhead{font-size:11.5px;font-weight:600;color:var(--muted);display:flex;align-items:center;padding-right:4px;}
+.ov-cell{background:var(--card);border:0.5px solid var(--line);border-radius:8px;padding:6px;
+  min-height:40px;display:flex;flex-direction:column;gap:2px;}
+.ov-count{font-size:10px;font-weight:700;color:var(--teal-mid);}
+.ov-name{font-size:11px;color:var(--ink);line-height:1.25;word-break:break-word;}
+.ov-absent{text-decoration:line-through;color:var(--hint);}
+.ov-makeup{color:#3D2B8E;}
+.ov-trial{color:#C0392B;font-weight:600;}
+.ov-empty{color:var(--hint);text-align:center;font-size:13px;}
+.ov-total-head{font-weight:700;color:var(--teal);align-items:center;}
+.ov-total{background:var(--teal-soft);border:0.5px solid var(--line);border-radius:8px;
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--teal-mid);}
+.att-summary{font-size:13px;color:var(--muted);font-weight:500;}
+.link-btn{background:none;border:none;color:var(--teal-mid);font-size:13px;cursor:pointer;padding:2px;text-decoration:underline;}
+.roster{display:flex;flex-direction:column;gap:7px;}
+.roster-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--card);border:none;border-radius:var(--radius-sm);padding:10px 13px;box-shadow:var(--shadow);}
+.roster-name{font-size:14.5px;font-weight:500;min-width:0;word-break:break-word;}
+.att-btns{display:flex;gap:5px;flex-shrink:0;}
+.att-btn{width:40px;height:40px;border-radius:9px;border:0.5px solid var(--line);
+  background:var(--sand);color:var(--muted);font-size:14px;font-weight:700;}
+.att-btn.att-present.active{background:#0F6E56;border-color:#0F6E56;color:#fff;}
+.att-btn.att-absent.active{background:#C0392B;border-color:#C0392B;color:#fff;}
+.att-btn.att-late.active{background:#D4A24C;border-color:#D4A24C;color:#fff;}
+
+/* Trials & Makeups */
+.guest-divider{font-size:11px;font-weight:600;color:var(--hint);letter-spacing:.05em;text-transform:uppercase;padding:8px 0 2px;}
+.guest-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:999px;vertical-align:middle;margin-left:6px;}
+.guest-badge-trial{background:#E2EEF5;color:#1D4E6B;}
+.guest-badge-makeup{background:#EAE5F8;color:#3D2B8E;}
+.guest-badge-other{background:#F1EFE8;color:#444441;}
+.guest-remove{border:none;background:none;color:var(--hint);font-size:14px;cursor:pointer;padding:2px 8px;border-radius:4px;flex-shrink:0;}
+.guest-remove:hover{background:var(--sand-2);color:#c0392b;}
+.guest-add-row{display:flex;align-items:center;gap:6px;margin-top:10px;}
+.guest-select{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 10px;background:var(--sand);color:var(--ink);font:inherit;}
+.guest-type-select{border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 8px;background:var(--sand);color:var(--ink);font:inherit;}
+.trial-add-row{display:flex;align-items:center;gap:6px;margin-top:8px;}
+.trial-age-input{width:60px;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 8px;background:var(--sand);color:var(--ink);font:inherit;}
+
+/* Roster management modal */
+.roster-manage{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-bottom:4px;}
+.manage-row{display:flex;align-items:center;justify-content:space-between;
+  background:var(--sand);border-radius:var(--radius-sm);padding:8px 12px;font-size:14px;}
+.manage-row.manage-student{flex-direction:column;align-items:stretch;gap:7px;}
+.manage-top{display:flex;align-items:center;justify-content:space-between;}
+.manage-row .del-btn{border:none;background:none;color:var(--hint);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.manage-row .del-btn:hover{background:var(--sand-2);color:#c0392b;}
+
+/* Weekday schedule chips */
+.day-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.day-chip{border:0.5px solid var(--line);background:var(--card);color:var(--muted);
+  border-radius:8px;padding:6px 0;font-size:12px;font-weight:600;min-width:38px;text-align:center;}
+.day-chip.active{background:var(--teal-soft);color:var(--teal-mid);border-color:var(--teal-mid);}
+
+.roster-add{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;}
+#rosterAddDays{width:100%;}
+.roster-add input{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);padding:9px 12px;background:var(--sand);color:var(--ink);}
+.roster-add input:focus{outline:none;border-color:var(--teal-mid);}
 
 /* Modal form */
 .modal{position:fixed;inset:0;background:rgba(20,30,28,0.45);display:flex;align-items:flex-end;

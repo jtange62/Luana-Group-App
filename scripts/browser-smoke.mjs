@@ -62,7 +62,7 @@ try {
   await loginPage.fill("#pwInput", "test");
   await loginPage.fill("#gateName", "browser-login");
   await loginPage.click("#enterBtn");
-  await loginPage.waitForSelector("#board", { state: "visible" });
+  await loginPage.waitForSelector("#hub", { state: "visible" });
   if (!(await loginPage.evaluate(() => !!localStorage.getItem("luana_token")))) throw new Error("UI login stored no token");
   console.log("✓ login");
   await loginContext.close();
@@ -74,9 +74,8 @@ try {
   }, { authToken: token });
 
   const tools = [
-    ["", "#feed"], ["tools", "#grid"], ["today", "#register"],
-    ["calendar", "#view"], ["curriculum", "#months"],
-    ["students", "#list"], ["website", "#list"],
+    ["calendar", "#view"], ["curriculum", "#months"], ["ideas", "#feed"],
+    ["library", "#list"], ["students", "#list"], ["website", "#list"],
   ];
   for (const [tool, selector] of tools) {
     const page = await context.newPage();
@@ -85,15 +84,14 @@ try {
     page.on("response", (response) => {
       if (response.url().includes("/api/") && response.status() >= 500) failures.push(`${response.status()} ${response.url()}`);
     });
-    const path = tool === "" ? "/" : tool === "tools" ? "/tools/" : `/tools/${tool}/`;
-    const response = await page.goto(origin + path, { waitUntil: "domcontentloaded" });
+    const response = await page.goto(`${origin}/tools/${tool}/`, { waitUntil: "domcontentloaded" });
     if (!response || !response.ok()) failures.push(`page status ${response?.status()}`);
     await page.waitForSelector(selector, { state: "attached" });
     await page.waitForTimeout(300);
     failures.push(...await accessibilityFailures(page));
-    if (tool !== "" && page.url() === origin + "/") failures.push("redirected to login");
-    if (failures.length) throw new Error(`${tool || "board"}: ${failures.join("; ")}`);
-    console.log(`✓ ${tool || "board"}`);
+    if (page.url() === origin + "/") failures.push("redirected to login");
+    if (failures.length) throw new Error(`${tool}: ${failures.join("; ")}`);
+    console.log(`✓ ${tool}`);
     await page.close();
   }
   const keyboardPage = await context.newPage();
@@ -110,12 +108,8 @@ try {
   await keyboardPage.close();
   const navigationPage = await context.newPage();
   await navigationPage.goto(origin + "/", { waitUntil: "domcontentloaded" });
-  await navigationPage.click('a[href="/tools/"]');
-  await navigationPage.waitForURL("**/tools/");
-  await navigationPage.click('a[href="/tools/today/"]');
-  await navigationPage.waitForURL("**/tools/today/");
-  await navigationPage.click("a.back-btn");
-  await navigationPage.waitForURL("**/tools/");
+  await navigationPage.click('a[href="/tools/ideas/"]');
+  await navigationPage.waitForURL("**/tools/ideas/");
   await navigationPage.click("a.back-btn");
   await navigationPage.waitForURL(origin + "/");
   console.log("✓ back navigation");

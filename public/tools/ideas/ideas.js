@@ -1,11 +1,8 @@
-// The board — the app's front door.
-//
-// Capture is one box on purpose: 28 posts went in that way while the curriculum
-// tool, which asks for program and month and week before it will take anything,
-// stayed empty. So the box stays frictionless and the structure comes after, by
-// filing a post into the curriculum once it is clear where it belongs.
 (function () {
   "use strict";
+
+  // Bounce to hub login if not authenticated.
+  if (!LuanaAuth.requireLogin()) return;
 
   var CATS = [
     { id: "curriculum", label: "curriculum", color: "#0F6E56", soft: "#E1F5EE", dark: "#085041" },
@@ -14,57 +11,13 @@
     { id: "general",    label: "general",    color: "#5F5E5A", soft: "#F1EFE8", dark: "#444441" }
   ];
 
-  // Fields each kind of curriculum row will accept — mirrors post-place.js.
-  var PLACE_FIELDS = {
-    theme: ["vocab", "activities", "phonics", "song", "notes"],
-    week: ["activities", "phonics", "questions", "notes"],
-    day: ["vocab", "activities"]
-  };
-  var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-  var state = {
-    activeCat: "unfiled", posts: [], nextCursor: null, hasMore: false,
-    targets: null,     // curriculum destinations, loaded when first needed
-    placing: null      // the post being filed
-  };
-  var me = LuanaAuth.name();  // reassigned after login on this page
+  var state = { activeCat: "all", posts: [], nextCursor: null, hasMore: false };
+  var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
   var isImage = LuanaUtils.isImage, firstUrl = LuanaUtils.firstUrl, linkify = LuanaUtils.linkify;
 
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
-
-  // ---------- Login gate ----------
-  function showBoard() {
-    $("gate").style.display = "none";
-    $("board").hidden = false;
-    LuanaUtils.ping("board");
-    $("postingAs").textContent = "Posting as " + me;
-    renderTabs();
-    loadPosts(true);
-  }
-
-  function enter() {
-    var pw = $("pwInput").value.trim();
-    var name = $("gateName").value.trim();
-    var err = $("gateError");
-    err.hidden = true;
-    if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
-    $("enterBtn").disabled = true;
-    LuanaAuth.login(pw, name).then(function (res) {
-      $("enterBtn").disabled = false;
-      if (!res.ok) {
-        err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error;
-        err.hidden = false; return;
-      }
-      me = LuanaAuth.name();
-      showBoard();
-    }).catch(function () {
-      $("enterBtn").disabled = false;
-      err.textContent = "Couldn't reach the server. Try again.";
-      err.hidden = false;
-    });
-  }
 
   function openFile(fileId) {
     var t = LuanaAuth.token();
@@ -146,25 +99,11 @@
   }
 
   function syncComposer() {
-    $("catSelect").hidden = !(state.activeCat === "all" || state.activeCat === "unfiled");
-  }
-
-  function unfiledCount() {
-    return state.posts.filter(function (p) { return !p.placed_at; }).length;
+    $("catSelect").hidden = state.activeCat !== "all";
   }
 
   function renderTabs() {
     var nav = $("tabs"); nav.innerHTML = "";
-
-    // The inbox: what has been jotted down but not yet put anywhere.
-    var unfiled = state.activeCat === "unfiled";
-    var inbox = document.createElement("button");
-    inbox.className = "tab tab-inbox" + (unfiled ? " active" : "");
-    var n = unfiledCount();
-    inbox.textContent = n ? "Not filed (" + n + ")" : "Not filed";
-    inbox.onclick = function () { state.activeCat = "unfiled"; syncComposer(); renderTabs(); renderFeed(); };
-    nav.appendChild(inbox);
-
     var allActive = state.activeCat === "all";
     var allBtn = document.createElement("button");
     allBtn.className = "tab" + (allActive ? " active" : "");
@@ -188,18 +127,10 @@
   function renderFeed() {
     var feed = $("feed");
     var items = state.posts
-      .filter(function (p) {
-        if (state.activeCat === "unfiled") return !p.placed_at;
-        return state.activeCat === "all" || p.category === state.activeCat;
-      })
+      .filter(function (p) { return state.activeCat === "all" || p.category === state.activeCat; })
       .sort(function (a, b) { return b.created_at - a.created_at; });
     feed.innerHTML = "";
     $("empty").hidden = items.length > 0;
-    if (!items.length) {
-      $("empty").querySelector("p").textContent = state.activeCat === "unfiled"
-        ? "Everything has been filed. Anything new you jot down shows up here."
-        : "Nothing here yet — be the first to post.";
-    }
     items.forEach(function (p) { feed.appendChild(card(p)); });
   }
 
@@ -243,15 +174,6 @@
       preview +
       picsHtml +
       (filesHtml ? '<div class="idea-files">' + filesHtml + "</div>" : "") +
-      '<div class="item-list"></div>' +
-      '<div class="card-actions">' +
-        (p.placed_at
-          ? '<span class="filed-pill" title="Already added to the curriculum">✓ ' + esc(p.placed_note || "filed") + "</span>" +
-            '<button class="unfile-btn">put back</button>'
-          : '<button class="place-btn">📚 Send to curriculum</button>') +
-        '<button class="additem-btn">☑ Add a list</button>' +
-      "</div>" +
-      '<div class="item-add"><input type="text" placeholder="one per line, or paste a list…" /><button>Add</button></div>' +
       '<div class="comments"></div>';
 
     el.querySelectorAll(".photo").forEach(function (btn) { loadThumb(btn, btn.getAttribute("data-fid")); });
@@ -296,66 +218,6 @@
       };
     }
 
-    // Checklist — the supplies to gather, the steps to build something.
-    var itemWrap = el.querySelector(".item-list");
-    (p.items || []).forEach(function (it) {
-      var row = document.createElement("label");
-      row.className = "item" + (it.done ? " is-done" : "");
-      var box = document.createElement("input");
-      box.type = "checkbox";
-      box.checked = !!it.done;
-      box.onchange = function () {
-        row.classList.toggle("is-done", box.checked);
-        LuanaAuth.api("post-item", { method: "PATCH", body: JSON.stringify({ id: it.id, done: box.checked }) })
-          .catch(function (e) {
-            box.checked = !box.checked;
-            row.classList.toggle("is-done", box.checked);
-            LuanaUtils.reportError(e, "Couldn't save that tick.");
-          });
-      };
-      var text = document.createElement("span");
-      text.className = "item-text";
-      text.textContent = it.text;
-      var x = document.createElement("button");
-      x.type = "button";
-      x.className = "item-x";
-      x.textContent = "✕";
-      x.setAttribute("aria-label", "Remove " + it.text);
-      x.onclick = function () {
-        LuanaAuth.api("post-item", { method: "DELETE", body: JSON.stringify({ id: it.id }) })
-          .then(function () { return loadPosts(true); })
-          .catch(function (e) { LuanaUtils.reportError(e, "Couldn't remove that item."); });
-      };
-      row.appendChild(box); row.appendChild(text); row.appendChild(x);
-      itemWrap.appendChild(row);
-    });
-
-    var addBox = el.querySelector(".item-add");
-    el.querySelector(".additem-btn").onclick = function () {
-      addBox.classList.toggle("open");
-      if (addBox.classList.contains("open")) addBox.querySelector("input").focus();
-    };
-    function addItems() {
-      var input = addBox.querySelector("input");
-      var txt = input.value.trim();
-      if (!txt) return;
-      input.disabled = true;
-      LuanaAuth.api("post-item", { method: "POST", body: JSON.stringify({ post_id: p.id, text: txt }) })
-        .then(function () { return loadPosts(true); })
-        .catch(function (e) { input.disabled = false; LuanaUtils.reportError(e, "Couldn't add that."); });
-    }
-    addBox.querySelector("button").onclick = addItems;
-    addBox.querySelector("input").addEventListener("keydown", function (e) { if (e.key === "Enter") addItems(); });
-
-    var placeBtn = el.querySelector(".place-btn");
-    if (placeBtn) placeBtn.onclick = function () { openPlace(p); };
-    var unfileBtn = el.querySelector(".unfile-btn");
-    if (unfileBtn) unfileBtn.onclick = function () {
-      LuanaAuth.api("post-place", { method: "DELETE", body: JSON.stringify({ post_id: p.id }) })
-        .then(function () { return loadPosts(true); })
-        .catch(function (e) { LuanaUtils.reportError(e, "Couldn't move that back."); });
-    };
-
     var cwrap = el.querySelector(".comments");
     (p.comments || []).forEach(function (cm) {
       var d = document.createElement("div");
@@ -385,86 +247,6 @@
     return el;
   }
 
-  // ---------- Send an idea into the curriculum ----------
-  function targetLabel(theme, week, day) {
-    var month = MONTHS_SHORT[parseInt(theme.month, 10) - 1] || "";
-    var head = theme.program + (month ? " · " + month : "") + " — " + theme.title;
-    if (day) return "      ↳ " + (day.date || "") + (day.subtheme ? " " + day.subtheme : "");
-    if (week) return "   ↳ Week " + week.week_no + (week.focus ? " — " + week.focus : "");
-    return head;
-  }
-
-  function fillTargets() {
-    var sel = $("placeTarget");
-    sel.innerHTML = "";
-    (state.targets || []).forEach(function (theme) {
-      sel.appendChild(new Option(targetLabel(theme), "theme:" + theme.id));
-      (theme.weeks || []).forEach(function (week) {
-        sel.appendChild(new Option(targetLabel(theme, week), "week:" + week.id));
-        (week.days || []).forEach(function (day) {
-          sel.appendChild(new Option(targetLabel(theme, week, day), "day:" + day.id));
-        });
-      });
-    });
-    fillFields();
-  }
-
-  function fillFields() {
-    var value = $("placeTarget").value || "";
-    var type = value.split(":")[0];
-    var sel = $("placeField");
-    sel.innerHTML = "";
-    (PLACE_FIELDS[type] || []).forEach(function (f) { sel.appendChild(new Option(f, f)); });
-  }
-
-  function openPlace(post) {
-    state.placing = post;
-    $("placeMsg").textContent = "";
-    $("placeGo").disabled = false;
-    $("placePreview").textContent = post.text.length > 120 ? post.text.slice(0, 120) + "…" : post.text;
-    $("placeModal").hidden = false;
-
-    if (state.targets) { fillTargets(); return; }
-    $("placeTarget").innerHTML = "<option>Loading…</option>";
-    LuanaAuth.api("curriculum-targets").then(function (res) {
-      state.targets = res.themes || [];
-      fillTargets();
-      if (!state.targets.length) {
-        $("placeMsg").textContent = "No curriculum themes yet — set one up first.";
-        $("placeGo").disabled = true;
-      }
-    }).catch(function (e) {
-      $("placeMsg").textContent = "Couldn't load the curriculum.";
-      $("placeGo").disabled = true;
-      LuanaUtils.reportError(e, "Couldn't load the curriculum.");
-    });
-  }
-
-  function closePlace() { $("placeModal").hidden = true; state.placing = null; }
-
-  function doPlace() {
-    var post = state.placing;
-    var value = $("placeTarget").value || "";
-    var parts = value.split(":");
-    var field = $("placeField").value;
-    if (!post || parts.length !== 2 || !field) return;
-
-    var label = $("placeTarget").selectedOptions[0].textContent.replace(/^\s*↳\s*/, "").trim() + " · " + field;
-    $("placeGo").disabled = true;
-    LuanaAuth.api("post-place", { method: "POST", body: JSON.stringify({
-      post_id: post.id, type: parts[0], target_id: parts[1], field: field, label: label
-    }) })
-      .then(function () {
-        closePlace();
-        LuanaUtils.reportSuccess("Added to " + label + ".");
-        return loadPosts(true);
-      })
-      .catch(function (e) {
-        $("placeGo").disabled = false;
-        $("placeMsg").textContent = (e && e.message) || "Couldn't file that.";
-      });
-  }
-
   function normalizePosts(posts) {
     return posts.map(function (p) {
       p.created_at = Number(p.created_at);
@@ -491,7 +273,6 @@
         state.hasMore = !!res.has_more;
       }
       pruneThumbCache(state.posts);
-      renderTabs();   // the inbox tab carries a count, so it moves with the data
       renderFeed();
       $("loadMore").hidden = !state.hasMore;
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load ideas."); });
@@ -539,19 +320,11 @@
       .catch(function () { $("postBtn").disabled = false; });
   }
 
+  $("postingAs").textContent = "Posting as " + me;
   $("postBtn").onclick = post;
   $("loadMore").onclick = loadOlder;
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
-  $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
-
-  $("enterBtn").onclick = enter;
-  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("gateName").focus(); });
-  $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
-
-  $("placeCancel").onclick = closePlace;
-  $("placeGo").onclick = doPlace;
-  $("placeTarget").onchange = fillFields;
-  $("placeModal").onclick = function (e) { if (e.target === $("placeModal")) closePlace(); };
+  $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
   setInterval(function () {
     if (!LuanaAuth.isLoggedIn() || document.hidden) return;
     // Don't re-render (and wipe) a reply or idea someone is mid-typing,
@@ -597,6 +370,7 @@
     if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
   });
 
+  renderTabs();
   syncComposer();
-  if (LuanaAuth.isLoggedIn()) showBoard();
+  loadPosts(true);
 })();

@@ -2,7 +2,6 @@
   "use strict";
 
   if (!LuanaAuth.requireLogin()) return;
-  LuanaUtils.ping("students");
 
   var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   // Weekday chips in school order (Mon→Sun); value is JS getDay() index.

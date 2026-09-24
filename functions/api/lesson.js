@@ -39,8 +39,6 @@ export async function onRequestPost({ request, env }) {
   const activities = clean(form.get("activities"), 4000) || null;
   const phonics = clean(form.get("phonics"), 2000) || null;
   const song = clean(form.get("song"), 500) || null;
-  // "theme" rows belong to Curriculum, "lesson" rows to the Library (migration 018).
-  const kind = clean(form.get("kind"), 10) === "theme" ? "theme" : "lesson";
 
   const files = form.getAll("files").filter((f) => f && typeof f === "object" && f.size > 0);
   if (files.length > MAX_FILES) return json({ error: "Too many files (max " + MAX_FILES + ")" }, 400);
@@ -52,8 +50,8 @@ export async function onRequestPost({ request, env }) {
   const now = Date.now();
 
   await env.DB.prepare(
-    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, kind, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"
-  ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, kind, now).run();
+    "INSERT INTO lessons (id, title, author, program, month, notes, link_url, tags, vocab, activities, phonics, song, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)"
+  ).bind(lessonId, title, author, program, month, notes, link, tags, vocab, activities, phonics, song, now).run();
 
   // Upload sequentially (one file buffered at a time), insert rows in one batch.
   const inserts = [];

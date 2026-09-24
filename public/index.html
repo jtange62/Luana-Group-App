@@ -16,7 +16,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/shared.css" />
-<link rel="stylesheet" href="/board.css" />
 </head>
 <body>
 <div id="app">
@@ -36,8 +35,8 @@
     </div>
   </main>
 
-  <!-- The board: capture anything, then file it where it belongs -->
-  <div id="board" hidden>
+  <!-- Hub home (hidden until authed) -->
+  <div id="hub" hidden>
     <header class="topbar">
       <div class="topbar-inner">
         <div class="brand">
@@ -46,74 +45,81 @@
         </div>
         <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
       </div>
-      <p class="brand-tag">Jot it down now, sort it out later</p>
+      <p class="brand-tag">Pick a tool to get started</p>
     </header>
 
-    <section class="composer">
-      <textarea id="ideaInput" rows="2" aria-label="Your idea" placeholder="Write your idea here…"></textarea>
-      <div id="ideaFileRow" class="file-row">
-        <label class="file-label">📎 Attach
-          <input id="ideaFiles" type="file" multiple hidden />
-        </label>
-        <span id="ideaFileList" class="file-chosen"></span>
-      </div>
-      <div class="composer-row">
-        <span id="postingAs" class="posting-as"></span>
-        <select id="catSelect" class="cat-select" aria-label="Category">
-          <option value="curriculum">curriculum</option>
-          <option value="events">events</option>
-          <option value="supplies">supplies</option>
-          <option value="general">general</option>
-        </select>
-        <button id="postBtn" class="btn-primary btn-sm">Post</button>
-      </div>
-    </section>
+    <main class="tool-grid">
+      <a class="tool-tile" href="/tools/ideas/" style="--tile:#C9EFD8;--tile-ink:#1C6E4A;">
+        <span class="tile-icon">💡</span>
+        <span class="tile-body">
+          <span class="tile-name">Idea board</span>
+          <span class="tile-desc">Share ideas, plan events, ask for supplies</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
 
-    <nav id="tabs" class="tabs" aria-label="Categories"></nav>
+      <a class="tool-tile" href="/tools/calendar/" style="--tile:#FBE6B0;--tile-ink:#8A5A12;">
+        <span class="tile-icon">📅</span>
+        <span class="tile-body">
+          <span class="tile-name">Calendar &amp; schedule</span>
+          <span class="tile-desc">Shared events and rota</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
 
-    <main id="feed" class="feed" aria-live="polite"></main>
-    <div id="empty" class="empty" hidden>
-      <span class="empty-icon">✎</span>
-      <p>Nothing here yet — be the first to post.</p>
-    </div>
-    <div id="loading" class="loading">Loading…</div>
-    <button id="loadMore" class="load-more" hidden>Load older ideas</button>
+      <a class="tool-tile" href="/tools/students/" style="--tile:#F8CEDA;--tile-ink:#A33F63;">
+        <span class="tile-icon">👧</span>
+        <span class="tile-body">
+          <span class="tile-name">Student roster</span>
+          <span class="tile-desc">Profiles, contacts &amp; allergies</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
 
-    <footer class="board-footer">
-      <a class="more-link" href="/tools/">All tools <span aria-hidden="true">→</span></a>
+      <a class="tool-tile" href="/tools/curriculum/" style="--tile:#FBD7C4;--tile-ink:#B4551F;">
+        <span class="tile-icon">🍎</span>
+        <span class="tile-body">
+          <span class="tile-name">Curriculum</span>
+          <span class="tile-desc">Monthly themes, vocab, activities &amp; songs</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
+
+      <a class="tool-tile" href="/tools/library/" style="--tile:#DCCFF3;--tile-ink:#5A3FA0;">
+        <span class="tile-icon">📚</span>
+        <span class="tile-body">
+          <span class="tile-name">Lesson library</span>
+          <span class="tile-desc">Resources, files &amp; lesson plans</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
+
+      <a class="tool-tile" href="/tools/website/" style="--tile:#C3DDF3;--tile-ink:#225E86;">
+        <span class="tile-icon">🌐</span>
+        <span class="tile-body">
+          <span class="tile-name">Website inbox</span>
+          <span class="tile-desc">Send photos &amp; ideas for the school site</span>
+        </span>
+        <span class="tile-arrow">→</span>
+      </a>
+
+    </main>
+
+    <footer class="hub-footer">
+      <p class="footer-label">Shared files</p>
+      <a class="tool-tile drive-tile" href="https://drive.google.com/drive/folders/1hLgQRe9pWQ6aowrOrcql1UEGZ0YU5PCH?usp=drive_link" target="_blank" rel="noopener noreferrer">
+        <span class="tile-icon" style="background:#E1F5EE;color:#085041;">📁</span>
+        <span class="tile-body">
+          <span class="tile-name">Our Google Drive</span>
+          <span class="tile-desc">Open the main shared folder</span>
+        </span>
+        <span class="tile-arrow">↗</span>
+      </a>
     </footer>
   </div>
 
-  <!-- Send an idea into the curriculum -->
-  <div id="placeModal" class="modal" hidden>
-    <div class="modal-card">
-      <p id="placeHeading" class="form-heading">Send to curriculum</p>
-      <p id="placePreview" class="place-preview"></p>
-      <label class="field-label" for="placeTarget">Where does this go?</label>
-      <select id="placeTarget" class="form-select"></select>
-      <label class="field-label" for="placeField">Which part?</label>
-      <select id="placeField" class="form-select"></select>
-      <p class="place-hint">It gets added to whatever is already there — nothing is overwritten.</p>
-      <div class="modal-actions">
-        <span id="placeMsg" class="form-msg"></span>
-        <button id="placeCancel" class="btn-ghost">Cancel</button>
-        <button id="placeGo" class="btn-primary btn-sm">Send</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Photo lightbox -->
-  <div id="lightbox" class="lightbox" hidden>
-    <button id="lbClose" class="lb-close" aria-label="Close">✕</button>
-    <img id="lbImg" class="lb-img" src="" alt="Photo" />
-    <button id="lbPrev" class="lb-nav lb-prev" aria-label="Previous">‹</button>
-    <button id="lbNext" class="lb-nav lb-next" aria-label="Next">›</button>
-    <div id="lbCounter" class="lb-counter"></div>
-  </div>
 </div>
-
 <script src="/shared-auth.js"></script>
-<script src="/shared-utils.js"></script>
-<script src="/board.js"></script>
+<script src="/hub.js"></script>
 </body>
 </html>
