@@ -221,16 +221,3 @@ weekdays. It is off until both secrets exist, and exits clean without them:
   secret and a GitHub Actions secret, exactly like `HEALTH_CHECK_TOKEN`.
 - `SUMMARY_WEBHOOK_URL` — a GitHub Actions secret. The workflow POSTs
   `{"text": "..."}`, which Slack-compatible incoming webhooks accept as-is.
-
-
-### School years (migration 023)
-
-For an existing database, apply migrations/023_school_year.sql before releasing the school-year UI. Fresh installations already include it in schema.sql. The migration preserves IDs, attendance, files and content, assigning the existing undated roster and themes to 2026年度 (April 2026–March 2027).
-
-Plans and student registrations are scoped by school_year (the April start year). Today derives the year from the selected date; previously recorded attendance still references its original student registration. The student source_student_id links copied registrations across years, while class details and profiles remain independent annual snapshots.
-
-Plans and rosters can each be copied to an empty next year. Copies are transactional and protected against repeat requests. Plan attachments get independent R2 objects; reflections and attendance are not copied. Dated curriculum weeks/days shift to the same calendar dates in the next year (February 29 clamps to February 28), so staff should review weekdays. Summer roster copies clear selected week numbers; configure the new year's summer dates in Students → Summer School before enrolling students in weeks.
-
-Calendar → Event → School break / closure records a dated closure for all classes or one class. Today excludes regular scheduled attendance for those dates but preserves explicit visits and recorded attendance. Japanese public holidays remain reference dates and do not automatically close classes.
-
-Today → School-year summary reports recorded attendance and bookings within April–March; it is not an attendance-rate calculation and does not infer missing marks.

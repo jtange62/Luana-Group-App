@@ -1,29 +1,17 @@
-var SUMMER_WEEKS = [];
-
 (function () {
   "use strict";
 
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("students");
 
-  var PROGRAMS = LuanaUtils.PROGRAMS;
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   // Weekday chips in school order (Mon→Sun); value is JS getDay() index.
   var WEEKDAY_CHIPS = [["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]];
   var WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   var $ = function (id) { return document.getElementById(id); };
-  var year = LuanaYear.current();
   var state = { students: [], program: "All", search: "", editingId: null, newDays: [], newSSWeeks: [], newSSType: null };
   var esc = LuanaUtils.esc;
-  var params=new URLSearchParams(location.search),detailRequest=0,pendingStudent=params.get("student");
-  var referenceDate=params.get("date")||new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(referenceDate))referenceDate=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
-  try{var saved=JSON.parse(sessionStorage.getItem("luana_roster_position"));if(saved){if(Number.isInteger(saved.year)&&saved.year>=2025&&saved.year<=2100)year=saved.year;if(["All"].concat(PROGRAMS).includes(saved.program))state.program=saved.program;if(typeof saved.search==="string")state.search=saved.search;}}catch(e){}
-  if(/^20\d{2}$/.test(params.get("school_year")||""))year=Number(params.get("school_year"));
-  $("search").value=state.search;
-  function renderSummerChips(){document.querySelector("#ssFields .day-chips").innerHTML = SUMMER_WEEKS.map(function (week) {
-    return '<button type="button" class="day-chip" data-week="' + esc(week.id) + '">' + esc(week.label) + '</button>';
-  }).join("");}
 
   function daysArr(d) { return d ? String(d).split(",").map(Number).filter(function (n) { return n >= 0 && n <= 6; }) : []; }
 
@@ -45,7 +33,7 @@ var SUMMER_WEEKS = [];
     if (!birthday) return "";
     var p = String(birthday).split("-");
     if (p.length !== 3) return birthday;
-    var MONTHS = LuanaUtils.MONTHS_SHORT;
+    var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     return MONTHS[+p[1] - 1] + " " + (+p[2]) + ", " + p[0];
   }
 
@@ -80,9 +68,7 @@ var SUMMER_WEEKS = [];
   }
 
   function render() {
-    try{sessionStorage.setItem("luana_roster_position",JSON.stringify({year:year,program:state.program,search:state.search}));}catch(e){}
     renderTabs();
-    $("summerSettings").hidden=state.program!=="Summer School";
     var list = $("list"); list.innerHTML = "";
     var shown = state.students.filter(matches);
 
@@ -100,9 +86,7 @@ var SUMMER_WEEKS = [];
           '<span class="stu-name">' + esc(s.name) + "</span>" +
           '<span class="stu-meta">' + esc(meta) + "</span>" +
         "</span>" +
-        // A bare ⚠️ carried the app's one safety-critical signal with no label,
-        // and screen readers announce it as "warning sign". Say what it means.
-        (s.allergies ? '<span class="stu-flag">Allergy</span>' : "") +
+        (s.allergies ? '<span class="stu-flag" title="Has allergy / medical note">⚠️</span>' : "") +
         '<span class="stu-arrow">›</span>';
       row.onclick = function () { openDetail(s); };
       list.appendChild(row);
@@ -133,27 +117,19 @@ var SUMMER_WEEKS = [];
       '<span class="d-value">' + esc(s.allergies) + "</span></div>";
     html += detailRow("Notes", s.notes);
     if (s.program === "Summer School") {
-      var SS_DATES = {};
-      SUMMER_WEEKS.forEach(function (week) { SS_DATES[week.id] = week.label; });
+      var SS_DATES = { "1": "Week 1 · 7/27–7/31", "2": "Week 2 · 8/3–8/7", "3": "Week 3 · 8/17–8/21" };
       var weeksLabel = s.ss_weeks
         ? s.ss_weeks.split(",").map(function (w) { return SS_DATES[w] || ("Week " + w); }).join("\n")
         : "—";
       html += detailRow("Weeks attending", weeksLabel);
-      if (s.ss_type) html += detailRow("Student type", s.ss_type === "internal" ? "Internal" : "External");
+      if (s.ss_type) html += detailRow("Student type", s.ss_type === "internal" ? "内部生 — Internal" : "外部生 — External");
     }
     html += detailRow("Photo consent", s.photo_ok ? "Yes — OK to post photos" : "No — do not post photos");
     $("detailBody").innerHTML = html;
     $("detail").hidden = false;
-    var request=++detailRequest,activity=document.createElement("section");activity.className="student-activity";activity.setAttribute("aria-live","polite");
-    activity.textContent="Loading attendance and visits…";$("detailBody").appendChild(activity);
-    LuanaAuth.api("student-history?id="+encodeURIComponent(s.id)+"&date="+referenceDate).then(function(data){
-      if(request!==detailRequest)return;
-      function list(rows){return rows.length?'<ul>'+rows.map(function(row){return '<li><a href="/tools/today/?date='+encodeURIComponent(row.date)+'&view=day&program='+encodeURIComponent(row.program||s.program)+'">'+esc(row.date)+'</a> · '+esc(row.kind)+' · '+esc(row.status||"Booked")+(row.marked_by?' · '+esc(row.marked_by):"")+'</li>';}).join("")+'</ul>':'<p>None recorded.</p>';}
-      activity.innerHTML='<p><a href="/tools/today/">Return to Student Calendar</a></p><h3>Upcoming booked visits</h3><p>From '+esc(referenceDate)+' · up to 30 visits. Regular class days are shown above.</p>'+list(data.visits)+'<h3>Recent attendance</h3><p>Latest 30 marks through '+esc(referenceDate)+'. Unmarked days are not absences.</p>'+list(data.history);
-    }).catch(function(){if(request===detailRequest)activity.textContent="Could not load attendance and visits. Reopen the profile to retry.";});
   }
 
-  function closeDetail() { detailRequest++;$("detail").hidden = true; }
+  function closeDetail() { $("detail").hidden = true; }
 
   // ---------- Summer school fields ----------
   function syncSSFields() {
@@ -254,7 +230,6 @@ var SUMMER_WEEKS = [];
 
     var payload = {
       id: state.editingId || undefined,
-      school_year: year,
       name: name,
       program: $("fProgram").value,
       days: state.newDays.join(","),
@@ -294,30 +269,13 @@ var SUMMER_WEEKS = [];
   // ---------- Data ----------
   function load() {
     $("loading").style.display = "block";
-    var selectedYear=year;
-    return Promise.all([LuanaAuth.api("students?school_year="+year),LuanaAuth.api("summer-weeks?school_year="+year)]).then(function (results) {
-      if(selectedYear!==year)return;
-      var res=results[0];
-      SUMMER_WEEKS=results[1].weeks.map(function(w){return {id:w.id,start:w.start,end:w.end,label:"Week "+w.id+" · "+w.start+" – "+w.end};});
-      renderSummerChips();
-      $("summerDates").innerHTML="";SUMMER_WEEKS.forEach(addSummerRow);
+    return LuanaAuth.api("students").then(function (res) {
       $("loading").style.display = "none";
       state.students = res.students || [];
       render();
-      if(pendingStudent){var selected=state.students.find(function(s){return s.id===pendingStudent;});pendingStudent=null;if(selected)openDetail(selected);else LuanaUtils.reportError(null,"Student profile is not active in this school year.");}
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load students."); });
   }
 
-  function addSummerRow(week){
-    var row=document.createElement("div");row.className="summer-date-row";row.dataset.week=week.id;
-    row.innerHTML='<b>Week '+esc(week.id)+'</b><label>Start<input class="summer-start" type="date" value="'+esc(week.start||'')+'" /></label><label>End<input class="summer-end" type="date" value="'+esc(week.end||'')+'" /></label><button type="button" class="btn-ghost">Remove week '+esc(week.id)+'</button>';
-    row.querySelector("button").onclick=function(){row.remove();};$("summerDates").appendChild(row);
-  }
-  $("addSummerWeek").onclick=function(){var ids=Array.from($("summerDates").children).map(function(row){return Number(row.dataset.week);});for(var i=1;i<=12;i++){if(ids.indexOf(i)===-1){addSummerRow({id:String(i)});return;}}};
-  $("saveSummer").onclick=function(){
-    var weeks=Array.from($("summerDates").children).map(function(row){return {id:row.dataset.week,start:row.querySelector(".summer-start").value,end:row.querySelector(".summer-end").value};});
-    this.disabled=true;LuanaAuth.api("summer-weeks",{method:"POST",body:JSON.stringify({school_year:year,weeks:weeks})}).then(function(){LuanaUtils.reportSuccess("Summer dates saved.");return load();}).catch(function(e){LuanaUtils.reportError(e,"Could not save summer dates.");}).finally(function(){$("saveSummer").disabled=false;});
-  };
   // ---------- Wire up ----------
   $("addBtn").onclick = openAdd;
   $("cancelBtn").onclick = closeModal;
@@ -334,6 +292,5 @@ var SUMMER_WEEKS = [];
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
   fillProgramSelect();
-  LuanaYear.mount($("schoolYearControl"),year,function(value){year=value;state.students=[];render();load();},"roster");
   load();
 })();

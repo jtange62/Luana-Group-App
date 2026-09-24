@@ -7,8 +7,8 @@
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
 <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-<title>Student Calendar — Luana Group App</title>
-<meta name="description" content="Student attendance and visit planning by day, week and month for Luana English School." />
+<title>Register — Luana Group App</title>
+<meta name="description" content="Daily register for Luana English School." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -19,33 +19,28 @@
 <div id="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="back-btn" href="/" aria-label="Back to previous page"><span class="back-arrow" aria-hidden="true">‹</span><span>Back</span></a>
+      <a class="back-btn" href="/" aria-label="Back">‹</a>
       <a class="brand" href="/" title="Home">
         <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
         <span class="brand-name">Luana Group App</span>
       </a>
       <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
     </div>
-    <p class="brand-tag" id="dayLabel">Student Calendar</p>
+    <p class="brand-tag" id="dayLabel">Register</p>
   </header>
+
   <main class="today-main">
-    <div class="calendar-toolbar">
-      <select id="classFilter" aria-label="Class"><option value="">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
-      <nav id="viewModes" class="view-modes" aria-label="Student calendar view"><button data-view="month" aria-pressed="true">Month</button><button data-view="week" aria-pressed="false">Week</button><button data-view="day" aria-pressed="false">Day</button></nav>
-    </div>
-    <button id="overviewBack" class="btn-ghost" hidden>Back to overview</button>
     <div class="daybar">
-      <button id="dayPrev" class="nav-btn" aria-label="Previous month">‹</button>
-      <h1 id="periodLabel" class="period-label" aria-live="polite"></h1>
-      <button id="dayNext" class="nav-btn" aria-label="Next month">›</button>
+      <button id="dayPrev" class="nav-btn" aria-label="Previous day">‹</button>
+      <p id="dayCount" class="day-count" aria-live="polite">—</p>
+      <button id="dayNext" class="nav-btn" aria-label="Next day">›</button>
+      <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
     </div>
-    <p id="dayCount" class="day-count" hidden>—</p>
-    <p id="markLegend" class="mark-legend">P = Present · A = Absent · L = Late. Tap a selected mark to clear it.</p>
-    <div id="planner" hidden></div>
+
     <p id="loading" class="loading">Loading…</p>
 
     <section id="alerts" class="alerts" hidden aria-labelledby="alertsHead">
-      <h2 id="alertsHead" class="alerts-head">Allergy notes for this day</h2>
+      <h2 id="alertsHead" class="alerts-head">Allergies in the building today</h2>
       <ul id="alertsList" class="alerts-list"></ul>
     </section>
 
@@ -54,40 +49,15 @@
     <p id="empty" class="empty" hidden></p>
 
     <section id="onToday" class="on-today" hidden aria-labelledby="onTodayHead">
-      <h2 id="onTodayHead" class="section-head">Events &amp; holidays for this day</h2>
+      <h2 id="onTodayHead" class="section-head">On today</h2>
       <ul id="onTodayList" class="event-list"></ul>
     </section>
-    <div class="calendar-actions">
-      <button id="dayToday" class="btn-ghost btn-tiny" hidden>Today</button>
-      <button id="addVisit" class="btn-ghost">Add makeup / trial</button>
-      <a id="eventsLink" class="cross-link" href="/tools/calendar/">Go to School events &amp; closures</a>
-    </div>
-    <details class="calendar-options">
-      <summary>More options</summary>
-      <div class="date-jump"><label for="selectedDate">Jump to date</label><input id="selectedDate" type="date" /></div>
-      <div id="schoolYearControl"></div>
-      <p id="holidayNote" class="mark-legend"></p>
-      <p class="mark-legend">Expected counts exclude known absences. A closure may apply to one class only; open the date for details.</p>
-    </details>
   </main>
 
   <footer class="today-footer">
-    <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy selected day’s summary</button>
+    <button id="digestBtn" class="btn-ghost btn-wide">📋 Copy today’s summary</button>
   </footer>
 
-  <div id="visitModal" class="modal" hidden>
-    <div class="modal-card">
-      <h2 id="visitHeading" class="form-heading">Add a visit</h2>
-      <label class="field-label" for="visitDate">Date</label><input id="visitDate" type="date" />
-      <label class="field-label" for="visitClass">Class</label><select id="visitClass"><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
-      <label class="field-label" for="visitKind">Visit type</label><select id="visitKind"><option value="makeup">Makeup</option><option value="trial">Trial</option><option value="other">Extra visit</option></select>
-      <div id="visitStudentField"><label class="field-label" for="visitStudent">Student</label><select id="visitStudent"></select></div>
-      <div id="visitNameField" hidden><label class="field-label" for="visitName">Visitor’s name</label><input id="visitName" type="text" maxlength="80" /></div>
-      <label class="field-label" for="visitNotes">Notes (optional)</label><textarea id="visitNotes" rows="2" maxlength="1000"></textarea>
-      <p id="visitMessage" role="status"></p>
-      <div class="modal-actions"><button id="visitCancel" class="btn-ghost">Cancel</button><button id="visitSave" class="btn-primary btn-sm">Book visit</button></div>
-    </div>
-  </div>
   <!-- Summary preview -->
   <div id="digest" class="modal" hidden>
     <div class="modal-card">
@@ -103,7 +73,6 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/school-year.js"></script>
 <script src="./today.js"></script>
 </body>
 </html>

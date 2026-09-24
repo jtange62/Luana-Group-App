@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#DDF3E6" />
 <link rel="manifest" href="/manifest.json" />
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <title>Calendar · Luana Group App</title>
 <meta property="og:title" content="Luana Calendar" />
 <meta property="og:description" content="Shared schedule for the Luana English School team." />
@@ -20,17 +20,15 @@
 <div id="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="back-btn" href="/" aria-label="Back to previous page"><span class="back-arrow" aria-hidden="true">‹</span><span>Back</span></a>
+      <a class="back-btn" href="/" aria-label="Back">‹</a>
       <a class="brand" href="/" title="Home">
         <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
         <span class="brand-name">Luana Group App</span>
       </a>
       <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
     </div>
-    <p class="brand-tag">📅 School events &amp; closures</p>
-    <a class="cross-link" href="/tools/today/">Go to Student Calendar — attendance &amp; visits</a>
+    <p class="brand-tag">📅 Events</p>
   </header>
-  <div id="schoolYearControl"></div>
 
   <!-- Month nav -->
   <div id="calBar" class="cal-bar">
@@ -50,7 +48,6 @@
     <button id="addBtn" class="btn-primary btn-sm">＋ Event</button>
   </div>
 
-  <p id="holidayInfo" class="holiday-info">Japanese public holidays included · <a href="https://www8.cao.go.jp/chosei/shukujitsu/gaiyou.html" target="_blank" rel="noopener noreferrer">Cabinet Office</a></p>
   <div id="weekdays" class="weekdays"></div>
   <div id="view" class="cal-grid"></div>
 
@@ -66,25 +63,17 @@
     <div class="modal-card">
       <p id="formTitle" class="form-heading">New event</p>
 
-      <label class="field-label" for="fType">Type</label>
-      <select id="fType" class="form-select"><option value="event">Event</option><option value="closure">School break / closure</option></select>
       <label class="field-label" id="titleLabel">Title</label>
       <input id="fTitle" type="text" placeholder="Event title" maxlength="200" />
 
       <label class="field-label">Date</label>
       <input id="fDate" type="date" class="form-input" />
-      <div id="closureFields" hidden>
-        <label class="field-label" for="fEndDate">Last day closed</label><input id="fEndDate" type="date" class="form-input" />
-        <label class="field-label" for="fClosedClass">Closed classes</label><select id="fClosedClass" class="form-select"><option value="General">All classes</option><option>Preschool</option><option>Kinder</option><option>After School</option><option>Summer School</option></select>
-        <p>Regular classes will not be expected on these dates. Booked makeup and trial visits remain visible.</p>
-      </div>
-      <label id="allDayField" class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
+      <label class="checkline"><input id="fAllDay" type="checkbox" /> All day</label>
       <div id="timeRow" class="form-row">
         <div class="time-field"><label class="field-label">Start</label><input id="fStart" type="time" class="form-input" /></div>
         <div class="time-field"><label class="field-label">End</label><input id="fEnd" type="time" class="form-input" /></div>
       </div>
 
-      <div id="repeatFields">
       <label class="field-label">Repeat</label>
       <select id="fRecur" class="form-select">
         <option value="none">Does not repeat</option>
@@ -97,8 +86,6 @@
         <input id="fUntil" type="date" class="form-input" />
       </div>
 
-      </div>
-      <label class="field-label" for="fNotes">Notes</label>
       <textarea id="fNotes" rows="2" placeholder="Notes (optional)"></textarea>
       <p id="formMsg" class="form-msg"></p>
       <div class="modal-actions">
@@ -115,7 +102,6 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/school-year.js"></script>
 <script src="./calendar.js"></script>
 </body>
 </html>

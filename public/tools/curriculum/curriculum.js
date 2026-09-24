@@ -5,7 +5,7 @@
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("curriculum");
 
-  var PROGRAMS = LuanaUtils.PROGRAMS;
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
   // Weekly "focus questions" are an After School–only field.
   var QUESTIONS_PROGRAM = "After School";
   function questionsOn() { return state.program === QUESTIONS_PROGRAM; }
@@ -16,15 +16,15 @@
   // Months a program runs in; unlisted programs run all year.
   var PROGRAM_MONTHS = { "Summer School": [7, 8] };
   function monthsFor(program) {
-    return PROGRAM_MONTHS[program] || [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+    return PROGRAM_MONTHS[program] || [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   }
-  var MONTHS = LuanaUtils.MONTHS;
+  var MONTHS = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
 
   var me = LuanaAuth.name();
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo;
 
-  var year = LuanaYear.current();
   var state = {
     lessons: [],
     weeks: [],
@@ -42,11 +42,12 @@
     openDayField: {}    // "weekId|date|kind" keys with a day sub-section expanded
   };
 
-  // ---------- Dates (shared with the other tools via LuanaUtils) ----------
-  try{var remembered=JSON.parse(sessionStorage.getItem("luana_curriculum_position"));if(remembered){if(PROGRAMS.includes(remembered.program))state.program=remembered.program;if(Number.isInteger(remembered.year)&&remembered.year>=2025&&remembered.year<=2100)year=remembered.year;}}catch(e){}
-  var WEEKDAYS = LuanaUtils.WEEKDAYS;
-  var pad = LuanaUtils.pad, fmtYMD = LuanaUtils.fmtYMD,
-      parseYMD = LuanaUtils.parseYMD, addDays = LuanaUtils.addDays;
+  // ---------- Dates (copied from calendar.js — keep in sync) ----------
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function prettyDate(ymd) { var d = parseYMD(ymd); return WEEKDAYS[d.getDay()] + ", " + MONTHS[d.getMonth()] + " " + d.getDate(); }
   function shortDate(ymd) { var d = parseYMD(ymd); return MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate(); }
 
@@ -143,8 +144,11 @@
 
   // Attachments are auth-gated, so fetch the blob before opening it.
   function openFile(fileId) {
-    LuanaAuth.fileUrl(fileId)
-      .then(function (url) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
         window.open(url, "_blank");
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       })
@@ -156,14 +160,13 @@
   }
 
   function render() {
-    try{sessionStorage.setItem("luana_curriculum_position",JSON.stringify({program:state.program,year:year}));}catch(e){}
     var months = monthsFor(state.program);
     $("progHint").textContent = months.length === 12
       ? "Monthly plan for " + state.program + " — tap a month to set its theme, song, vocab, activities and phonics."
       : state.program + " runs in " + months.map(function (m) { return MONTHS[m - 1]; }).join(" and ") + " — tap a month to plan it.";
 
     var wrap = $("months"); wrap.innerHTML = "";
-    var thisMonth = year === LuanaYear.current() ? new Date().getMonth() + 1 : 0; // 1..12
+    var thisMonth = new Date().getMonth() + 1; // 1..12
 
     for (var i = 0; i < months.length; i++) {
       var m = months[i];
@@ -172,7 +175,7 @@
       card.className = "month-card" + (m === thisMonth ? " is-current" : "") + (l ? "" : " is-empty");
 
       var head = '<div class="cm-head">' +
-        '<h2 class="cm-month">' + MONTHS[m - 1] + " " + (m < 4 ? year + 1 : year) + (m === thisMonth ? ' <span class="cm-now">now</span>' : "") + "</h2>" +
+        '<h2 class="cm-month">' + MONTHS[m - 1] + (m === thisMonth ? ' <span class="cm-now">now</span>' : "") + "</h2>" +
         '<button class="cm-edit" title="' + (l ? "Edit" : "Set theme") + '">' + (l ? "✎" : "＋ Set theme") + "</button>" +
         "</div>";
 
@@ -241,23 +244,6 @@
       })(m, l);
       wrap.appendChild(card);
     }
-    revealCurrentMonth();
-  }
-
-  // The school year starts in April, so on a normal visit the current month sits
-  // several screens down. Bring it into view once per page load — but never fight
-  // a scroll position the staff member has already chosen.
-  var revealedCurrentMonth = false;
-  function revealCurrentMonth() {
-    if (revealedCurrentMonth || window.scrollY > 40) return;
-    var current = $("months").querySelector(".month-card.is-current");
-    if (!current) return;
-    revealedCurrentMonth = true;
-    requestAnimationFrame(function () {
-      var top = current.getBoundingClientRect().top + window.scrollY - 12;
-      var motion = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
-      window.scrollTo({ top: Math.max(0, top), behavior: motion ? "auto" : "smooth" });
-    });
   }
 
   // ---------- Weeks ----------
@@ -621,12 +607,12 @@
     msg.textContent = "Copying…";
 
     var wks = weeksFor(lesson.id);
+    var t = LuanaAuth.token();
     var chain = Promise.resolve();
     targets.forEach(function (p) {
       chain = chain.then(function () {
         // Lesson create is multipart (same as save()).
         var fd = new FormData();
-    fd.append("school_year", year);
         fd.append("title", lesson.title || "");
         fd.append("author", me);
         fd.append("program", p);
@@ -635,7 +621,11 @@
         fd.append("vocab", lesson.vocab || "");
         fd.append("activities", lesson.activities || "");
         fd.append("phonics", lesson.phonics || "");
-        return LuanaAuth.upload("lesson", fd).then(function (res) {
+        return fetch("/api/lesson", {
+          method: "POST",
+          headers: t ? { Authorization: "Bearer " + t } : {},
+          body: fd
+        }).then(function (r) { return r.json(); }).then(function (res) {
           if (!res || !res.id) throw new Error("copy failed");
           var wchain = Promise.resolve();
           wks.forEach(function (w) {
@@ -712,11 +702,17 @@
   // since the PATCH above is JSON and cannot carry a file.
   function uploadFiles(lessonId) {
     var fd = new FormData();
-    fd.append("school_year", year);
     fd.append("lessonId", lessonId);
     fd.append("author", me);
     chosenFiles.forEach(function (f) { fd.append("files", f); });
-    return LuanaAuth.upload("lesson-file", fd).then(function () {});
+    var t = LuanaAuth.token();
+    return fetch("/api/lesson-file", {
+      method: "POST",
+      headers: t ? { Authorization: "Bearer " + t } : {},
+      body: fd
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "upload failed"); });
+    });
   }
 
   function save() {
@@ -764,7 +760,6 @@
 
     // New theme — lesson create is multipart/form-data (files may ride along elsewhere).
     var fd = new FormData();
-    fd.append("school_year", year);
     fd.append("title", fields.title);
     fd.append("author", me);
     fd.append("program", state.program);
@@ -776,26 +771,27 @@
     fd.append("kind", "theme");
     chosenFiles.forEach(function (f) { fd.append("files", f); });
 
-    LuanaAuth.upload("lesson", fd)
-      .then(function () { closeModal(); return loadAll(); })
-      .catch(function (e) {
-        // upload() rejects with the server's own message, so surface that
-        // rather than always blaming the connection.
-        msg.textContent = (e && e.message) || "Couldn't save.";
-        $("saveBtn").disabled = false;
-      });
+    var t = LuanaAuth.token();
+    fetch("/api/lesson", {
+      method: "POST",
+      headers: t ? { Authorization: "Bearer " + t } : {},
+      body: fd
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || "Couldn't save."; $("saveBtn").disabled = false; return; }
+        closeModal(); return loadAll();
+      })
+      .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
   }
 
   // ---------- Data ----------
   function fetchThemes() {
-    var selectedYear = year;
     // kind=theme keeps library lessons out of the curriculum (migration 018).
-    return LuanaAuth.api("lessons?kind=theme&school_year=" + selectedYear).then(function (res) { if(selectedYear === year) state.lessons = res.lessons || []; });
+    return LuanaAuth.api("lessons?kind=theme").then(function (res) { state.lessons = res.lessons || []; });
   }
   function fetchWeeks() {
-    var program = state.program, selectedYear = year;
-    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(program) + "&school_year=" + year)
-      .then(function (res) { if (program === state.program && selectedYear === year) state.weeks = res.weeks || []; });
+    return LuanaAuth.api("curriculum-weeks?program=" + encodeURIComponent(state.program))
+      .then(function (res) { state.weeks = res.weeks || []; });
   }
   // Re-render whichever view is showing (day view also slots theme/week data).
   function rerender() { render(); }
@@ -836,7 +832,6 @@
 
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
 
-  LuanaYear.mount($("schoolYearControl"), year, function(value){year=value;state.lessons=[];state.weeks=[];render();loadAll();}, "plans");
   renderProgramTabs();
   loadAll();
 })();

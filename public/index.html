@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="/shared.css" />
-
+<link rel="stylesheet" href="/board.css" />
 </head>
 <body>
 <div id="app">
@@ -24,16 +24,14 @@
   <!-- Login gate -->
   <main id="gate" class="gate">
     <div class="gate-card">
-      <div class="gate-logo"><img src="/icons/login-logo-320.png" srcset="/icons/login-logo-320.png 320w, /icons/login-logo-480.png 480w" sizes="160px" width="320" height="282" fetchpriority="high" alt="Luana English School" /></div>
+      <div class="gate-logo"><img src="/icons/login-logo-96.png" width="96" height="96" fetchpriority="high" alt="Luana English School" /></div>
       <h1 class="gate-title">Luana Group App</h1>
-      <p class="gate-sub" id="loginHint">Sign in with your staff username and password.</p>
-      <label class="gate-label" id="usernameLabel" for="username">Username</label>
-      <input id="username" type="text" autocomplete="username" />
-      <label class="gate-label" id="pwLabel" for="pwInput">Password</label>
-      <input id="pwInput" type="password" placeholder="Your password" autocomplete="current-password" />
-      <label class="gate-label" id="gateNameLabel" for="gateName" hidden>Your name</label>
-      <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" hidden />
-      <button id="enterBtn" class="btn-primary" disabled>Open staff tools</button>
+      <p class="gate-sub">Staff tools — enter the password to continue</p>
+      <label class="gate-label" for="pwInput">Staff password</label>
+      <input id="pwInput" type="password" placeholder="Enter the shared password" autocomplete="current-password" />
+      <label class="gate-label" for="gateName">Your name</label>
+      <input id="gateName" type="text" placeholder="e.g. Jane" autocomplete="name" />
+      <button id="enterBtn" class="btn-primary">Open staff tools</button>
       <p id="gateError" class="gate-error" hidden></p>
     </div>
   </main>
@@ -48,31 +46,30 @@
         </div>
         <button id="signOut" class="icon-btn" aria-label="Sign out" title="Sign out">⎋</button>
       </div>
-      <p class="brand-tag">Staff room · Share with your team</p>
+      <p class="brand-tag">Jot it down now, sort it out later</p>
     </header>
 
-    <section id="schoolOverview" class="school-overview" hidden aria-labelledby="schoolOverviewHeading"><h2 id="schoolOverviewHeading">School at a glance</h2><div id="schoolOverviewBody" aria-live="polite"></div></section>
-    <details id="resourceGuide" hidden><summary>Where to find and share files</summary><p>These are photos, files and links from staff messages. <a href="/tools/curriculum/">Curriculum</a> holds files attached to teaching plans. <a href="/tools/website/">Website inbox</a> is for publication requests. Link to an existing resource in your message when it is already shared.</p></details>
     <section class="composer">
-      <textarea id="ideaInput" rows="2" aria-label="Message" placeholder="Share something with the team…"></textarea>
+      <textarea id="ideaInput" rows="2" aria-label="Your idea" placeholder="Write your idea here…"></textarea>
       <div id="ideaFileRow" class="file-row">
-        <button id="choosePhotos" type="button" class="file-label">Photos</button>
-        <input id="ideaPhotos" type="file" accept="image/*" multiple hidden />
-        <button id="chooseFiles" type="button" class="file-label">Files</button>
-        <input id="ideaFiles" type="file" multiple hidden />
+        <label class="file-label">📎 Attach
+          <input id="ideaFiles" type="file" multiple hidden />
+        </label>
         <span id="ideaFileList" class="file-chosen"></span>
       </div>
       <div class="composer-row">
         <span id="postingAs" class="posting-as"></span>
-<button id="postBtn" class="btn-primary btn-sm">Send</button>
+        <select id="catSelect" class="cat-select" aria-label="Category">
+          <option value="curriculum">curriculum</option>
+          <option value="events">events</option>
+          <option value="supplies">supplies</option>
+          <option value="general">general</option>
+        </select>
+        <button id="postBtn" class="btn-primary btn-sm">Post</button>
       </div>
     </section>
 
-    <p id="uploadStatus" role="status" hidden></p>
-    <label class="search-label" for="boardSearch">Search messages and resources</label>
-    <input id="boardSearch" class="board-search" type="search" placeholder="Search messages, people or filenames…" />
-    <nav id="tabs" class="tabs" aria-label="View"></nav>
-    <div id="completedFilter" class="completed-filter"><label><input id="showCompleted" type="checkbox" /> Show completed</label></div>
+    <nav id="tabs" class="tabs" aria-label="Categories"></nav>
 
     <main id="feed" class="feed" aria-live="polite"></main>
     <div id="empty" class="empty" hidden>
@@ -80,14 +77,17 @@
       <p>Nothing here yet — be the first to post.</p>
     </div>
     <div id="loading" class="loading">Loading…</div>
-    <button id="loadMore" class="load-more" hidden>Load older messages</button>
+    <button id="loadMore" class="load-more" hidden>Load older ideas</button>
 
-</div>
+    <footer class="board-footer">
+      <a class="more-link" href="/tools/">All tools <span aria-hidden="true">→</span></a>
+    </footer>
+  </div>
 
   <!-- Send an idea into the curriculum -->
   <div id="placeModal" class="modal" hidden>
     <div class="modal-card">
-      <p id="placeHeading" class="form-heading">Add to curriculum</p>
+      <p id="placeHeading" class="form-heading">Send to curriculum</p>
       <p id="placePreview" class="place-preview"></p>
       <label class="field-label" for="placeTarget">Where does this go?</label>
       <select id="placeTarget" class="form-select"></select>
@@ -114,6 +114,6 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/gate.js"></script>
+<script src="/board.js"></script>
 </body>
 </html>

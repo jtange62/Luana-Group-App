@@ -23,93 +23,64 @@
   var MONTHS_SHORT = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   var state = {
-    requestId: 0, activeCat: "all", showCompleted: false, posts: [], nextCursor: null, hasMore: false,
+    activeCat: "unfiled", posts: [], nextCursor: null, hasMore: false,
     targets: null,     // curriculum destinations, loaded when first needed
     placing: null      // the post being filed
   };
-  var resourceView = new URLSearchParams(location.search).get("view") === "resources";
-  var resourceType = "photos";
-  var search = "";
-  var me = "";  // set in showBoard(), which only runs once signed in
+  var me = LuanaAuth.name();  // reassigned after login on this page
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc, timeAgo = LuanaUtils.timeAgo, fileSize = LuanaUtils.fileSize;
   var isImage = LuanaUtils.isImage, firstUrl = LuanaUtils.firstUrl, linkify = LuanaUtils.linkify;
 
   function cat(id) { return CATS.filter(function (c) { return c.id === id; })[0] || CATS[3]; }
 
-  // Text drafts survive tab changes, refreshes and navigation in this browser tab.
-  var drafts = {},openReplies={};
-  function saveDrafts() {
-    try { sessionStorage.setItem("luana_board_drafts", JSON.stringify({ name: me, values: drafts })); } catch (e) {}
-  }
-  function clearDraft(id, field) {
-    if (drafts[id]) delete drafts[id][field];
-    saveDrafts();
-  }
-  function restoreDrafts() {
-    try { var saved = JSON.parse(sessionStorage.getItem("luana_board_drafts") || "null"); drafts = saved && saved.name === me ? saved.values : {}; } catch (e) { drafts = {}; }
-    $("ideaInput").value = drafts.composer || "";
-  }
-  $("ideaInput").addEventListener("input", function () { drafts.composer = this.value; saveDrafts(); });
-  $("feed").addEventListener("input", function (event) {
-    var card = event.target.closest("[data-post-id]");
-    if (!card) return;
-    var field = event.target.matches(".edit-ta") ? "edit" : event.target.closest(".reply-box") ? "reply" : event.target.closest(".item-add") ? "items" : null;
-    if (!field) return;
-    var id = card.dataset.postId;
-    drafts[id] = drafts[id] || {}; drafts[id][field] = event.target.value; saveDrafts();
-  });
-  window.addEventListener("beforeunload", function (event) {
-    if (!chosen.length) return;
-    event.preventDefault(); event.returnValue = "";
-  });
-
-  // ---------- Entry point ----------
-  // gate.js loads this script once there is a session and then calls start().
+  // ---------- Login gate ----------
   function showBoard() {
-    me = LuanaAuth.name();
     $("gate").style.display = "none";
     $("board").hidden = false;
     LuanaUtils.ping("board");
     $("postingAs").textContent = "Posting as " + me;
-    restoreDrafts();
-    if (resourceView) { document.querySelector(".composer").hidden = true; document.querySelector(".brand-tag").textContent = "Resources · Photos, files and links shared by the team"; }
-    $("completedFilter").hidden = resourceView;
-    $("resourceGuide").hidden=!resourceView;
-    if(!resourceView)loadSchoolOverview();
     renderTabs();
     loadPosts(true);
   }
 
-  function loadSchoolOverview(){
-    var date=new Date().toLocaleDateString("sv-SE",{timeZone:"Asia/Tokyo"});
-    $("schoolOverview").hidden=false;$("schoolOverviewBody").textContent="Loading today's school overview…";
-    LuanaAuth.api("today?date="+date).then(function(day){
-      var expected=day.programs.reduce(function(total,g){return total+g.expected.concat(g.guests).filter(function(s){return s.status!=="absent";}).length+g.trials.length;},0);
-      $("schoolOverviewBody").innerHTML='<p>'+esc(day.pretty)+' · '+expected+' expected · '+day.totals.unmarked+' attendance marks pending</p><p><a href="/tools/today/?date='+date+'&view=day">Open today’s attendance</a> · <a href="/tools/today/?date='+date+'&view=week">Plan the week</a></p>'+
-        (day.events.length?'<ul>'+day.events.map(function(e){return '<li>'+esc(e.start_time||"All day")+' · '+esc(e.title)+'</li>';}).join("")+'</ul>':'<p>No school events recorded for today.</p>');
-    }).catch(function(){$("schoolOverviewBody").innerHTML='<p>Overview unavailable. <a href="/tools/today/">Open Student Calendar</a> or refresh to retry.</p>';});
+  function enter() {
+    var pw = $("pwInput").value.trim();
+    var name = $("gateName").value.trim();
+    var err = $("gateError");
+    err.hidden = true;
+    if (!pw || !name) { err.textContent = "Enter both the password and your name."; err.hidden = false; return; }
+    $("enterBtn").disabled = true;
+    LuanaAuth.login(pw, name).then(function (res) {
+      $("enterBtn").disabled = false;
+      if (!res.ok) {
+        err.textContent = res.error === "wrong password" ? "That password didn't work." : res.error;
+        err.hidden = false; return;
+      }
+      me = LuanaAuth.name();
+      showBoard();
+    }).catch(function () {
+      $("enterBtn").disabled = false;
+      err.textContent = "Couldn't reach the server. Try again.";
+      err.hidden = false;
+    });
   }
 
   function openFile(fileId) {
-    var previewWindow = window.open("about:blank", "_blank");
-    if (previewWindow) previewWindow.opener = null;
-    LuanaAuth.fileUrl(fileId)
-      .then(function (url) {
-        if (previewWindow) previewWindow.location.href = url;
-        else { var download = document.createElement("a"); download.href=url; download.download="resource"; download.click(); }
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        window.open(url, "_blank");
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       })
-      .catch(function () { if(previewWindow) previewWindow.close(); LuanaUtils.reportError(null,"Could not open that file. Try again."); });
+      .catch(function () { alert("Couldn't open that file. Try again."); });
   }
 
   // Blob URLs by file id, so the 30s feed refresh reuses already-downloaded
   // images instead of re-fetching every photo on each poll.
   var thumbCache = {};
-  var pendingThumbs = {};
-  var thumbObserver = typeof IntersectionObserver !== "undefined" ? new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) { if (entry.isIntersecting) { thumbObserver.unobserve(entry.target); loadThumb(entry.target, entry.target.dataset.fid); } });
-  }, {rootMargin:"240px"}) : null;
   function pruneThumbCache(posts) {
     var live = {};
     posts.forEach(function (post) {
@@ -131,18 +102,21 @@
   }
   function loadThumb(btn, fileId) {
     if (thumbCache[fileId]) { applyThumb(btn, thumbCache[fileId]); return; }
-    if (!pendingThumbs[fileId]) pendingThumbs[fileId] = LuanaAuth.fileUrl(fileId)
-      .then(function (url) { thumbCache[fileId] = url; return url; })
-      .finally(function () { delete pendingThumbs[fileId]; });
-    pendingThumbs[fileId].then(function (url) { if (btn.isConnected) applyThumb(btn, url); })
-      .catch(function () { btn.textContent = "Preview unavailable"; });
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        thumbCache[fileId] = url;
+        applyThumb(btn, url);
+      })
+      .catch(function () { btn.textContent = "🖼️"; });
   }
 
   // ---------- Composer file staging ----------
   var chosen = [];
   function addFiles(fileList) {
     Array.prototype.forEach.call(fileList, function (f) {
-      if(chosen.length>=20 || f.size>50*1024*1024) { LuanaUtils.reportError(null,"Choose up to 20 files, each under 50 MB."); return; }
       chosen.push({ file: f, url: isImage(f) ? URL.createObjectURL(f) : null });
     });
     renderChosen();
@@ -171,20 +145,44 @@
     });
   }
 
+  function syncComposer() {
+    $("catSelect").hidden = !(state.activeCat === "all" || state.activeCat === "unfiled");
+  }
+
+  function unfiledCount() {
+    return state.posts.filter(function (p) { return !p.placed_at; }).length;
+  }
+
   function renderTabs() {
     var nav = $("tabs"); nav.innerHTML = "";
-    if (resourceView) {
-      [["photos","Photos"],["files","Files"],["links","Links"]].forEach(function (entry) {
-        var button = document.createElement("button");button.className="tab"+(resourceType===entry[0]?" active":"");button.textContent=entry[1];
-        button.onclick=function(){resourceType=entry[0];loadPosts(true);};nav.appendChild(button);
-      });return;
-    }
-    [["all","Recent shares"],["tasks",state.showCompleted ? "Tasks" : "Open tasks"]].forEach(function(entry){
-      var button=document.createElement("button");button.className="tab"+(state.activeCat===entry[0]?" active":"");button.textContent=entry[1];
-      button.onclick=function(){state.activeCat=entry[0];loadPosts(true);};nav.appendChild(button);
+
+    // The inbox: what has been jotted down but not yet put anywhere.
+    var unfiled = state.activeCat === "unfiled";
+    var inbox = document.createElement("button");
+    inbox.className = "tab tab-inbox" + (unfiled ? " active" : "");
+    var n = unfiledCount();
+    inbox.textContent = n ? "Not filed (" + n + ")" : "Not filed";
+    inbox.onclick = function () { state.activeCat = "unfiled"; syncComposer(); renderTabs(); renderFeed(); };
+    nav.appendChild(inbox);
+
+    var allActive = state.activeCat === "all";
+    var allBtn = document.createElement("button");
+    allBtn.className = "tab" + (allActive ? " active" : "");
+    if (allActive) { allBtn.style.borderColor = "var(--teal-mid)"; allBtn.style.background = "var(--teal-soft)"; allBtn.style.color = "#085041"; }
+    allBtn.textContent = "All";
+    allBtn.onclick = function () { state.activeCat = "all"; syncComposer(); renderTabs(); renderFeed(); };
+    nav.appendChild(allBtn);
+    CATS.forEach(function (c) {
+      var active = c.id === state.activeCat;
+      var b = document.createElement("button");
+      b.className = "tab" + (active ? " active" : "");
+      b.style.borderColor = active ? c.color : "";
+      b.style.background = active ? c.soft : "";
+      b.style.color = active ? c.dark : "";
+      b.innerHTML = '<span class="dot" style="background:' + c.color + '"></span>' + c.label;
+      b.onclick = function () { state.activeCat = c.id; syncComposer(); renderTabs(); renderFeed(); };
+      nav.appendChild(b);
     });
-
-
   }
 
   function renderFeed() {
@@ -192,16 +190,15 @@
     var items = state.posts
       .filter(function (p) {
         if (state.activeCat === "unfiled") return !p.placed_at;
-        return state.activeCat === "all" || state.activeCat === "tasks" || p.category === state.activeCat;
+        return state.activeCat === "all" || p.category === state.activeCat;
       })
       .sort(function (a, b) { return b.created_at - a.created_at; });
-    if (thumbObserver) thumbObserver.disconnect();
     feed.innerHTML = "";
     $("empty").hidden = items.length > 0;
     if (!items.length) {
       $("empty").querySelector("p").textContent = state.activeCat === "unfiled"
-        ? "All caught up. New ideas and tasks will appear here."
-        : search ? "No matches. Try another name or filename." : resourceView ? "No " + resourceType + " shared yet. Add them from the Staff room." : state.activeCat === "tasks" ? "No open tasks. Use More on a message to make it a task." : "No shares yet. Send a message, photo or file to get started.";
+        ? "Everything has been filed. Anything new you jot down shows up here."
+        : "Nothing here yet — be the first to post.";
     }
     items.forEach(function (p) { feed.appendChild(card(p)); });
   }
@@ -210,7 +207,6 @@
     var c = cat(p.category);
     var el = document.createElement("article");
     el.className = "card";
-    el.dataset.postId = p.id;
     var preview = "";
     if (p.link_url) {
       preview =
@@ -223,7 +219,7 @@
     var pics = (p.files || []).filter(isImage);
     var docs = (p.files || []).filter(function (f) { return !isImage(f); });
     var picsHtml = pics.length
-      ? '<div class="photo-grid photo-count-' + Math.min(pics.length,3) + '">' + pics.map(function (f) {
+      ? '<div class="photo-grid">' + pics.map(function (f) {
           return '<button class="photo" data-fid="' + esc(f.id) + '" aria-label="' + esc(f.filename) + '"></button>';
         }).join("") + "</div>"
       : "";
@@ -250,29 +246,15 @@
       '<div class="item-list"></div>' +
       '<div class="card-actions">' +
         (p.placed_at
-          ? '<span class="filed-pill" title="Filed or completed">✓ ' + esc(p.placed_note || "filed") + "</span>" +
-            '<button class="unfile-btn">Reopen</button>'
-          : (p.text ? '<button class="place-btn">Add to curriculum</button>' : '') + '<button class="complete-btn">Mark as completed</button>') +
-        '<button class="additem-btn">Add checklist</button>' +
+          ? '<span class="filed-pill" title="Already added to the curriculum">✓ ' + esc(p.placed_note || "filed") + "</span>" +
+            '<button class="unfile-btn">put back</button>'
+          : '<button class="place-btn">📚 Send to curriculum</button>') +
+        '<button class="additem-btn">☑ Add a list</button>' +
       "</div>" +
-      '<div class="item-add"><input type="text" placeholder="What needs doing?" /><button>Add</button></div>' +
+      '<div class="item-add"><input type="text" placeholder="one per line, or paste a list…" /><button>Add</button></div>' +
       '<div class="comments"></div>';
 
-    var menu = document.createElement("details"); menu.className="post-menu";
-    var summary = document.createElement("summary"); summary.textContent="More"; menu.appendChild(summary);
-    var menuBody = document.createElement("div"); menuBody.className="post-menu-body";menu.appendChild(menuBody);
-    [".edit-btn", ".del-btn", ".place-btn", ".additem-btn", ".unfile-btn"].forEach(function(selector){
-      var action=el.querySelector(selector);if(!action)return;
-      if(selector===".edit-btn")action.textContent="Edit message";
-      if(selector===".del-btn")action.textContent="Delete message";
-      if(selector===".additem-btn")action.textContent=(p.items||[]).length?"Add checklist items":"Make this a task";
-      menuBody.appendChild(action);
-      action.addEventListener("click",function(){menu.open=false;});
-    });
-    el.querySelector(".card-head-right").appendChild(menu);
-    el.querySelector(".cat-pill").remove();
-    if(!p.text)el.querySelector(".card-text").hidden=true;
-    el.querySelectorAll(".photo").forEach(function (btn) { if (thumbObserver) thumbObserver.observe(btn); else loadThumb(btn, btn.getAttribute("data-fid")); });
+    el.querySelectorAll(".photo").forEach(function (btn) { loadThumb(btn, btn.getAttribute("data-fid")); });
     el.querySelectorAll(".file-chip[data-fid]").forEach(function (btn) {
       btn.onclick = function () { openFile(btn.getAttribute("data-fid")); };
     });
@@ -289,7 +271,6 @@
         ta.focus();
       };
       editBox.querySelector(".edit-cancel").onclick = function () {
-        clearDraft(p.id, "edit");
         editBox.classList.remove("open");
         cardText.style.display = "";
       };
@@ -299,8 +280,8 @@
         if (!txt) return;
         ta.disabled = true;
         LuanaAuth.api("post", { method: "PATCH", body: JSON.stringify({ id: p.id, author: me, text: txt }) })
-          .then(function () { clearDraft(p.id, "edit"); return loadPosts(true); })
-          .catch(function (e) { ta.disabled = false; LuanaUtils.reportError(e, "Could not save your edit."); });
+          .then(function () { return loadPosts(true); })
+          .catch(function () { ta.disabled = false; });
       };
     }
 
@@ -360,7 +341,7 @@
       if (!txt) return;
       input.disabled = true;
       LuanaAuth.api("post-item", { method: "POST", body: JSON.stringify({ post_id: p.id, text: txt }) })
-        .then(function () { clearDraft(p.id, "items"); return loadPosts(true); })
+        .then(function () { return loadPosts(true); })
         .catch(function (e) { input.disabled = false; LuanaUtils.reportError(e, "Couldn't add that."); });
     }
     addBox.querySelector("button").onclick = addItems;
@@ -368,16 +349,8 @@
 
     var placeBtn = el.querySelector(".place-btn");
     if (placeBtn) placeBtn.onclick = function () { openPlace(p); };
-    var completeBtn = el.querySelector(".complete-btn");
-    if (completeBtn) completeBtn.onclick = function () {
-      completeBtn.disabled = true;
-      LuanaAuth.api("post-place", { method: "POST", body: JSON.stringify({ post_id: p.id, action: "complete" }) })
-        .then(function () { LuanaUtils.reportSuccess("Marked complete."); return loadPosts(true); })
-        .catch(function (e) { completeBtn.disabled = false; LuanaUtils.reportError(e, "Couldn't complete this idea."); });
-    };
     var unfileBtn = el.querySelector(".unfile-btn");
     if (unfileBtn) unfileBtn.onclick = function () {
-      if (p.placed_note !== "Completed" && !confirm("Reopen this idea? Text already added to the curriculum will stay there. Filing it again will add another copy.")) return;
       LuanaAuth.api("post-place", { method: "DELETE", body: JSON.stringify({ post_id: p.id }) })
         .then(function () { return loadPosts(true); })
         .catch(function (e) { LuanaUtils.reportError(e, "Couldn't move that back."); });
@@ -393,29 +366,22 @@
     var toggle = document.createElement("button");
     toggle.className = "reply-toggle";
     var n = (p.comments || []).length;
-    toggle.textContent = n ? "Reply (" + n + ")" : "Reply";
+    toggle.innerHTML = "💬 " + (n ? n + " replies — add one" : "reply");
     var box = document.createElement("div");
-    box.className = "reply-box"+(openReplies[p.id]?" open":"");
+    box.className = "reply-box";
     box.innerHTML = '<input type="text" placeholder="your reply…" /><button>Send</button>';
-    toggle.onclick = function () { box.classList.toggle("open");openReplies[p.id]=box.classList.contains("open"); if (openReplies[p.id]) box.querySelector("input").focus(); };
+    toggle.onclick = function () { box.classList.toggle("open"); if (box.classList.contains("open")) box.querySelector("input").focus(); };
     box.querySelector("button").onclick = function () {
       var input = box.querySelector("input");
       var txt = input.value.trim();
       if (!txt) return;
       input.disabled = true;
       LuanaAuth.api("comment", { method: "POST", body: JSON.stringify({ post_id: p.id, author: me, text: txt }) })
-        .then(function () { clearDraft(p.id, "reply"); return loadPosts(true); })
-        .catch(function (e) { input.disabled = false; LuanaUtils.reportError(e, "Could not send your reply."); });
+        .then(function () { return loadPosts(true); })
+        .catch(function () { input.disabled = false; });
     };
     cwrap.appendChild(toggle);
     cwrap.appendChild(box);
-    var draft = drafts[p.id] || {};
-    [["edit", ".edit-box", ".edit-ta"], ["reply", ".reply-box", "input"], ["items", ".item-add", "input"]].forEach(function (entry) {
-      if (!draft[entry[0]]) return;
-      var panel = el.querySelector(entry[1]); panel.classList.add("open");
-      panel.querySelector(entry[2]).value = draft[entry[0]];
-      if (entry[0] === "edit") cardText.style.display = "none";
-    });
     return el;
   }
 
@@ -440,13 +406,6 @@
         });
       });
     });
-    var preferred;
-    try { preferred = sessionStorage.getItem("luana_place_target"); } catch (e) {}
-    if (preferred && Array.from(sel.options).some(function (option) { return option.value === preferred; })) sel.value = preferred;
-    else {
-      var current = (state.targets || []).find(function (theme) { return Number(theme.month) === new Date().getMonth() + 1; });
-      if (current) sel.value = "theme:" + current.id;
-    }
     fillFields();
   }
 
@@ -455,7 +414,7 @@
     var type = value.split(":")[0];
     var sel = $("placeField");
     sel.innerHTML = "";
-    (PLACE_FIELDS[type] || []).forEach(function (f) { sel.appendChild(new Option({activities:"Add activities",vocab:"Add vocabulary",phonics:"Add phonics",song:"Add song",questions:"Add questions",notes:"Add notes"}[f] || f, f)); });
+    (PLACE_FIELDS[type] || []).forEach(function (f) { sel.appendChild(new Option(f, f)); });
   }
 
   function openPlace(post) {
@@ -465,7 +424,7 @@
     $("placePreview").textContent = post.text.length > 120 ? post.text.slice(0, 120) + "…" : post.text;
     $("placeModal").hidden = false;
 
-
+    if (state.targets) { fillTargets(); return; }
     $("placeTarget").innerHTML = "<option>Loading…</option>";
     LuanaAuth.api("curriculum-targets").then(function (res) {
       state.targets = res.themes || [];
@@ -490,7 +449,6 @@
     var field = $("placeField").value;
     if (!post || parts.length !== 2 || !field) return;
 
-    try { sessionStorage.setItem("luana_place_target", value); } catch (e) {}
     var label = $("placeTarget").selectedOptions[0].textContent.replace(/^\s*↳\s*/, "").trim() + " · " + field;
     $("placeGo").disabled = true;
     LuanaAuth.api("post-place", { method: "POST", body: JSON.stringify({
@@ -522,17 +480,9 @@
       .sort(function (a, b) { return b.created_at - a.created_at || String(b.id).localeCompare(String(a.id)); });
   }
 
-  function postsQuery() {
-    var filter = state.activeCat === "tasks" ? "&tasks=1" + (state.showCompleted ? "" : "&placed=0") : state.activeCat === "unfiled" ? "&placed=0" : state.activeCat === "all" ? "" : "&category=" + encodeURIComponent(state.activeCat);
-    if (!resourceView && !state.showCompleted) filter += "&completed=0";
-    return "posts?limit=30" + filter + (resourceView ? "&resource="+resourceType : "") + (search ? "&q="+encodeURIComponent(search) : "");
-  }
-
   function loadPosts(reset) {
-    var requestId = ++state.requestId;
     $("loading").style.display = "block";
-    return LuanaAuth.api(postsQuery()).then(function (res) {
-      if (requestId !== state.requestId) return;
+    return LuanaAuth.api("posts?limit=30").then(function (res) {
       $("loading").style.display = "none";
       var incoming = normalizePosts(res.posts || []);
       if (reset) state.posts = incoming; else mergePosts(incoming);
@@ -541,20 +491,16 @@
         state.hasMore = !!res.has_more;
       }
       pruneThumbCache(state.posts);
-      renderTabs();
+      renderTabs();   // the inbox tab carries a count, so it moves with the data
       renderFeed();
       $("loadMore").hidden = !state.hasMore;
-      $("loadMore").disabled = false;
     }).catch(function (e) { $("loading").style.display = "none"; LuanaUtils.reportError(e, "Couldn't load ideas."); });
   }
 
   function loadOlder() {
     if (!state.hasMore || !state.nextCursor) return;
     $("loadMore").disabled = true;
-    var requestId = ++state.requestId;
-    return LuanaAuth.api(postsQuery() + "&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
-      if (requestId !== state.requestId) return;
-      renderTabs();
+    return LuanaAuth.api("posts?limit=30&before=" + encodeURIComponent(state.nextCursor)).then(function (res) {
       mergePosts(normalizePosts(res.posts || []));
       state.nextCursor = res.next_cursor || null;
       state.hasMore = !!res.has_more;
@@ -566,8 +512,8 @@
 
   function post() {
     var text = $("ideaInput").value.trim();
-    if (!text && !chosen.length) { LuanaUtils.reportError(null, "Write a message or choose a photo or file."); return; }
-    var category = "general";
+    if (!text) return;
+    var category = state.activeCat === "all" ? $("catSelect").value : state.activeCat;
     $("postBtn").disabled = true;
     var fd = new FormData();
     fd.append("text", text);
@@ -576,37 +522,31 @@
     var link = firstUrl(text);
     if (link) fd.append("link", link);
     chosen.forEach(function (c) { fd.append("files", c.file); });
-    $("uploadStatus").hidden = false;
-    $("uploadStatus").textContent = "Sending…";
-    $("postBtn").textContent = "Sending…";
-    LuanaAuth.upload("post", fd, function (percent) {
-      $("uploadStatus").textContent = "Uploading… " + percent + "%";
-    })
-      .then(function () {
+    var t = LuanaAuth.token();
+    fetch("/api/post", {
+      method: "POST",
+      headers: t ? { Authorization: "Bearer " + t } : {},
+      body: fd
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { $("postBtn").disabled = false; return; }
         $("ideaInput").value = "";
-        delete drafts.composer; saveDrafts();
         clearChosen();
         $("postBtn").disabled = false;
-        search=""; $("boardSearch").value=""; state.activeCat="all";
-        LuanaUtils.reportSuccess("Shared with the team.");
+        LuanaUtils.reportSuccess("Idea posted.");
         return loadPosts(true);
       })
-      .catch(function (e) { LuanaUtils.reportError(e, "Could not send. Your draft is still here."); })
-      .finally(function () { $("postBtn").disabled = false; $("postBtn").textContent="Send"; $("uploadStatus").hidden=true; });
+      .catch(function () { $("postBtn").disabled = false; });
   }
 
-  document.addEventListener("click", function(event){ document.querySelectorAll(".post-menu[open]").forEach(function(menu){if(!menu.contains(event.target))menu.open=false;}); });
-  document.addEventListener("keydown", function(event){if(event.key==="Escape")document.querySelectorAll(".post-menu[open]").forEach(function(menu){menu.open=false;menu.querySelector("summary").focus();});});
   $("postBtn").onclick = post;
   $("loadMore").onclick = loadOlder;
-  $("choosePhotos").onclick = function () { $("ideaPhotos").click(); };
-  $("chooseFiles").onclick = function () { $("ideaFiles").click(); };
-  $("ideaPhotos").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
-  var searchTimer;
-  $("showCompleted").onchange = function () { state.showCompleted = this.checked; loadPosts(true); };
-  $("boardSearch").oninput = function () { search=this.value.trim();clearTimeout(searchTimer);searchTimer=setTimeout(function(){loadPosts(true);},250); };
   $("ideaFiles").onchange = function (e) { addFiles(e.target.files); e.target.value = ""; };
   $("signOut").onclick = function () { LuanaAuth.signOut(); location.reload(); };
+
+  $("enterBtn").onclick = enter;
+  $("pwInput").addEventListener("keydown", function (e) { if (e.key === "Enter") $("gateName").focus(); });
+  $("gateName").addEventListener("keydown", function (e) { if (e.key === "Enter") enter(); });
 
   $("placeCancel").onclick = closePlace;
   $("placeGo").onclick = doPlace;
@@ -616,9 +556,10 @@
     if (!LuanaAuth.isLoggedIn() || document.hidden) return;
     // Don't re-render (and wipe) a reply or idea someone is mid-typing,
     // or staged file attachments that haven't been posted yet.
-    var typing = $("ideaInput").value.trim() || document.querySelector(".reply-box.open, .edit-box.open, .item-add.open, .modal:not([hidden])");
-    if (typing || chosen.length || state.hasMore || state.posts.length > 30 || $("postBtn").disabled) return;
-    loadPosts(true);
+    var ae = document.activeElement;
+    var typing = ae && (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA") && ae.value;
+    if (typing || chosen.length) return;
+    loadPosts(false);
   }, 30000);
 
   // ---------- Lightbox ----------
@@ -656,6 +597,6 @@
     if (Math.abs(dx) > 40) { lbIdx = (lbIdx + (dx < 0 ? 1 : -1) + lbUrls.length) % lbUrls.length; showLbFrame(); }
   });
 
-  // gate.js owns the sign-in screen and starts us once a session exists.
-  window.LuanaBoard = { start: showBoard };
+  syncComposer();
+  if (LuanaAuth.isLoggedIn()) showBoard();
 })();

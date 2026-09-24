@@ -1,7 +1,5 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-import {requestedYear} from './_school-year.js';
-
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
@@ -22,11 +20,8 @@ export async function onRequestGet({ request, env }) {
   const cursorId = cursor ? parts.slice(1).join("|") : "";
   if (cursor && (!Number.isFinite(cursorTime) || !cursorId)) return json({ error: "invalid cursor" }, 400);
 
-  const year=requestedYear(url.searchParams.get('school_year'));
-  if(year===null)return json({error:'Invalid school year'},400);
   const conditions = [];
   const bindings = [];
-  if(kind==='theme' && !id){conditions.push('l.school_year = ?');bindings.push(year);}
   if (id) { conditions.push("l.id = ?"); bindings.push(id); }
   if (kind === "theme" || kind === "lesson") { conditions.push("l.kind = ?"); bindings.push(kind); }
   if (program && program !== "all") { conditions.push("l.program = ?"); bindings.push(program); }

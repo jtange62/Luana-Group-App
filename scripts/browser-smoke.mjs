@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { chromium } from "playwright-core";
 import AxeBuilder from "@axe-core/playwright";
 
@@ -34,20 +34,13 @@ async function waitForServer() {
   throw new Error("Local Wrangler server did not start");
 }
 
-const externalServer = process.env.LUANA_TEST_EXISTING_SERVER === "1";
-// Its own D1 directory, like browser-accounts.mjs. Sharing the default
-// .wrangler/state meant any demo data left there could fail assertions such as
-// "no closure is visible for this class" — a data failure that reads exactly
-// like a code regression.
-const scratch = ".wrangler/smoke-tests";
-mkdirSync(scratch, { recursive: true });
-if (!externalServer) await run(`wrangler d1 execute luana-board --local --persist-to ${scratch}/state --file schema.sql`);
-const server = externalServer ? null : spawn(
-  `wrangler pages dev public --port 8791 --persist-to ${scratch}/state --binding AUTH_MODE=shared --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret`,
+await run("wrangler d1 execute luana-board --local --file schema.sql");
+const server = spawn(
+  "wrangler pages dev public --port 8791 --binding STAFF_PASSWORD=test --binding SESSION_SECRET=browser-smoke-test-secret",
   { shell: true, windowsHide: true, detached: process.platform !== "win32", stdio: ["ignore", "pipe", "pipe"] }
 );
-server?.stdout.on("data", () => {});
-server?.stderr.on("data", () => {});
+server.stdout.on("data", () => {});
+server.stderr.on("data", () => {});
 
 let browser;
 try {
@@ -127,250 +120,10 @@ try {
   await navigationPage.waitForURL(origin + "/");
   console.log("✓ back navigation");
   await navigationPage.close();
-  // Exercise real staff journeys with temporary local-only records.
-  const workflow = await context.newPage();
-  const api = async (route, method, body) => {
-    const response = await fetch(origin + "/api/" + route, { method, headers: { Authorization: "Bearer " + token, "Content-Type": "application/json" }, ...(body ? { body: JSON.stringify(body) } : {}) });
-    if (!response.ok) throw new Error(route + ": " + await response.text());
-    return response.json();
-  };
-  const marker = "workflow-" + Date.now();
-  let postId, eventId, resourceId;
-  try {
-    await workflow.goto(origin + "/");
-
-    await workflow.locator("#ideaInput").fill(marker);
-    await workflow.route("**/api/post", route => route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({error:"Please try again"})}));
-    await workflow.locator("#postBtn").click();
-    await workflow.getByRole("alert").filter({hasText:"Please try again"}).waitFor();
-    if (await workflow.locator("#ideaInput").inputValue() !== marker) throw new Error("Failed submission lost draft");
-    await workflow.unroute("**/api/post");
-    await workflow.locator("#postBtn").click();
-    await workflow.getByText(marker, { exact: true }).waitFor();
-    const records = await api("posts?category=general", "GET");
-    const post = records.posts.find(row => row.text === marker);
-    if (!post) throw new Error("Shared message did not appear");
-    postId = post.id;
-    const card = workflow.locator('[data-post-id="' + postId + '"]');
-    await card.getByRole("button", {name:"Mark as completed",exact:true}).click();
-    await card.waitFor({state:"detached"});
-    await workflow.getByLabel("Show completed",{exact:true}).check();
-    await card.getByText("✓ Completed",{exact:true}).waitFor();
-    await workflow.reload();
-    await workflow.locator("#loading").waitFor({state:"hidden"});
-    if (await workflow.getByLabel("Show completed",{exact:true}).isChecked() || await card.count()) throw new Error("Completed posts must be hidden on opening the staff room");
-    await workflow.getByLabel("Show completed",{exact:true}).check();
-    await card.locator("summary").click();
-    await card.getByRole("button",{name:"Reopen",exact:true}).click();
-    await card.locator(".complete-btn").waitFor();
-    await workflow.getByLabel("Show completed",{exact:true}).uncheck();
-    await card.locator(".reply-toggle").click();
-    await card.locator(".reply-box input").fill("Keep my reply");
-    await workflow.locator("#ideaInput").fill("Keep my idea");
-    await workflow.reload();
-    await workflow.locator(".reply-box input").filter({visible:true}).first().waitFor();
-    if (await workflow.locator("#ideaInput").inputValue() !== "Keep my idea") throw new Error("Composer draft lost");
-    if (await card.locator(".reply-box input").inputValue() !== "Keep my reply") throw new Error("Reply draft lost");
-    await workflow.locator("#ideaInput").fill("");
-    await card.locator("summary").click();
-    await card.getByRole("button",{name:"Make this a task",exact:true}).click();
-    await card.locator(".item-add input").fill("Bring scissors");
-    await card.locator(".item-add button").click();
-    await card.locator(".complete-btn").waitFor();
-    await card.locator(".complete-btn").click();
-    await card.waitFor({state:"detached"});
-    await workflow.getByLabel("Show completed",{exact:true}).check();
-    await card.getByText("✓ Completed",{exact:true}).waitFor();
-    await card.locator("summary").click();
-    await card.getByRole("button",{name:"Reopen",exact:true}).click();
-    await card.locator(".complete-btn").waitFor();
-    console.log("✓ sharing, task conversion, completion and draft recovery");
-
-    const uploadedResponse = workflow.waitForResponse(response => response.url().endsWith("/api/post") && response.request().method() === "POST");
-    await workflow.locator("#ideaFiles").setInputFiles({name:marker+".txt",mimeType:"text/plain",buffer:Buffer.from("Shared worksheet resource")});
-    await workflow.locator("#ideaPhotos").setInputFiles({name:marker+".png",mimeType:"image/png",buffer:Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=","base64")});
-    await workflow.locator("#postBtn").click();
-    const uploaded = await (await uploadedResponse).json();
-    if (!uploaded.id) throw new Error("Caption-free file sharing failed");
-    resourceId = uploaded.id;
-    await workflow.getByRole("link",{name:"Resources",exact:true}).click();
-    await workflow.locator('[data-post-id="'+resourceId+'"] .photo.loaded').waitFor();
-    await workflow.getByRole("button",{name:"Files",exact:true}).click();
-    await workflow.locator("#boardSearch").fill(marker);
-    await workflow.locator('[data-post-id="'+resourceId+'"]').waitFor();
-    console.log("✓ caption-free upload and filename search in Resources");
-
-    const today = await workflow.evaluate(() => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); });
-    eventId = (await api("event", "POST", {title:marker,calendar:"general",start_date:today,author:"browser-smoke"})).id;
-    await workflow.goto(origin + "/tools/calendar/");
-    await workflow.locator("#dayEvents").getByText(marker,{exact:true}).waitFor();
-    await workflow.locator('[data-view="week"]').click();
-    await workflow.locator("#view").getByText(marker,{exact:true}).waitFor();
-    await workflow.locator('[data-view="agenda"]').click();
-    await workflow.locator("#view").getByText(marker,{exact:true}).waitFor();
-    console.log("✓ saved calendar event appears in month, week and agenda");
-    const eventRow = workflow.locator("#view .ev-row").filter({hasText:marker});
-    workflow.once("dialog", dialog => dialog.dismiss());
-    await eventRow.getByRole("button",{name:"Delete",exact:true}).click();
-    await eventRow.waitFor();
-    workflow.once("dialog", dialog => dialog.accept());
-    await eventRow.getByRole("button",{name:"Delete",exact:true}).click();
-    await eventRow.waitFor({state:"detached"});
-    eventId = null;
-    console.log("✓ calendar deletion is directly available and respects cancellation");
-
-    mkdirSync(".wrangler/review", {recursive:true});
-    for (const viewport of [{width:390,height:844},{width:1280,height:900}]) {
-      await workflow.setViewportSize(viewport);
-      for (const route of ["/", "/tools/curriculum/", "/tools/students/", "/tools/calendar/"]) {
-        await workflow.goto(origin+route);
-        await workflow.locator(".app-nav").waitFor();
-        await workflow.screenshot({path:".wrangler/review/"+(route.split("/").filter(Boolean).pop() || "ideas")+"-"+viewport.width+".png",fullPage:true});
-        if (await workflow.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error("Horizontal overflow: " + route);
-      }
-    }
-    console.log("✓ phone and desktop navigation/layout");
-  } finally {
-    if (resourceId) await api("post", "DELETE", {id:resourceId,author:"browser-smoke"});
-    if (postId) await api("post", "DELETE", {id:postId,author:"browser-smoke"});
-    if (eventId) await api("event", "DELETE", {id:eventId,author:"browser-smoke"});
-    await workflow.close();
-  }
-
-  const attendancePage = await context.newPage();
-  let planningStudent, makeupId, trialId, planningClosure;
-  try {
-    planningStudent=(await api("students","POST",{name:"Planning student "+marker,program:"Preschool",days:"1"})).id;
-    await attendancePage.goto(origin+"/tools/today/");
-    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
-    await attendancePage.locator("#planner .month-grid").waitFor();
-    if(await attendancePage.locator("#planner .month-grid").count()!==1 || await attendancePage.locator("#planner table").count())throw new Error("Expected one monthly calendar without a comparison table");
-    await attendancePage.getByRole("button",{name:"Day",exact:true}).click();
-    await attendancePage.locator(".calendar-options summary").click();
-    await attendancePage.locator("#selectedDate").fill("2026-09-22");
-    await attendancePage.locator("#selectedDate").dispatchEvent("change");
-    await attendancePage.locator("#addVisit").click();
-    await attendancePage.locator("#visitClass").selectOption("Kinder");
-    await attendancePage.locator('#visitStudent option[value="'+planningStudent+'"]').waitFor({state:"attached"});
-    await attendancePage.locator("#visitStudent").selectOption(planningStudent);
-    const makeupResponse=attendancePage.waitForResponse(r=>r.url().endsWith("/api/visits")&&r.request().method()==="POST");
-    await attendancePage.locator("#visitSave").click();
-    makeupId=(await(await makeupResponse).json()).id;
-    await attendancePage.locator("#visitModal").waitFor({state:"hidden"});
-    await attendancePage.locator("#classFilter").selectOption("Kinder");
-    await attendancePage.getByRole("button",{name:"Present — Planning student "+marker,exact:true}).click();
-    await attendancePage.locator('.mark.on-present').waitFor();
-    await attendancePage.locator('.student').filter({hasText:"Planning student "+marker}).getByRole("link",{name:"Profile & history"}).click();
-    await attendancePage.locator("#detail").waitFor();
-    await attendancePage.getByRole("heading",{name:"Recent attendance"}).waitFor();
-    await attendancePage.getByRole("link",{name:"Return to Student Calendar"}).click();
-    await attendancePage.locator('.mark.on-present').waitFor();
-    await attendancePage.getByRole("button",{name:"Week",exact:true}).click();
-    await attendancePage.locator('.plan-name').filter({hasText:"Planning student "+marker+" · Makeup"}).waitFor();
-    await attendancePage.getByRole("button",{name:"Month",exact:true}).click();
-    await attendancePage.getByRole("button",{name:/Kinder, Tuesday, 22 September/}).click();
-    await attendancePage.locator('.mark.on-present').waitFor();
-    await attendancePage.locator("#addVisit").click();
-    await attendancePage.locator("#visitKind").selectOption("trial");
-    await attendancePage.locator("#visitName").fill("Trial child "+marker);
-    const trialResponse=attendancePage.waitForResponse(r=>r.url().endsWith("/api/visits")&&r.request().method()==="POST");
-    await attendancePage.locator("#visitSave").click();
-    trialId=(await(await trialResponse).json()).id;
-    await attendancePage.getByRole("button",{name:"Absent — Trial child "+marker,exact:true}).click();
-    await attendancePage.locator('.mark.on-absent').waitFor();
-    planningClosure=(await api("event","POST",{title:"Planning closure "+marker,calendar:"general",event_type:"closure",program:"Kinder",start_date:"2026-09-22",end_date:"2026-09-24",author:"browser-smoke"})).id;
-    await attendancePage.locator("#classFilter").selectOption("");
-    await attendancePage.getByRole("button",{name:"Month",exact:true}).click();
-    await attendancePage.locator("#loading").waitFor({state:"hidden"});
-    await attendancePage.locator(".plan-closure").first().waitFor();
-    await attendancePage.locator(".plan-event").filter({hasText:"Holiday"}).first().waitFor();
-    if(await attendancePage.locator("#planner .plan-day").count()!==30)throw new Error("September should have one cell per day");
-    await attendancePage.getByRole("button",{name:"Next month",exact:true}).click();
-    await attendancePage.getByRole("heading",{name:"October 2026",exact:true}).waitFor();
-    if(await attendancePage.locator("#planner .plan-day").count()!==31)throw new Error("October should have 31 days");
-    await attendancePage.getByRole("button",{name:"Previous month",exact:true}).click();
-    await attendancePage.getByRole("heading",{name:"September 2026",exact:true}).waitFor();
-    await attendancePage.locator(".calendar-options summary").click();
-    await attendancePage.locator("#selectedDate").fill("2026-09-22");
-    await attendancePage.locator("#selectedDate").dispatchEvent("change");
-    await attendancePage.locator("#loading").waitFor({state:"hidden"});
-    await attendancePage.locator("#classFilter").selectOption("Preschool");
-    if(await attendancePage.locator(".plan-closure").count())throw new Error("Kinder closure leaked into Preschool");
-    await attendancePage.locator("#classFilter").selectOption("");
-    await attendancePage.getByRole("button",{name:/All classes, Tuesday, 22 September/}).click();
-    await attendancePage.locator("#overviewBack").waitFor();
-    await attendancePage.reload();
-    await attendancePage.locator("#overviewBack").click();
-    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
-    if(await attendancePage.locator("#classFilter").inputValue()!=="")throw new Error("Overview did not restore all classes");
-    if(await attendancePage.locator("#selectedDate").inputValue()!=="2026-09-22")throw new Error("Overview lost selected date");
-    await attendancePage.getByRole("button",{name:"Week",exact:true}).click();
-    await attendancePage.locator("#loading").waitFor({state:"hidden"});
-    const weeklyGroups=await attendancePage.locator(".planner-class > h2").allTextContents();
-    if(JSON.stringify(weeklyGroups)!==JSON.stringify(["Preschool","Kinder","After School"]))throw new Error("Weekly classes must stay in their familiar order without empty Summer School");
-    const preschoolWeek=attendancePage.locator(".planner-class").filter({has:attendancePage.getByRole("heading",{name:"Preschool",exact:true})});
-    const kinderWeek=attendancePage.locator(".planner-class").filter({has:attendancePage.getByRole("heading",{name:"Kinder",exact:true})});
-    if(await preschoolWeek.locator(".plan-closure").count())throw new Error("Kinder closure leaked into Preschool week");
-    if(await kinderWeek.locator(".plan-closure").count()!==3)throw new Error("Kinder week should show its three closure days");
-    if(await preschoolWeek.locator(".plan-name").filter({hasText:"Trial child "+marker}).count())throw new Error("Kinder visitor leaked into Preschool week");
-    await kinderWeek.getByRole("button",{name:/Kinder, Tuesday, 22 September/}).click();
-    await attendancePage.locator("#overviewBack").waitFor();
-    if(await attendancePage.locator("#classFilter").inputValue()!=="Kinder")throw new Error("Weekly date did not open its class");
-    await attendancePage.locator("#overviewBack").click();
-    await attendancePage.locator('[data-view="week"][aria-pressed="true"]').waitFor();
-    if(await attendancePage.locator("#classFilter").inputValue()!=="")throw new Error("Weekly return lost all-class overview");
-    await attendancePage.getByRole("button",{name:"Month",exact:true}).click();
-    await attendancePage.locator("#planner .month-grid").waitFor();
-    if(await attendancePage.locator(".planner-class").count())throw new Error("Month should remain a single calendar");
-    await attendancePage.locator("#eventsLink").click();
-    await attendancePage.waitForURL("**/tools/calendar/?date=2026-09-22");
-    await attendancePage.locator('.ev-title').filter({hasText:"Planning closure "+marker}).first().waitFor();
-    await attendancePage.getByRole("link",{name:"Student Calendar — attendance & visits"}).click();
-    await attendancePage.locator('[data-view="month"][aria-pressed="true"]').waitFor();
-    await attendancePage.locator("#planner .month-grid").first().waitFor();
-    if(await attendancePage.locator("#selectedDate").inputValue()!=="2026-09-22")throw new Error("Calendar position was not remembered");
-    console.log("✓ calendar overview return, reload, remembered position, scoped closures, holidays and Events link");
-    for(const width of [390,1280]){
-      await attendancePage.setViewportSize({width,height:900});
-      for(const view of ["day","week","month"]){
-        await attendancePage.locator('[data-view="'+view+'"]').click();
-        await attendancePage.locator("#loading").waitFor({state:"hidden"});
-        if(await attendancePage.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw new Error("Planner overflow at "+width);
-        await attendancePage.screenshot({path:".wrangler/review/today-"+view+"-"+width+".png",fullPage:true});
-      }
-    }
-    console.log("✓ date selection, class planning, makeup and trial bookings, arrival marks and all views");
-  } finally {
-    if(makeupId)await api("visits","DELETE",{id:makeupId});
-    if(trialId)await api("visits","DELETE",{id:trialId});
-    if(planningClosure)await api("event","DELETE",{id:planningClosure,author:"browser-smoke"});
-    if(planningStudent)await api("students","DELETE",{id:planningStudent});
-    await attendancePage.close();
-  }
-  const yearPage=await browser.newPage({viewport:{width:390,height:844}});
-  await yearPage.addInitScript(token=>{localStorage.setItem("luana_token",token);localStorage.setItem("luana_name","browser-smoke");},token);
-  await yearPage.goto(origin+"/tools/curriculum/");
-  await yearPage.getByRole("combobox",{name:"School year",exact:true}).selectOption("2027");
-  await yearPage.getByRole("heading",{name:"April 2027",exact:true}).waitFor();
-  await yearPage.getByRole("heading",{name:"March 2028",exact:true}).waitFor();
-  await yearPage.goto(origin+"/tools/today/");
-  await yearPage.locator(".calendar-options summary").click();
-  await yearPage.getByRole("combobox",{name:"School year",exact:true}).selectOption("2027");
-  await yearPage.waitForFunction(()=>document.querySelector("#selectedDate").value==="2027-04-01");
-  await yearPage.locator("#selectedDate").fill("2027-03-31");
-  await yearPage.locator("#selectedDate").dispatchEvent("change");
-  await yearPage.waitForFunction(()=>document.querySelector('[aria-label="School year"]').value==="2026");
-  await yearPage.goto(origin+"/tools/calendar/");
-  await yearPage.locator("#addBtn").click();
-  await yearPage.locator("#fType").selectOption("closure");
-  await yearPage.locator("#fEndDate").waitFor();
-  if(await yearPage.locator("#repeatFields").isVisible())throw Error("Closures should use a date range");
-  await yearPage.close();
-  console.log("✓ April–March school-year controls and school-closure form");
   console.log("Browser smoke checks passed.");
 } finally {
   if (browser) await browser.close();
-  if (!server) { /* existing local preview remains running */ } else if (process.platform === "win32") {
+  if (process.platform === "win32") {
     spawnSync("taskkill", ["/pid", String(server.pid), "/T", "/F"], { stdio: "ignore", windowsHide: true });
   } else {
     try { process.kill(-server.pid, "SIGTERM"); } catch { server.kill("SIGTERM"); }

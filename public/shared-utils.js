@@ -78,42 +78,10 @@
     } catch (e) {}
   }
 
-  // ---------- Shared vocabulary ----------
-  // The program list, month and weekday names and the YYYY-MM-DD helpers were
-  // defined separately in calendar.js, curriculum.js, today.js and students.js.
-  // Four copies of the same list is four places to edit when the school adds a
-  // program. Tools alias these locally so their call sites stay as they were.
-  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
-  var MONTHS = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
-  var MONTHS_SHORT = MONTHS.map(function (m) { return m.slice(0, 3); });
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-  function pad(n) { return n < 10 ? "0" + n : "" + n; }
-  function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
-  function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
-  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
-
-  // Japanese public holidays. An 83KB file that both the Calendar and the
-  // Student Calendar need; this loads it at most once per page and hands every
-  // caller the same parsed result.
-  var holidayRequest = null;
-  function holidays() {
-    if (!holidayRequest) {
-      holidayRequest = fetch("/tools/calendar/holidays.json")
-        .then(function (r) { if (!r.ok) throw new Error("Holiday data unavailable"); return r.json(); })
-        .catch(function (error) { holidayRequest = null; throw error; });
-    }
-    return holidayRequest;
-  }
-
   global.LuanaUtils = {
     esc: esc, timeAgo: timeAgo, fileSize: fileSize, isImage: isImage,
     firstUrl: firstUrl, linkify: linkify, reportError: reportError,
-    reportSuccess: reportSuccess, ping: ping,
-    PROGRAMS: PROGRAMS, MONTHS: MONTHS, MONTHS_SHORT: MONTHS_SHORT, WEEKDAYS: WEEKDAYS,
-    pad: pad, fmtYMD: fmtYMD, parseYMD: parseYMD, addDays: addDays,
-    holidays: holidays
+    reportSuccess: reportSuccess, ping: ping
   };
 
   if (!global.document) return;
@@ -125,46 +93,6 @@
       if (internalReferrer && history.length > 1) history.back();
       else location.href = "/";
     });
-  });
-
-  // One navigation and form-label treatment across every staff page.
-  var navigation = document.createElement("nav");
-  navigation.className = "app-nav";
-  navigation.setAttribute("aria-label", "Staff tools");
-  var path = location.pathname;
-  var links = [["/", "Staff room"], ["/tools/today/", "Student Calendar"], ["/?view=resources", "Resources"], ["/tools/curriculum/", "Curriculum"], ["/tools/", "More"]];
-  links.forEach(function (entry) {
-    var link = document.createElement("a");
-    link.href = entry[0]; link.textContent = entry[1];
-    var active = (path + (path === "/" ? location.search : "")) === entry[0] || (entry[1] === "More" && ["/tools/students/", "/tools/calendar/", "/tools/website/"].indexOf(path) !== -1);
-    if (active) link.setAttribute("aria-current", "page");
-    navigation.appendChild(link);
-  });
-  var navHost = document.getElementById("board") || document.getElementById("app");
-  if (navHost) navHost.appendChild(navigation);
-  document.body.dataset.page = path.split("/").filter(Boolean).pop() || "ideas";
-  document.querySelectorAll("label.field-label:not([for])").forEach(function (label) {
-    var control = label.nextElementSibling;
-    if (control && control.id && /^(INPUT|TEXTAREA|SELECT)$/.test(control.tagName)) label.htmlFor = control.id;
-  });
-
-  // A scrolling chip row (programs, filters) gives no sign that more classes sit
-  // off the right edge. Wrap each one and flag it while it overflows so the CSS
-  // can fade the trailing edge.
-  document.querySelectorAll(".tabs").forEach(function (tabs) {
-    var wrap = document.createElement("div");
-    wrap.className = "tabs-wrap";
-    tabs.parentNode.insertBefore(wrap, tabs);
-    wrap.appendChild(tabs);
-    function sync() {
-      var more = tabs.scrollWidth - tabs.clientWidth - tabs.scrollLeft > 8;
-      if (more) wrap.setAttribute("data-overflow", "");
-      else wrap.removeAttribute("data-overflow");
-    }
-    tabs.addEventListener("scroll", sync, { passive: true });
-    window.addEventListener("resize", sync);
-    if (window.MutationObserver) new MutationObserver(sync).observe(tabs, { childList: true });
-    sync();
   });
 
   var focusable = "a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex='-1'])";
@@ -212,11 +140,7 @@
       var modal = mutation.target;
       if (!modal.classList.contains("modal")) return;
       prepareModal(modal);
-      if (!modal.hidden) {
-        modalOpeners.set(modal, lastOutsideFocus);
-        var firstControl = Array.from(modal.querySelectorAll(focusable)).find(function (item) { return item.offsetParent !== null; });
-        (firstControl || modal).focus();
-      }
+      if (!modal.hidden) modalOpeners.set(modal, lastOutsideFocus);
       else {
         var opener = modalOpeners.get(modal);
         if (opener && opener.isConnected) opener.focus();

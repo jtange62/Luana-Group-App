@@ -97,7 +97,3 @@
   .modal{align-items:center;padding:20px;}
   .modal-card{border-radius:18px;}
 }
-
-.ev-actions{display:flex;flex-wrap:wrap;gap:4px;justify-content:flex-end;max-width:150px;}.ev-actions button{min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--card);font-size:13px;}.ev-delete{color:#a63737;}.holiday-badge{color:#a63737;font-size:12px;white-space:nowrap;}.day-cell.is-holiday .daynum{color:#a63737;font-weight:700;}.holiday-info{font-size:12px;color:var(--muted);margin:8px 0 12px;}.holiday-info a{color:var(--teal);}
-
-.day-cell.is-holiday.is-today .daynum{color:#fff;}

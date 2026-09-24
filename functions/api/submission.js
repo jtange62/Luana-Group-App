@@ -1,4 +1,4 @@
-import { json, verifyToken, bearer, clean, requireOwner } from "./_helpers.js";
+import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const MAX_FILE = 50 * 1024 * 1024; // 50 MB per file
 const MAX_FILES = 20;
@@ -65,17 +65,12 @@ export async function onRequestPatch({ request, env }) {
 }
 
 // Delete a submission and its files.
-export async function onRequestDelete(context) {
-  const { request, env } = context;
+export async function onRequestDelete({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
   let body;
   try { body = await request.json(); } catch { return json({ error: "bad request" }, 400); }
   if (!body.id) return json({ error: "missing id" }, 400);
-
-  // Whoever sent the item to the website manager owns it.
-  const denied = await requireOwner(context, { table: "submissions", id: body.id });
-  if (denied) return denied;
 
   const filesRes = await env.DB.prepare("SELECT id FROM submission_files WHERE submission_id = ?").bind(body.id).all();
   await Promise.all((filesRes.results || []).map((f) => env.FILES.delete(f.id).catch(() => { /* ignore */ })));

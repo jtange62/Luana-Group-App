@@ -4,4 +4,3 @@ node_modules/
 .DS_Store
 *.log
 backups/
-.claude/settings.json

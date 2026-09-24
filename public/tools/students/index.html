@@ -21,7 +21,7 @@
 <div id="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="back-btn" href="/" aria-label="Back to previous page"><span class="back-arrow" aria-hidden="true">‹</span><span>Back</span></a>
+      <a class="back-btn" href="/" aria-label="Back">‹</a>
       <a class="brand" href="/" title="Home">
         <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
         <span class="brand-name">Luana Group App</span>
@@ -30,8 +30,6 @@
     </div>
     <p class="brand-tag">👧 Student roster</p>
   </header>
-  <div id="schoolYearControl"></div>
-  <details id="summerSettings" hidden><summary>Summer School dates for this year</summary><p>Set the dates before selecting weeks for students.</p><div id="summerDates"></div><button id="addSummerWeek" class="btn-ghost">Add a week</button><button id="saveSummer" class="btn-ghost">Save summer dates</button></details>
 
   <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
 
@@ -79,11 +77,15 @@
       <!-- Summer School only -->
       <div id="ssFields" hidden>
         <label class="field-label">Weeks attending</label>
-        <div class="day-chips"></div>
+        <div class="day-chips">
+          <button type="button" class="day-chip" data-week="1">Week 1<span class="ss-week-date">7/27–7/31</span></button>
+          <button type="button" class="day-chip" data-week="2">Week 2<span class="ss-week-date">8/3–8/7</span></button>
+          <button type="button" class="day-chip" data-week="3">Week 3<span class="ss-week-date">8/17–8/21</span></button>
+        </div>
         <label class="field-label ss-type-label">Student type</label>
         <div class="seg seg-sstype">
-          <button type="button" class="seg-btn" data-type="internal">Internal</button>
-          <button type="button" class="seg-btn" data-type="external">External</button>
+          <button type="button" class="seg-btn" data-type="internal">内部生 Internal</button>
+          <button type="button" class="seg-btn" data-type="external">外部生 External</button>
         </div>
       </div>
 
@@ -138,7 +140,6 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/school-year.js"></script>
-<script type="module" src="./students.js"></script>
+<script src="./students.js"></script>
 </body>
 </html>

@@ -4,8 +4,6 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 // to one theme via ?lesson=<id>; the Curriculum tool just loads them all and
 // groups client-side. Comments use a subselect (not an id list) because D1
 // caps bound params — same pattern as posts.js.
-import {requestedYear} from './_school-year.js';
-
 export async function onRequestGet({ request, env }) {
   if (!(await verifyToken(env, bearer(request)))) return json({ error: "unauthorized" }, 401);
 
@@ -13,8 +11,6 @@ export async function onRequestGet({ request, env }) {
   const lessonId = clean(url.searchParams.get("lesson"), 60);
   const program = clean(url.searchParams.get("program"), 40);
 
-  const year=requestedYear(url.searchParams.get('school_year'));
-  if(year===null)return json({error:'Invalid school year'},400);
   const [weeksRes, commentsRes, daysRes] = await env.DB.batch(lessonId
     ? [
         env.DB.prepare("SELECT * FROM curriculum_weeks WHERE lesson_id = ? ORDER BY week_no ASC").bind(lessonId),
@@ -22,13 +18,13 @@ export async function onRequestGet({ request, env }) {
         env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id = ?) ORDER BY date ASC").bind(lessonId),
       ]
     : program ? [
-        env.DB.prepare("SELECT * FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ? AND school_year = ?) ORDER BY lesson_id, week_no ASC").bind(program,year),
-        env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ? AND school_year = ?)) ORDER BY created_at ASC").bind(program,year),
-        env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ? AND school_year = ?)) ORDER BY date ASC").bind(program,year),
+        env.DB.prepare("SELECT * FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?) ORDER BY lesson_id, week_no ASC").bind(program),
+        env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?)) ORDER BY created_at ASC").bind(program),
+        env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE program = ?)) ORDER BY date ASC").bind(program),
       ] : [
-        env.DB.prepare("SELECT * FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE school_year=?) ORDER BY lesson_id, week_no ASC").bind(year),
-        env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE school_year=?)) ORDER BY created_at ASC").bind(year),
-        env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks WHERE lesson_id IN (SELECT id FROM lessons WHERE school_year=?)) ORDER BY date ASC").bind(year),
+        env.DB.prepare("SELECT * FROM curriculum_weeks ORDER BY lesson_id, week_no ASC"),
+        env.DB.prepare("SELECT * FROM week_comments WHERE week_id IN (SELECT id FROM curriculum_weeks) ORDER BY created_at ASC"),
+        env.DB.prepare("SELECT * FROM week_days WHERE week_id IN (SELECT id FROM curriculum_weeks) ORDER BY date ASC"),
       ]);
 
   const commentsByWeek = {};

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <meta name="theme-color" content="#DDF3E6" />
 <link rel="manifest" href="/manifest.json" />
-<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+<link rel="apple-touch-icon" href="/icons/icon-192.png" />
 <title>Curriculum · Luana Group App</title>
 <meta property="og:title" content="Luana Curriculum" />
 <meta property="og:description" content="Monthly themes, vocab, activities, phonics and songs for the Luana English School team." />
@@ -20,7 +20,7 @@
 <div id="app">
   <header class="topbar">
     <div class="topbar-inner">
-      <a class="back-btn" href="/" aria-label="Back to previous page"><span class="back-arrow" aria-hidden="true">‹</span><span>Back</span></a>
+      <a class="back-btn" href="/" aria-label="Back">‹</a>
       <a class="brand" href="/" title="Home">
         <img src="/icons/favicon-32.png" alt="" class="brand-mark" />
         <span class="brand-name">Luana Group App</span>
@@ -29,12 +29,10 @@
     </div>
     <p class="brand-tag">🍎 Curriculum overview</p>
   </header>
-  <div id="schoolYearControl"></div>
 
   <nav id="programTabs" class="tabs" aria-label="Programs"></nav>
 
   <p id="progHint" class="prog-hint"></p>
-  <p class="prog-hint">Files attached here belong to their teaching plan. <a href="/?view=resources">Browse team resources</a> for other shared materials.</p>
 
   <main id="months" class="month-list" aria-live="polite"></main>
 
@@ -132,7 +130,6 @@
 
 <script src="/shared-auth.js"></script>
 <script src="/shared-utils.js"></script>
-<script src="/school-year.js"></script>
 <script src="./curriculum.js"></script>
 </body>
 </html>

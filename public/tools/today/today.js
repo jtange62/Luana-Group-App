@@ -1,263 +1,259 @@
-// Attendance planning and the daily register share the same class rosters.
+// The daily register.
+//
+// One job: mark who is here. Everything else on the page is something the app
+// already knows and hands back for free (allergies in the building, the class
+// theme, what is on) so it is worth opening even on a day with nothing to type.
 (function () {
   "use strict";
+
   if (!LuanaAuth.requireLogin()) return;
   LuanaUtils.ping("today");
-  var $ = function(id){return document.getElementById(id);}, esc=LuanaUtils.esc;
-  var CLASSES=LuanaUtils.PROGRAMS;
-  // Aliased before first use: these replaced function declarations, which hoist.
-  var ymd=LuanaUtils.fmtYMD,date=LuanaUtils.parseYMD;
-  var MARKS=[["present","P","Present"],["absent","A","Absent"],["late","L","Late"]];
-  var KINDS={makeup:"Makeup",trial:"Trial",other:"Extra visit"};
-  var state={date:ymd(new Date()),view:"month",program:"",days:[],request:0,students:[],bookingRequest:0};
-  var positionKey="luana_student_calendar_v2",overview=null,holidays={};
-  function validPosition(p){return p && ["day","week","month"].includes(p.view) && typeof p.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && ymd(date(p.date))===p.date && (p.program==="" || CLASSES.includes(p.program));}
-  try {
-    var saved=JSON.parse(sessionStorage.getItem(positionKey));
-    if(validPosition(saved)){state.date=saved.date;state.view=saved.view;state.program=saved.program;}
-    if(saved && validPosition(saved.overview) && saved.overview.view!=="day")overview=saved.overview;
-  } catch(e){}
-  var query=new URLSearchParams(location.search);
-  if(query.has("date")){
-    var requested={date:query.get("date"),view:query.get("view")||"day",program:query.get("program")||""};
-    if(validPosition(requested)){state.date=requested.date;state.view=requested.view;state.program=requested.program;overview=null;}
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = LuanaUtils.esc;
+  var MARKS = [["present", "P", "Present"], ["absent", "A", "Absent"], ["late", "L", "Late"]];
+
+  var state = { date: todayYMD(), data: null, busy: {} };
+
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function todayYMD() {
+    var d = new Date();
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   }
-  function position(){return {date:state.date,view:state.view,program:state.program};}
-  function remember(){try{sessionStorage.setItem(positionKey,JSON.stringify(Object.assign(position(),{overview:overview})));}catch(e){}}
-  function contextEvents(day,program){
-    return (day.events||[]).filter(function(e){return !program || !e.program || e.program==="General" || e.program===program;})
-      .concat((holidays[day.date]||[]).map(function(name){return {title:name,holiday:true};}));
-  }
-  // Staff shifts and meetings carry no `program`, so they matched every class and
-  // were repeated verbatim in the Preschool, Kinder and After School cells for
-  // the same date. In the week grid each cell is one class's day, so only things
-  // that affect that class belong there — closures and public holidays. The staff
-  // context still shows in the Day view and on the staff room's overview.
-  function affectsClasses(e){return !!e.holiday || e.event_type==="closure" || (e.calendar||"general")!=="staff";}
-  function cellEvents(day,program){
-    var events=contextEvents(day,program);
-    return state.view==="week" ? events.filter(affectsClasses) : events;
-  }
-  function eventMarkup(events){
-    if(state.view==="month"){
-      var closed=events.some(function(e){return e.event_type==="closure";}),holiday=events.some(function(e){return e.holiday;});
-      var count=events.filter(function(e){return !e.holiday && e.event_type!=="closure";}).length;
-      return (closed?'<span class="plan-event plan-closure">'+(state.program?'Closed':'Closure')+'</span>':"")+(holiday?'<span class="plan-event">Holiday</span>':"")+(count?'<span class="plan-event">'+count+' event'+(count===1?'':'s')+'</span>':"");
-    }
-    return events.map(function(e){return '<span class="plan-event'+(e.event_type==="closure"?' plan-closure':'')+'">'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span>';}).join("");
-  }
-  function shift(value,n){var d=date(value);d.setDate(d.getDate()+n);return ymd(d);}
-  function today(){return ymd(new Date());}
-  function range(){
-    var d=date(state.date);
-    if(state.view==="day")return {from:state.date,to:state.date};
-    if(state.view==="week"){var first=shift(state.date,-((d.getDay()+6)%7));return {from:first,to:shift(first,6)};}
-    return {from:ymd(new Date(d.getFullYear(),d.getMonth(),1)),to:ymd(new Date(d.getFullYear(),d.getMonth()+1,0))};
-  }
-  // Month and day headings read as prose ("Thursday, September 24, 2026"), so the
-  // week heading should too rather than falling back to raw ISO dates.
-  function periodLabel(r){
-    if(state.view==="month")return date(state.date).toLocaleDateString("en",{month:"long",year:"numeric"});
-    if(r.from===r.to)return date(state.date).toLocaleDateString("en",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
-    var from=date(r.from),to=date(r.to),sameMonth=from.getMonth()===to.getMonth()&&from.getFullYear()===to.getFullYear();
-    return from.toLocaleDateString("en",{day:"numeric",month:"long"})
-      +" – "+to.toLocaleDateString("en",sameMonth?{day:"numeric"}:{day:"numeric",month:"long"})
-      +", "+to.getFullYear();
+  function shiftDate(ymd, delta) {
+    var p = ymd.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2] + delta);
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   }
 
-  function group(day,program){return day.programs.find(function(g){return g.program===program;})||{program:program,expected:[],guests:[],trials:[],counts:{},theme:null};}
-  // `trials` (migration 003) and `attendance_visits` (migration 022) both model a
-  // one-off visit, and the roster concatenated them blind — so a child booked in
-  // the newer table who also had a legacy trials row was listed twice on the same
-  // day. Rows already covered by a booked visit are dropped.
-  function rows(g){
-    var booked={};
-    g.guests.forEach(function(v){ if(v.name) booked[String(v.name).trim().toLowerCase()]=true; });
-    var legacy=g.trials
-      .filter(function(t){ return !booked[String(t.name||"").trim().toLowerCase()]; })
-      .map(function(t){return Object.assign({},t,{kind:"trial",legacy_trial:true,status:""});});
-    return g.expected.concat(g.guests).concat(legacy);
+  // ---------- Render ----------
+  function render() {
+    var data = state.data;
+    $("dayLabel").textContent = state.date === todayYMD() ? "Today · " + data.pretty : data.pretty;
+    $("dayToday").hidden = state.date === todayYMD();
+
+    var t = data.totals;
+    $("dayCount").textContent = t.expected
+      ? t.present + " in · " + t.absent + " out" + (t.late ? " · " + t.late + " late" : "") +
+        (t.unmarked ? " · " + t.unmarked + " to mark" : " · all marked")
+      : "No classes scheduled";
+
+    renderAlerts(data.allergies);
+    renderRegister(data.programs);
+    renderEvents(data.events);
+
+    var nothing = !data.programs.length && !data.events.length;
+    $("empty").hidden = !nothing;
+    if (nothing) $("empty").textContent = "Nothing scheduled on " + data.weekday + ".";
   }
-  function planned(g){return rows(g).filter(function(row){return row.status!=="absent";}).length;}
-  function classes(){
-    if(state.program)return [state.program];
-    return CLASSES.filter(function(program){
-      return program!=="Summer School" || state.days.some(function(day){return rows(group(day,program)).length>0;});
-    });
+
+  function renderAlerts(list) {
+    $("alerts").hidden = !list.length;
+    if (!list.length) return;
+    var ul = $("alertsList");
+    ul.innerHTML = list.map(function (row) {
+      return "<li><strong>" + esc(row.name) + "</strong> — " + esc(row.allergies) + "</li>";
+    }).join("");
   }
-  function tag(row){return KINDS[row.kind||row.status]||"";}
-  function button(text,action,className){var b=document.createElement("button");b.type="button";b.textContent=text;b.className=className||"btn-ghost";b.onclick=action;return b;}
-  function go(value){if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return;state.date=value;load();}
-  function openDay(value,program){if(state.view!=="day")overview=position();state.view="day";if(program){state.program=program;}go(value);}
-  function render(){
-    var r=range();$("selectedDate").value=state.date;
-    $("classFilter").value=state.program;
-    $("overviewBack").hidden=state.view!=="day" || !overview;
-    $("overviewBack").textContent=overview?"‹ Back to "+overview.view+" overview":"Back to overview";
-    $("eventsLink").href="/tools/calendar/?date="+state.date;
-    $("holidayNote").textContent=holidayStatus;
-    $("dayLabel").textContent="Student Calendar";
-    $("dayToday").hidden=state.date===today();
-    $("dayPrev").setAttribute("aria-label","Previous "+state.view);$("dayNext").setAttribute("aria-label","Next "+state.view);
-    document.querySelectorAll("[data-view]").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.view===state.view));});
-    $("periodLabel").textContent=periodLabel(r);
-    $("register").hidden=state.view!=="day";$("planner").hidden=state.view==="day";
-    $("dayCount").hidden=state.view!=="day";
-    document.querySelector(".today-footer").hidden=state.view!=="day";
-    $("markLegend").hidden=false;$("markLegend").textContent=state.view==="day"?"P = Present · A = Absent · L = Late. Tap a selected mark to clear it.":"Expected students · Select a date for names and attendance.";$("digestBtn").hidden=state.view!=="day";
-    $("empty").hidden=true;$("alerts").hidden=true;$("onToday").hidden=true;
-    if(state.view==="day")renderDay(state.days[0]);else renderPeriod();
+
+  function markButton(student, mark) {
+    var btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "mark" + (student.status === mark[0] ? " on-" + mark[0] : "");
+    btn.textContent = mark[1];
+    btn.setAttribute("aria-label", mark[2] + " — " + student.name);
+    btn.setAttribute("aria-pressed", student.status === mark[0] ? "true" : "false");
+    // Tapping the current status again clears it, so a mis-tap is one tap to undo.
+    btn.onclick = function () { setMark(student, student.status === mark[0] ? "" : mark[0]); };
+    return btn;
   }
-  function renderDay(day){
-    if(!day)return;
-    var total=classes().reduce(function(n,p){return n+planned(group(day,p));},0);
-    $("dayCount").textContent=total+" expected · "+(state.date===today()?"Today":"Selected day");
-    var wrap=$("register");wrap.innerHTML="";
-    var allergyRows=[];
-    classes().forEach(function(program){
-      var g=group(day,program),card=document.createElement("section");card.className="class-card";
-      var head=document.createElement("div");head.className="class-head";head.innerHTML='<h2 class="class-name">'+esc(program)+'</h2><span class="class-tally">'+planned(g)+(state.view==="month"?'':' expected')+'</span>';card.appendChild(head);
-      if(g.theme){var theme=document.createElement("p");theme.className="class-theme";theme.textContent=g.theme.title;card.appendChild(theme);}
-      var roster=document.createElement("div");roster.className="roster";
-      var list=rows(g);
-      if(!list.length){var empty=document.createElement("p");empty.className="class-theme";empty.textContent="No students scheduled.";roster.appendChild(empty);}
-      list.forEach(function(student){roster.appendChild(studentRow(student));if(student.allergies&&student.status!=="absent")allergyRows.push(student);});
-      card.appendChild(roster);card.appendChild(button("Add makeup / trial",function(){openVisit(program);},"btn-ghost add-class-visit"));wrap.appendChild(card);
-    });
-    $("alerts").hidden=!allergyRows.length;
-    $("alertsList").innerHTML=allergyRows.map(function(s){return '<li><strong>'+esc(s.name)+'</strong> — '+esc(s.allergies)+'</li>';}).join("");
-    var events=contextEvents(day,state.program);
-    $("onToday").hidden=!events.length;
-    $("onTodayList").innerHTML=events.map(function(e){return '<li><span class="event-time">'+esc(e.start_time||"All day")+'</span><span>'+esc((e.holiday?"Holiday: ":"")+e.title)+'</span></li>';}).join("");
-  }
-  function studentRow(student){
-    var row=document.createElement("div");row.className="student";
-    var label=document.createElement("div");label.className="student-name";label.textContent=student.name;
-    if(!student.legacy_trial && (!student.visit_id || student.student_id)){
-      var profile=document.createElement("a");profile.className="student-profile-link";profile.textContent="Profile & history";
-      profile.href="/tools/students/?student="+encodeURIComponent(student.student_id||student.id)+"&school_year="+LuanaYear.current(state.date)+"&date="+state.date;
-      label.appendChild(profile);
+
+  function studentRow(student, tag) {
+    var row = document.createElement("div");
+    row.className = "student";
+
+    var name = document.createElement("span");
+    name.className = "student-name";
+    name.textContent = student.name;
+    if (student.allergies) {
+      var flag = document.createElement("span");
+      flag.className = "student-flag";
+      flag.textContent = "⚠";
+      flag.title = student.allergies;
+      name.appendChild(flag);
     }
-    if(tag(student)){var badge=document.createElement("span");badge.className="guest-tag";badge.textContent=tag(student);label.appendChild(badge);}
-    if(student.notes){var notes=document.createElement("small");notes.className="visit-notes";notes.textContent=student.notes;label.appendChild(notes);}
-    if(student.allergies){var alert=document.createElement("small");alert.className="visit-notes";alert.textContent="Allergy: "+student.allergies;label.appendChild(alert);}
-    row.appendChild(label);
-    if(!student.legacy_trial){
-      var marks=document.createElement("div");marks.className="marks";
-      MARKS.forEach(function(mark){var b=button(mark[1],function(){setMark(student,student.status===mark[0]?"":mark[0],row);},"mark"+(student.status===mark[0]?" on-"+mark[0]:""));b.setAttribute("aria-label",mark[2]+" — "+student.name);b.setAttribute("aria-pressed",String(student.status===mark[0]));marks.appendChild(b);});row.appendChild(marks);
+    if (tag) {
+      var badge = document.createElement("span");
+      badge.className = "guest-tag";
+      badge.textContent = tag;
+      name.appendChild(badge);
     }
-    if(student.visit_id||student.legacy_trial){var remove=button("Cancel visit",function(){cancelVisit(student);},"cancel-visit");row.appendChild(remove);}
+    row.appendChild(name);
+
+    var marks = document.createElement("div");
+    marks.className = "marks";
+    MARKS.forEach(function (mark) { marks.appendChild(markButton(student, mark)); });
+    row.appendChild(marks);
     return row;
   }
-  function renderPeriod(){
-    var wrap=$("planner");wrap.innerHTML="";
-    if(!state.days.length)return;
-    var programs=state.view==="week"?classes():[state.program];
-    programs.forEach(function(program){
-      var section=wrap;
-      if(state.view==="week"){
-        section=document.createElement("section");section.className="planner-class";
-        var heading=document.createElement("h2");heading.className="class-name";heading.textContent=program;
-        section.appendChild(heading);wrap.appendChild(section);
+
+  function renderRegister(programs) {
+    var wrap = $("register");
+    wrap.innerHTML = "";
+
+    programs.forEach(function (group) {
+      var card = document.createElement("section");
+      card.className = "class-card";
+
+      var head = document.createElement("div");
+      head.className = "class-head";
+      var tally = group.counts.unmarked
+        ? group.counts.unmarked + " to mark"
+        : (group.expected.length ? "all marked ✓" : "");
+      head.innerHTML = '<h2 class="class-name">' + esc(group.program) + "</h2>" +
+        '<span class="class-tally' + (group.done ? " is-done" : "") + '">' + esc(tally) + "</span>";
+      card.appendChild(head);
+
+      if (group.theme) {
+        var theme = document.createElement("p");
+        theme.className = "class-theme";
+        var bits = "<strong>" + esc(group.theme.title) + "</strong>";
+        if (group.theme.song) bits += " · Song: " + esc(group.theme.song);
+        theme.innerHTML = bits;
+        card.appendChild(theme);
       }
-      var grid=document.createElement("div");grid.className=state.view==="month"?"month-grid":"week-grid";
-      grid.setAttribute("role","group");grid.setAttribute("aria-label",$("periodLabel").textContent+" · "+(program||"All classes"));
-      if(state.view==="month"){
-        ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].forEach(function(name){var label=document.createElement("span");label.className="weekday-label";label.textContent=name;grid.appendChild(label);});
-        for(var i=0;i<(date(state.days[0].date).getDay()+6)%7;i++)grid.appendChild(document.createElement("span"));
+
+      var roster = document.createElement("div");
+      roster.className = "roster";
+      group.expected.forEach(function (student) { roster.appendChild(studentRow(student, "")); });
+
+      // Children who are not on this weekday's schedule but turned up anyway.
+      var extras = group.guests.length + group.trials.length;
+      if (extras) {
+        var divider = document.createElement("p");
+        divider.className = "guest-head";
+        divider.textContent = "Also in today";
+        roster.appendChild(divider);
+        group.guests.forEach(function (student) {
+          roster.appendChild(studentRow(student, student.status === "trial" ? "Trial" : student.status === "makeup" ? "Makeup" : "Other"));
+        });
+        // Trials live in their own table rather than the roster, so there is no
+        // student to mark against — they are shown so the room count is right.
+        group.trials.forEach(function (trial) {
+          var row = document.createElement("div");
+          row.className = "student";
+          row.innerHTML = '<span class="student-name">' + esc(trial.name) +
+            '<span class="guest-tag">Trial</span></span>' +
+            '<span class="student-note">visiting</span>';
+          roster.appendChild(row);
+        });
       }
-      state.days.forEach(function(day){
-        var list=(program?[program]:classes()).flatMap(function(p){return rows(group(day,p));});
-        var count=list.filter(function(s){return s.status!=="absent";}).length;
-        var cell=button("",function(){openDay(day.date,program);},"plan-day"+(day.date===today()?" is-today":"")+(count?"":" is-empty"));
-        if(day.date===today())cell.setAttribute("aria-current","date");
-        var label=state.view==="month"?String(date(day.date).getDate()):date(day.date).toLocaleDateString("en",{weekday:"short",month:"short",day:"numeric"});
-        cell.innerHTML='<strong>'+esc(label)+'</strong>'+(count?'<span class="plan-count">'+count+'<span class="count-caption"> expected</span></span>':'');
-        cell.setAttribute("aria-label",(program||"All classes")+", "+day.pretty+", "+count+" expected. Open day");
-        var events=cellEvents(day,program);
-        cell.innerHTML+=eventMarkup(events);
-        if(events.length)cell.setAttribute("aria-label",cell.getAttribute("aria-label")+". "+events.map(function(e){return e.title;}).join(". "));
-        if(state.view==="week"){
-          cell.innerHTML+=list.map(function(s){return '<span class="plan-name'+(s.status==="absent"?' is-absent':'')+'">'+esc(s.name)+(tag(s)?' · '+esc(tag(s)):'')+(s.status==="absent"?' · Absent':'')+'</span>';}).join("");
-          if(!list.length)cell.innerHTML+='<span class="plan-name">No students</span>';
-        }
-        grid.appendChild(cell);
-      });
-      if(state.view==="month"){
-        var trailing=(7-date(state.days[state.days.length-1].date).getDay())%7;
-        for(var j=0;j<trailing;j++)grid.appendChild(document.createElement("span"));
-      }
-      section.appendChild(grid);
+      card.appendChild(roster);
+      wrap.appendChild(card);
     });
   }
-  function setMark(student,status,row){
-    var selected=state.date;
-    row.querySelectorAll("button").forEach(function(b){b.disabled=true;});
-    var path=student.visit_id?"visits":"attendance";
-    var payload=student.visit_id?{id:student.visit_id,status:status}:{student_id:student.id,date:selected,status:status,marked_by:LuanaAuth.name()};
-    LuanaAuth.api(path,{method:student.visit_id?"PATCH":"POST",body:JSON.stringify(payload)})
-      .then(function(){if(state.date===selected)return load();})
-      .catch(function(e){LuanaUtils.reportError(e,"Could not save attendance.");row.querySelectorAll("button").forEach(function(b){b.disabled=false;});});
+
+  function renderEvents(events) {
+    $("onToday").hidden = !events.length;
+    if (!events.length) return;
+    $("onTodayList").innerHTML = events.map(function (event) {
+      var when = event.start_time
+        ? event.start_time + (event.end_time ? "–" + event.end_time : "")
+        : "All day";
+      var who = event.staff_name ? '<span class="event-who">' + esc(event.staff_name) + "</span>" : "";
+      return '<li><span class="event-time">' + esc(when) + "</span><span>" + esc(event.title) + "</span>" + who + "</li>";
+    }).join("");
   }
-  function cancelVisit(student){
-    if(!confirm("Cancel this visit for "+student.name+"? Their regular weekly schedule will stay the same."))return;
-    LuanaAuth.api(student.legacy_trial?"trials":"visits",{method:"DELETE",body:JSON.stringify({id:student.visit_id||student.id})}).then(load).catch(function(e){LuanaUtils.reportError(e,"Could not cancel the visit.");});
+
+  // ---------- Actions ----------
+  // Update the screen first, then persist. A teacher marking a line of children
+  // should never wait on the network between taps.
+  function setMark(student, status) {
+    if (state.busy[student.id]) return;
+    var previous = student.status;
+    student.status = status;
+    recount();
+    render();
+
+    state.busy[student.id] = true;
+    LuanaAuth.api("attendance", {
+      method: "POST",
+      body: JSON.stringify({
+        student_id: student.id, date: state.date, status: status, marked_by: LuanaAuth.name(),
+      }),
+    }).catch(function (error) {
+      student.status = previous;
+      recount();
+      render();
+      LuanaUtils.reportError(error, "Couldn't save that mark. Nothing was changed.");
+    }).then(function () { delete state.busy[student.id]; });
   }
-  function load(){
-    remember();
-    yearControl.set(LuanaYear.current(state.date));
-    var request=++state.request,r=range();state.days=[];
-    $("selectedDate").value=state.date;$("loading").style.display="block";$("digestBtn").disabled=true;
-    $("register").innerHTML="";$("planner").innerHTML="";$("alerts").hidden=true;$("onToday").hidden=true;
-    var path=state.view==="day"?"today?date="+state.date:"planner?from="+r.from+"&to="+r.to;
-    return LuanaAuth.api(path).then(function(data){if(request!==state.request)return;state.days=data.days||[data];render();})
-      .catch(function(e){if(request===state.request){state.days=[];LuanaUtils.reportError(e,"Could not load the schedule.");}})
-      .finally(function(){if(request===state.request){$("loading").style.display="none";$("digestBtn").disabled=!state.days.length;}});
+
+  // Recompute the tallies the server sent us, so the header and per-class
+  // counts stay honest after an optimistic change.
+  function recount() {
+    var totals = { expected: 0, present: 0, absent: 0, late: 0, unmarked: 0, guests: 0, trials: 0 };
+    state.data.programs.forEach(function (group) {
+      var counts = { present: 0, absent: 0, late: 0, unmarked: 0 };
+      group.expected.forEach(function (student) {
+        if (counts[student.status] !== undefined) counts[student.status]++;
+        else if (!student.status) counts.unmarked++;
+      });
+      group.counts = counts;
+      group.done = group.expected.length > 0 && counts.unmarked === 0;
+      totals.expected += group.expected.length;
+      totals.present += counts.present;
+      totals.absent += counts.absent;
+      totals.late += counts.late;
+      totals.unmarked += counts.unmarked;
+    });
+    state.data.totals = totals;
   }
-  function openVisit(program){
-    var request=++state.bookingRequest;
-    $("visitDate").value=state.date;$("visitClass").value=program||state.program||CLASSES[0];$("visitKind").value="makeup";$("visitName").value="";$("visitNotes").value="";$("visitMessage").textContent="Loading students…";$("visitSave").disabled=true;$("visitModal").hidden=false;syncVisit();
-    loadVisitStudents();
+
+  function load() {
+    $("loading").style.display = "block";
+    return LuanaAuth.api("today?date=" + encodeURIComponent(state.date))
+      .then(function (data) { state.data = data; render(); })
+      .catch(function (error) { LuanaUtils.reportError(error, "Couldn't load today."); })
+      .then(function () { $("loading").style.display = "none"; });
   }
-  function loadVisitStudents(){
-    var request=++state.bookingRequest;$("visitSave").disabled=true;
-    LuanaAuth.api("students?school_year="+LuanaYear.current($("visitDate").value)).then(function(data){if(request!==state.bookingRequest)return;state.students=data.students;$("visitStudent").innerHTML='<option value="">Choose a student</option>'+state.students.map(function(s){return '<option value="'+esc(s.id)+'">'+esc(s.name+" · "+s.program)+'</option>';}).join("");$("visitMessage").textContent="";$("visitSave").disabled=false;}).catch(function(e){$("visitMessage").textContent=e.message;});
+
+  function go(date) { state.date = date; load(); }
+
+  // ---------- Summary ----------
+  function openDigest() {
+    $("digestBtn").disabled = true;
+    LuanaAuth.api("summary?date=" + encodeURIComponent(state.date)).then(function (res) {
+      $("digestText").textContent = res.text || "";
+      $("digest").hidden = false;
+    }).catch(function (error) {
+      LuanaUtils.reportError(error, "Couldn't build the summary.");
+    }).then(function () { $("digestBtn").disabled = false; });
   }
-  function syncVisit(){var trial=$("visitKind").value==="trial";$("visitStudentField").hidden=trial;$("visitNameField").hidden=!trial;}
-  function closeVisit(){state.bookingRequest++;$("visitModal").hidden=true;}
-  function saveVisit(){
-    var trial=$("visitKind").value==="trial",selected=$("visitDate").value;
-    if(!selected||(!trial&&!$("visitStudent").value)||(trial&&!$("visitName").value.trim())){$("visitMessage").textContent="Choose a date and student, or enter the trial visitor’s name.";return;}
-    $("visitSave").disabled=true;
-    LuanaAuth.api("visits",{method:"POST",body:JSON.stringify({date:selected,program:$("visitClass").value,kind:$("visitKind").value,student_id:trial?null:$("visitStudent").value,name:$("visitName").value,notes:$("visitNotes").value})})
-      .then(function(){closeVisit();state.date=selected;LuanaUtils.reportSuccess("Visit booked.");return load();})
-      .catch(function(e){$("visitMessage").textContent=e.message;$("visitSave").disabled=false;});
+
+  function copyDigest() {
+    var text = $("digestText").textContent;
+    var done = function () { LuanaUtils.reportSuccess("Summary copied."); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () {
+        LuanaUtils.reportError(null, "Couldn't copy — select the text and copy it manually.");
+      });
+      return;
+    }
+    LuanaUtils.reportError(null, "Copying isn't available here — select the text and copy it manually.");
   }
-  function step(direction){
-    if(state.view==="month"){var d=date(state.date);go(ymd(new Date(d.getFullYear(),d.getMonth()+direction,1)));}
-    else go(shift(state.date,direction*(state.view==="week"?7:1)));
-  }
-  $("signOut").onclick=function(){LuanaAuth.signOut();location.href="/";};
-  $("selectedDate").onchange=function(){if(this.value)go(this.value);};
-  $("classFilter").onchange=function(){state.program=this.value;remember();if(state.days.length)render();};
-  $("viewModes").onclick=function(e){var b=e.target.closest("[data-view]");if(b){if(b.dataset.view==="day" && state.view!=="day")overview=position();else if(b.dataset.view!=="day")overview=null;state.view=b.dataset.view;load();}};
-  $("overviewBack").onclick=function(){if(!overview)return;state.date=overview.date;state.view=overview.view;state.program=overview.program;overview=null;load().then(function(){document.querySelector('[data-view="'+state.view+'"]').focus();});};
-  $("dayPrev").onclick=function(){step(-1);};$("dayNext").onclick=function(){step(1);};$("dayToday").onclick=function(){go(today());};
-  $("addVisit").onclick=function(){openVisit();};$("visitKind").onchange=syncVisit;$("visitCancel").onclick=closeVisit;$("visitSave").onclick=saveVisit;
-  $("visitDate").onchange=loadVisitStudents;
-  $("visitModal").onclick=function(e){if(e.target===$("visitModal"))closeVisit();};
-  $("digestBtn").onclick=function(){LuanaAuth.api("summary?date="+state.date).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
-  $("digestClose").onclick=function(){$("digest").hidden=true;};$("digest").onclick=function(e){if(e.target===$("digest"))$("digest").hidden=true;};
-  $("digestCopy").onclick=function(){if(!navigator.clipboard){LuanaUtils.reportError(null,"Select the summary and copy it manually.");return;}navigator.clipboard.writeText($("digestText").textContent).then(function(){LuanaUtils.reportSuccess("Summary copied.");}).catch(function(e){LuanaUtils.reportError(e,"Could not copy.");});};
-  var yearControl=LuanaYear.mount($("schoolYearControl"),LuanaYear.current(state.date),function(year){go(year+"-04-01");});
-  var yearSummary=document.createElement("button");yearSummary.className="btn-ghost";yearSummary.textContent="School-year summary";
-  yearSummary.onclick=function(){LuanaAuth.api("year-summary?school_year="+LuanaYear.current(state.date)).then(function(data){$("digestText").textContent=data.text;$("digest").hidden=false;}).catch(function(e){LuanaUtils.reportError(e);});};
-  $("schoolYearControl").querySelector(".school-year-bar").appendChild(yearSummary);
-  var holidayStatus="Loading Japanese public holidays…";
-  LuanaUtils.holidays().then(function(data){
-    data.holidays.forEach(function(h){(holidays[h.date]||(holidays[h.date]=[])).push(h.name);});
-    holidayStatus="Japanese public holidays available through "+data.to+". Holidays do not automatically close classes.";
-    if(state.days.length)render();
-  }).catch(function(){holidayStatus="Public holidays could not be loaded. School events and attendance are still available.";if(state.days.length)render();});
+
+  // ---------- Wiring ----------
+  $("signOut").onclick = function () { LuanaAuth.signOut(); location.href = "/"; };
+
+  $("dayPrev").onclick = function () { go(shiftDate(state.date, -1)); };
+  $("dayNext").onclick = function () { go(shiftDate(state.date, 1)); };
+  $("dayToday").onclick = function () { go(todayYMD()); };
+
+  $("digestBtn").onclick = openDigest;
+  $("digestCopy").onclick = copyDigest;
+  $("digestClose").onclick = function () { $("digest").hidden = true; };
+  $("digest").onclick = function (e) { if (e.target === $("digest")) $("digest").hidden = true; };
+
   load();
 })();

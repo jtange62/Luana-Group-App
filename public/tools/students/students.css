@@ -9,7 +9,7 @@
 
 /* Toolbar */
 .stu-toolbar{display:flex;align-items:center;gap:8px;padding:0 0 14px;}
-.search{flex:1;min-width:0;border:0.5px solid var(--line);border-radius:var(--radius-sm);
+.search{flex:1;border:0.5px solid var(--line);border-radius:var(--radius-sm);
   padding:10px 12px;background:var(--card);color:var(--ink);}
 .search:focus{outline:none;border-color:var(--teal-mid);}
 
@@ -25,11 +25,7 @@
 .stu-body{display:flex;flex-direction:column;flex:1;min-width:0;}
 .stu-name{font-size:15px;font-weight:600;word-break:break-word;}
 .stu-meta{font-size:12.5px;color:var(--muted);}
-/* Allergy marker: a readable amber chip rather than a bare emoji, so the meaning
-   is obvious at a glance and announced correctly by a screen reader. */
-.stu-flag{flex-shrink:0;font-size:11.5px;font-weight:700;letter-spacing:.03em;
-  text-transform:uppercase;color:var(--gold-dark);background:var(--gold-soft);
-  border:1px solid rgba(133,79,11,0.28);border-radius:999px;padding:3px 9px;white-space:nowrap;}
+.stu-flag{font-size:14px;flex-shrink:0;}
 .stu-arrow{color:var(--hint);font-size:18px;flex-shrink:0;}
 
 /* Empty / loading */
@@ -105,5 +101,3 @@
   .modal{align-items:center;padding:20px;}
   .modal-card{border-radius:18px;}
 }
-
-#summerSettings{padding:12px;border:1px solid var(--line);border-radius:12px;margin:8px 0;}#summerSettings summary{min-height:44px;cursor:pointer;}.summer-date-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:10px 0;}.summer-date-row label{display:flex;flex-direction:column;gap:4px;}.summer-date-row input{min-height:44px;max-width:155px;}

@@ -119,13 +119,13 @@ test("themes are looked up by the date's own month", async () => {
 
   const themeQuery = DB.statements.find((entry) => entry.sql.includes("FROM lessons"));
   assert.match(themeQuery.sql, /kind = 'theme'/);
-  assert.deepEqual(themeQuery.bindings, ["9", 2026]);
+  assert.deepEqual(themeQuery.bindings, ["9"]);
 });
 
 test("the summary reads as a message, and names what is still unmarked", async () => {
   const text = summaryText(await sample());
 
-  assert.match(text, /^Luana — Thursday, 3 September · 2026–2027 school year$/m);
+  assert.match(text, /^Luana — Thursday, 3 September$/m);
   assert.match(text, /^Preschool \(2\) — 1 in, 1 out$/m);
   assert.match(text, /^ {2}Absent: Ben$/m);
   assert.match(text, /^ {2}Theme: Under the Sea · Song: Baby Shark$/m);
@@ -162,7 +162,7 @@ test("library and curriculum queries stay on their own side of the lessons table
       env: { DB, SESSION_SECRET },
     });
     assert.match(DB.statements[0].sql, /l\.kind = \?/);
-    assert.ok(DB.statements[0].bindings.includes(kind));
+    assert.equal(DB.statements[0].bindings[0], kind);
   }
 
   // An unrecognised kind is ignored rather than injected into the query.

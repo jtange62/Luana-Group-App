@@ -1,7 +1,5 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-import {validDate} from './visits.js';
-
 const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "General"];
 const RECUR = ["none", "daily", "weekly", "monthly"];
 const CALENDARS = ["general", "students", "staff"];
@@ -36,12 +34,7 @@ function fields(body) {
   const startDate = cleanDate(body.start_date);
   if (!title) return { error: calendar === "staff" ? "staff name required" : "title required" };
   if (!startDate) return { error: "valid date required" };
-  const event_type=body.event_type==='closure'?'closure':'event';
-  const end_date=cleanDate(body.end_date)||startDate;
-  if(!validDate(startDate)||!validDate(end_date)||end_date<startDate)return {error:'Choose a valid start and end date.'};
-  if(event_type==='closure' && cleanRecur(body.recur)!=='none')return {error:'School closures use a date range, not a repeating rule.'};
   return {
-    event_type, end_date,
     title,
     calendar,
     program: cleanProgram(body.program),
@@ -69,11 +62,11 @@ export async function onRequestPost({ request, env }) {
   const id = crypto.randomUUID();
 
   await env.DB.prepare(
-    `INSERT INTO events (id, title, author, calendar, program, staff_name, lesson_id, start_date, start_time, end_time, notes, recur, recur_until, created_at, event_type, end_date)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO events (id, title, author, calendar, program, staff_name, lesson_id, start_date, start_time, end_time, notes, recur, recur_until, created_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(
     id, f.title, author, f.calendar, f.program, f.staff_name, f.lesson_id,
-    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, Date.now(), f.event_type, f.end_date
+    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, Date.now()
   ).run();
 
   return json({ ok: true, id });
@@ -94,10 +87,10 @@ export async function onRequestPatch({ request, env }) {
   if (f.error) return json({ error: f.error }, 400);
 
   await env.DB.prepare(
-    `UPDATE events SET title=?, calendar=?, program=?, staff_name=?, lesson_id=?, start_date=?, start_time=?, end_time=?, notes=?, recur=?, recur_until=?, event_type=?, end_date=? WHERE id=?`
+    `UPDATE events SET title=?, calendar=?, program=?, staff_name=?, lesson_id=?, start_date=?, start_time=?, end_time=?, notes=?, recur=?, recur_until=? WHERE id=?`
   ).bind(
     f.title, f.calendar, f.program, f.staff_name, f.lesson_id,
-    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, f.event_type, f.end_date, body.id
+    f.start_date, f.start_time, f.end_time, f.notes, f.recur, f.recur_until, body.id
   ).run();
 
   return json({ ok: true });
@@ -112,8 +105,7 @@ export async function onRequestDelete({ request, env }) {
 
   const existing = await env.DB.prepare("SELECT author FROM events WHERE id = ?").bind(body.id).first();
   if (!existing) return json({ error: "not found" }, 404);
-  // The shared staff calendar allows signed-in staff to manage any event,
-  // matching the edit permission above.
+  if (existing.author !== clean(body.author, 60)) return json({ error: "forbidden" }, 403);
 
   await env.DB.prepare("DELETE FROM events WHERE id = ?").bind(body.id).run();
   return json({ ok: true });

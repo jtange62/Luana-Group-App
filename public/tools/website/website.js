@@ -22,13 +22,15 @@
   }
 
   function openFile(fileId) {
-    LuanaAuth.fileUrl(fileId)
-      .then(function (url) {
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("download failed"); return r.blob(); })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
         window.open(url, "_blank");
         setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
       })
-      // A blocking alert() freezes the page; the shared toast does not.
-      .catch(function (e) { LuanaUtils.reportError(e, "Couldn't open that file. Try again."); });
+      .catch(function () { alert("Couldn't open that file. Try again."); });
   }
 
   // ---------- Render ----------
@@ -143,9 +145,12 @@
 
   // Fetch a sent image (auth-gated) and show it as a thumbnail; tap to open lightbox.
   function loadThumb(btn, fileId) {
-    LuanaAuth.fileUrl(fileId)
-      .then(function (url) {
-        if (!btn.isConnected) { URL.revokeObjectURL(url); return; }
+    var t = LuanaAuth.token();
+    fetch("/api/file/" + fileId, { headers: t ? { Authorization: "Bearer " + t } : {} })
+      .then(function (r) { if (!r.ok) throw new Error("x"); return r.blob(); })
+      .then(function (blob) {
+        if (!btn.isConnected) return;
+        var url = URL.createObjectURL(blob);
         btn.style.backgroundImage = "url('" + url + "')";
         btn.classList.add("loaded");
         btn._src = url;
@@ -181,16 +186,19 @@
     fd.append("notes", notes);
     chosen.forEach(function (c) { fd.append("files", c.file); });
 
+    var t = LuanaAuth.token();
     $("saveBtn").disabled = true;
     msg.textContent = "Sending…";
-    LuanaAuth.upload("submission", fd, function (percent) { msg.textContent = "Uploading… " + percent + "%"; })
-      .then(function () {
+    fetch("/api/submission", { method: "POST", headers: t ? { Authorization: "Bearer " + t } : {}, body: fd })
+      .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+      .then(function (res) {
+        if (!res.ok) { msg.textContent = res.j.error || "Upload failed."; $("saveBtn").disabled = false; return; }
         closeForm();
         LuanaUtils.reportSuccess("Sent to the website manager.");
         state.filter = "new";
         return load(true);
       })
-      .catch(function (e) { msg.textContent = (e && e.message) || "Upload failed."; $("saveBtn").disabled = false; });
+      .catch(function () { msg.textContent = "Couldn't reach the server."; $("saveBtn").disabled = false; });
   }
 
   function load(reset) {

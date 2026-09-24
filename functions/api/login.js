@@ -1,7 +1,4 @@
 import { json, makeToken, clean, safeEqual } from "./_helpers.js";
-import {passwordMatches,passwordHash} from './_passwords.js';
-
-export function onRequestGet({env}){return json({mode:env.AUTH_MODE==='accounts'?'accounts':'shared'});}
 
 // Brute-force guard: after this many wrong passwords from one IP inside the
 // window, further tries get a 429 until the failures age out.
@@ -21,22 +18,16 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Too many attempts — wait a few minutes and try again." }, 429);
   }
 
-  const pw = typeof body.password==='string' && body.password.length<=200 ? body.password : '';
-  let user=null,accepted=false;
-  if(env.AUTH_MODE==='accounts'){
-    user=await env.DB.prepare('SELECT * FROM staff_accounts WHERE username=? COLLATE NOCASE').bind(clean(body.username,60).toLowerCase()).first();
-    if(user){accepted=await passwordMatches(pw,user.password_hash,env.SESSION_SECRET);accepted=accepted&&user.active===1;}
-    else{await passwordHash(pw,env.SESSION_SECRET,'unknown-account-timing');}
-  }else accepted=!!pw && await safeEqual(pw.trim(),env.STAFF_PASSWORD||'');
-  if (!pw || !accepted) {
+  const pw = clean(body.password, 200);
+  if (!pw || !(await safeEqual(pw, env.STAFF_PASSWORD || ""))) {
     // Record the failure; pruning aged-out rows keeps the table tiny.
     await env.DB.batch([
       env.DB.prepare("INSERT INTO login_attempts (ip, created_at) VALUES (?,?)").bind(ip, Date.now()),
       env.DB.prepare("DELETE FROM login_attempts WHERE created_at <= ?").bind(cutoff),
     ]);
-    return json({ error: env.AUTH_MODE==='accounts'?"Incorrect username or password.":"wrong password" }, 401);
+    return json({ error: "wrong password" }, 401);
   }
 
-  const token = await makeToken(env,user);
-  return json({ token, ...(user?{user:{id:user.id,name:user.name,username:user.username,role:user.role,must_change:user.must_change}}:{}) });
+  const token = await makeToken(env);
+  return json({ token });
 }
