@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
 // What a block auto-fills with in the Day view. Stored NULL for "none".
 const SOURCES = [
   "week_focus", "week_activities", "week_phonics", "week_questions",

@@ -2,7 +2,7 @@ import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
 const MAX_FILE = 50 * 1024 * 1024; // 50 MB per file
 const MAX_FILES = 20;
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
 
 function normalizeLink(raw) {
   const v = clean(raw, 1000);

@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
 
 function cleanProgram(raw) {
   const v = clean(raw, 40);

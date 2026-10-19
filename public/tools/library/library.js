@@ -4,7 +4,7 @@
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
 
-  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
   var MONTHS = ["January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"];
 

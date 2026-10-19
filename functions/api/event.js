@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "General"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo", "General"];
 const RECUR = ["none", "daily", "weekly", "monthly"];
 const CALENDARS = ["general", "students", "staff"];
 

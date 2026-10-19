@@ -8,6 +8,7 @@
     { id: "Kinder",        color: "#E8714A", soft: "#FAECE7", dark: "#993C1D" },
     { id: "After School",  color: "#D4A24C", soft: "#FAEEDA", dark: "#854F0B" },
     { id: "Summer School", color: "#2A6F97", soft: "#E2EEF5", dark: "#1D4E6B" },
+    { id: "Peekaboo",      color: "#7A4F9E", soft: "#EFE7F5", dark: "#553670" },
     { id: "General",       color: "#5F5E5A", soft: "#F1EFE8", dark: "#444441" }
   ];
   var STAFF_COLORS = ["#0F6E56", "#E8714A", "#D4A24C", "#2A6F97", "#7A4F9E", "#B5485D", "#3C8C6E", "#C57B2C"];
@@ -20,7 +21,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var esc = LuanaUtils.esc;
   var now = new Date();
-  var STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var STUDENT_PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
   // Weekday chips in school order (Mon→Sun); value is JS getDay() index.
   var WEEKDAY_CHIPS = [["Mon", 1], ["Tue", 2], ["Wed", 3], ["Thu", 4], ["Fri", 5], ["Sat", 6], ["Sun", 0]];
   var WEEKDAY_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -46,7 +47,7 @@
     });
   }
 
-  function prog(id) { return PROGRAMS.filter(function (p) { return p.id === id; })[0] || PROGRAMS[4]; }
+  function prog(id) { return PROGRAMS.filter(function (p) { return p.id === id; })[0] || PROGRAMS.filter(function (p) { return p.id === "General"; })[0]; }
   function pad(n) { return n < 10 ? "0" + n : "" + n; }
   function fmtYMD(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
   function parseYMD(s) { var p = String(s).split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }

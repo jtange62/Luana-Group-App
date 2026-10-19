@@ -4,7 +4,7 @@
   // Bounce to hub login if not authenticated.
   if (!LuanaAuth.requireLogin()) return;
 
-  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+  var PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
   // Weekly "focus questions" are an After School–only field.
   var QUESTIONS_PROGRAM = "After School";
   function questionsOn() { return state.program === QUESTIONS_PROGRAM; }

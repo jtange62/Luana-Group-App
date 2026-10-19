@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
 
 // Profile fields beyond the core name/program/days. All optional text.
 const PROFILE_FIELDS = ["birthday", "guardian", "phone", "email", "allergies", "emergency", "notes", "enrolled_at", "ss_weeks", "ss_type"];

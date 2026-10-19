@@ -1,6 +1,6 @@
 import { json, verifyToken, bearer, clean } from "./_helpers.js";
 
-const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School"];
+const PROGRAMS = ["Preschool", "Kinder", "After School", "Summer School", "Peekaboo"];
 
 // GET    /api/trials?date=YYYY-MM-DD           -> list trials for a single date
 // GET    /api/trials?from=YYYY-MM-DD&to=...    -> list trials for a date range
